@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,7 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 class AdminSessionController {
 
 	@GetMapping("/me")
-	AdminSessionResponse me(Authentication authentication) {
+	AdminSessionResponse me(Authentication authentication, CsrfToken csrfToken) {
+		csrfToken.getToken();
 		if (authentication == null || !authentication.isAuthenticated()) {
 			return new AdminSessionResponse(false, null);
 		}
