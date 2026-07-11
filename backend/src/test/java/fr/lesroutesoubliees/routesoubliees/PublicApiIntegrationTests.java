@@ -47,7 +47,19 @@ class PublicApiIntegrationTests {
 		mvc.perform(get("/api/public/map"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.vision.name").value("Carte voilee"))
-			.andExpect(jsonPath("$.vision.assetPath").value("/assets/maps/map-hidden.webp"));
+			.andExpect(jsonPath("$.vision.assetPath").value("/assets/maps/map-hidden.png"))
+			.andExpect(jsonPath("$.markers", hasSize(2)))
+			.andExpect(jsonPath("$.markers[0].title").value("Premier appel"))
+			.andExpect(jsonPath("$.markers[0].questCode").value("QUEST_1"))
+			.andExpect(jsonPath("$.markers[0].positionX").value(31.500))
+			.andExpect(jsonPath("$.markers[0].positionY").value(70.000))
+			.andExpect(jsonPath("$.markers[1].title").value("Chemin secondaire"))
+			.andExpect(jsonPath("$.markers[1].questCode").value("QUEST_2"))
+			.andExpect(jsonPath("$.markers[?(@.questCode == 'QUEST_3')]").isEmpty())
+			.andExpect(jsonPath("$.markers[?(@.questCode == 'QUEST_4')]").isEmpty())
+			.andExpect(jsonPath("$.markers[?(@.questCode == 'VAL_D_AURELUNE')]").isEmpty())
+			.andExpect(jsonPath("$.markers[0].status").doesNotExist())
+			.andExpect(jsonPath("$.markers[0].createdAt").doesNotExist());
 	}
 
 	@Test

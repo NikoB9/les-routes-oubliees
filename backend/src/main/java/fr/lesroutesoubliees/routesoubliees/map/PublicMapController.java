@@ -16,6 +16,6 @@ class PublicMapController {
 
 	@GetMapping
 	PublicMapResponse getMap() {
-		return new PublicMapResponse(maps.activeVision());
+		return maps.publicMap();
 	}
 }

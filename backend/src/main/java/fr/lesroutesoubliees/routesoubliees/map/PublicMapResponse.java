@@ -1,4 +1,9 @@
 package fr.lesroutesoubliees.routesoubliees.map;
 
-public record PublicMapResponse(PublicMapVisionResponse vision) {
+import java.util.List;
+
+public record PublicMapResponse(
+	PublicMapVisionResponse vision,
+	List<PublicMapMarkerResponse> markers
+) {
 }
