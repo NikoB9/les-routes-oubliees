@@ -511,3 +511,100 @@ Avant la mise en place de la CI, les mêmes commandes doivent être exécutées 
 * refus d’un non-administrateur ;
 * responsive ;
 * navigation clavier.
+
+## 23. Packaging et deploiement manuel
+
+Cette procedure decrit le flux manuel depuis PowerShell vers le conteneur LXC.
+
+### 23.1 Format de release
+
+Le script local cree une archive :
+
+```text
+dist/les-routes-oubliees-release.tar.gz
+```
+
+L'archive contient au minimum :
+
+```text
+backend/app.jar
+frontend/index.html
+release-info.txt
+```
+
+Cote serveur, les releases sont deployeees sous la forme :
+
+```text
+/opt/les-routes-oubliees/
+├── current -> /opt/les-routes-oubliees/releases/YYYYMMDDHHMMSS
+└── releases/
+    └── YYYYMMDDHHMMSS/
+        ├── backend/
+        │   └── app.jar
+        ├── frontend/
+        │   └── index.html
+        └── release-info.txt
+```
+
+Les anciennes releases ne sont jamais modifiees directement.
+
+### 23.2 Packaging depuis PowerShell
+
+```powershell
+.\scripts\package-release.ps1 -SkipTests
+```
+
+`-SkipTests` est tolere tant que les tests du socle restent instables dans l'environnement Docker local. Pour une release de production mature, executer les tests applicables avant packaging et retirer ce contournement.
+
+### 23.3 Copie vers le serveur
+
+Serveur actuel :
+
+```text
+192.168.31.73
+```
+
+```powershell
+scp `
+  -i "$env:USERPROFILE\.ssh\id_ed25519_routes_oubliees" `
+  .\dist\les-routes-oubliees-release.tar.gz `
+  deploy@192.168.31.73:/tmp/
+```
+
+### 23.4 Deploiement serveur
+
+```powershell
+ssh `
+  -i "$env:USERPROFILE\.ssh\id_ed25519_routes_oubliees" `
+  deploy@192.168.31.73 `
+  "sudo /usr/local/sbin/lro-deploy /tmp/les-routes-oubliees-release.tar.gz"
+```
+
+Le script serveur de reference est fourni dans :
+
+```text
+infra/deploy/lro-deploy
+```
+
+Installation indicative sur le serveur :
+
+```bash
+sudo install -o root -g root -m 0750 infra/deploy/lro-deploy /usr/local/sbin/lro-deploy
+```
+
+Le script serveur :
+
+* verifie l'archive ;
+* verifie la presence de `backend/app.jar` ;
+* verifie la presence de `frontend/index.html` ;
+* lit `/etc/les-routes-oubliees/application.env` ;
+* cree un dump PostgreSQL ;
+* extrait la nouvelle release dans un dossier horodate ;
+* arrete l'application ;
+* bascule le lien symbolique `current` ;
+* redemarre l'application ;
+* attend que le health check reponde ;
+* revient a la release precedente si le demarrage echoue ;
+* conserve les cinq dernieres releases ;
+* supprime l'archive temporaire ;
+* ne modifie jamais directement une ancienne release.

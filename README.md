@@ -98,6 +98,24 @@ Sur un poste sans Node/npm ou Java 25 installés localement, les validations peu
 .\scripts\backend-check.ps1 -SkipTests
 ```
 
+## Packaging de release
+
+Depuis PowerShell :
+
+```powershell
+.\scripts\package-release.ps1 -SkipTests
+```
+
+Le script cree `dist/les-routes-oubliees-release.tar.gz` avec :
+
+```text
+backend/app.jar
+frontend/index.html
+release-info.txt
+```
+
+La procedure de copie et de deploiement serveur est decrite dans `docs/DEPLOIEMENT.md`.
+
 ## Administration
 
 L’accès à la connexion administrateur sera révélé par un easter egg.
