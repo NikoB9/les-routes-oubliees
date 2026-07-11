@@ -1,0 +1,48 @@
+.desktop-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1rem;
+  background: #30251c;
+  border-right: 1px solid #776142;
+}
+
+.nav-kicker {
+  margin: 0 0 0.625rem;
+  color: #d8c5a0;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+a {
+  display: block;
+  padding: 0.875rem;
+  color: #f8f0df;
+  text-decoration: none;
+  border-left: 4px solid transparent;
+}
+
+a:hover {
+  background: #3a2d21;
+}
+
+a.active {
+  background: #d1ad68;
+  color: #221a14;
+  border-left-color: #f8f0df;
+}
+
+.link-label,
+.link-description {
+  display: block;
+}
+
+.link-label {
+  font-weight: 800;
+}
+
+.link-description {
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+}

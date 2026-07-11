@@ -1,10 +1,49 @@
-import { Component } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  NavigationCancel,
+  NavigationEnd,
+  NavigationError,
+  NavigationStart,
+  Router,
+  RouterOutlet,
+} from '@angular/router';
+
+import { DesktopNavigationComponent } from './layout/desktop-navigation/desktop-navigation';
+import { PublicHeaderComponent } from './layout/header/public-header';
+import { MobileNavigationComponent } from './layout/mobile-navigation/mobile-navigation';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [
+    DesktopNavigationComponent,
+    MobileNavigationComponent,
+    PublicHeaderComponent,
+    RouterOutlet,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
-export class App {}
+export class App {
+  protected readonly isNavigating = signal(false);
+
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+
+  constructor() {
+    this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
+      if (event instanceof NavigationStart) {
+        this.isNavigating.set(true);
+        return;
+      }
+
+      if (
+        event instanceof NavigationEnd ||
+        event instanceof NavigationCancel ||
+        event instanceof NavigationError
+      ) {
+        this.isNavigating.set(false);
+      }
+    });
+  }
+}
