@@ -1,8 +1,158 @@
-<section class="page-intro" aria-labelledby="home-title">
-  <p class="eyebrow">Accueil</p>
-  <h1 id="home-title">Les Routes Oubliées</h1>
-  <p>
-    Socle public initial. Les contenus de la compagnie, du parchemin et des aventuriers seront
-    connectés aux API dans les lots suivants.
-  </p>
+<section class="home-page" aria-labelledby="home-title">
+  <header class="home-intro">
+    <p class="eyebrow">Accueil</p>
+    <h1 id="home-title">Les Routes Oubliées</h1>
+    <p>Suivez le message de l'étape en cours, la Compagnie et les aventuriers visibles.</p>
+  </header>
+
+  @if (loading()) {
+    <p class="state-message" role="status">Chargement de l'accueil.</p>
+  } @else if (loadError()) {
+    <p class="state-message error" role="alert">
+      Impossible de charger l'accueil pour le moment.
+    </p>
+  } @else {
+    @if (activeMessage(); as message) {
+      <article
+        class="parchment"
+        [class.warning]="message.importance === 'WARNING'"
+        [class.quest-imminent]="message.importance === 'QUEST_IMMINENT'"
+        [class.success]="message.importance === 'SUCCESS'"
+        [class.mystery]="message.importance === 'MYSTERY'"
+        aria-labelledby="current-message-title"
+      >
+        <div class="section-heading">
+          <p class="eyebrow">Parchemin actif</p>
+          <h2 id="current-message-title">{{ message.title }}</h2>
+          <p class="importance">{{ importanceLabel[message.importance] }}</p>
+        </div>
+
+        <div class="markdown-content">
+          @for (block of messageBlocks(); track $index) {
+            @if (block.kind === 'heading') {
+              <h3>{{ block.text }}</h3>
+            } @else if (block.kind === 'list') {
+              <ul>
+                @for (item of block.items; track item) {
+                  <li>{{ item }}</li>
+                }
+              </ul>
+            } @else {
+              <p>{{ block.text }}</p>
+            }
+          } @empty {
+            <p>Le parchemin actif ne contient pas encore de texte public.</p>
+          }
+        </div>
+
+        @if (message.countdownEnabled && message.endsAt) {
+          <div class="countdown-panel" aria-labelledby="countdown-title">
+            <h3 id="countdown-title">Échéance</h3>
+            <p class="exact-date">
+              Date exacte :
+              <time [attr.datetime]="message.endsAt">
+                {{ formatExactDate(message.endsAt, message.displayTimezone) }}
+              </time>
+            </p>
+            @if (countdown(); as countdownView) {
+              @if (countdownView.expired) {
+                <p class="countdown expired">{{ countdownView.label }}</p>
+                <p>{{ message.expiredMessage || 'Cette étape est terminée.' }}</p>
+              } @else {
+                <p class="countdown" aria-label="Temps restant">{{ countdownView.label }}</p>
+              }
+            }
+          </div>
+        }
+      </article>
+    } @else {
+      <p class="state-message">Aucun parchemin n'est publié pour le moment.</p>
+    }
+
+    @if (company(); as companyView) {
+      <section class="company-section" aria-labelledby="company-title">
+        <div class="company-emblem">
+          @if (companyView.emblemPath) {
+            <img [src]="companyView.emblemPath" [alt]="companyView.imageAlt || ''" />
+          } @else {
+            <span aria-hidden="true">RO</span>
+          }
+        </div>
+        <div>
+          <p class="eyebrow">Compagnie</p>
+          <h2 id="company-title">{{ companyView.name }}</h2>
+          <p class="lead">{{ companyView.shortDescription }}</p>
+          <div class="markdown-content">
+            @for (block of companyBlocks(); track $index) {
+              @if (block.kind === 'heading') {
+                <h3>{{ block.text }}</h3>
+              } @else if (block.kind === 'list') {
+                <ul>
+                  @for (item of block.items; track item) {
+                    <li>{{ item }}</li>
+                  }
+                </ul>
+              } @else {
+                <p>{{ block.text }}</p>
+              }
+            }
+          </div>
+        </div>
+      </section>
+    } @else {
+      <p class="state-message">La présentation de la Compagnie n'est pas encore publiée.</p>
+    }
+
+    <section class="adventurers-section" aria-labelledby="adventurers-title">
+      <div class="section-heading">
+        <p class="eyebrow">Aventuriers</p>
+        <h2 id="adventurers-title">Compagnons visibles</h2>
+      </div>
+
+      @if (adventurers().length > 0) {
+        <div class="adventurer-grid">
+          @for (adventurer of adventurers(); track adventurer.id) {
+            <article class="adventurer-card" [attr.aria-labelledby]="'adventurer-' + adventurer.id">
+              @if (adventurer.avatarPath) {
+                <img
+                  class="avatar"
+                  [src]="adventurer.avatarPath"
+                  [alt]="adventurer.avatarAlt || adventurer.name"
+                />
+              } @else {
+                <div class="avatar fallback" aria-hidden="true">
+                  {{ adventurer.name.slice(0, 1) }}
+                </div>
+              }
+              <div>
+                <p class="adventurer-role">{{ adventurer.title }}</p>
+                <h3 [id]="'adventurer-' + adventurer.id">{{ adventurer.name }}</h3>
+                <p>{{ adventurer.shortDescription }}</p>
+              </div>
+              <dl class="traits">
+                <div>
+                  <dt>Forces</dt>
+                  <dd>
+                    @for (trait of traits(adventurer.strengths); track trait) {
+                      <span>{{ trait }}</span>
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt>Faiblesses</dt>
+                  <dd>
+                    @for (trait of traits(adventurer.weaknesses); track trait) {
+                      <span>{{ trait }}</span>
+                    }
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="state-message">Aucun aventurier n'est visible pour le moment.</p>
+      }
+    </section>
+  }
 </section>

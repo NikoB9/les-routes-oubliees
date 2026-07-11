@@ -5,9 +5,17 @@
       routerLinkActive="active"
       #activeLink="routerLinkActive"
       [routerLinkActiveOptions]="routeMatch(link)"
+      [attr.aria-label]="link.label"
       [attr.aria-current]="activeLink.isActive ? 'page' : null"
     >
-      {{ link.label }}
+      <span
+        class="link-icon"
+        [class.home]="link.icon === 'home'"
+        [class.map]="link.icon === 'map'"
+        [class.notebook]="link.icon === 'notebook'"
+        aria-hidden="true"
+      ></span>
+      <span class="visually-hidden">{{ link.label }}</span>
     </a>
   }
 </nav>
