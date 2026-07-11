@@ -1,5 +1,12 @@
 <section class="page-intro" aria-labelledby="admin-title">
   <p class="eyebrow">Administration</p>
   <h1 id="admin-title">Tableau de bord</h1>
-  <p>Le tableau de bord sera protégé par le backend dans les lots d'authentification.</p>
+  @if (error()) {
+    <p class="alert" role="alert">La session administrateur ne peut pas être vérifiée.</p>
+  } @else if (session(); as adminSession) {
+    <p>Session ouverte pour {{ adminSession.email }}.</p>
+    <button type="button" class="logout-button" (click)="logout()">Se déconnecter</button>
+  } @else {
+    <p>Vérification de la session administrateur.</p>
+  }
 </section>

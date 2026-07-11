@@ -8,3 +8,19 @@
   font-weight: 700;
   text-transform: uppercase;
 }
+
+.alert {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #9b2c2c;
+  background: #f9e8df;
+  color: #5c1717;
+}
+
+.logout-button {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border: 0;
+  background: #211914;
+  color: #f8f0df;
+  cursor: pointer;
+}
