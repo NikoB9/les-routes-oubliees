@@ -8,8 +8,17 @@
       [routerLinkActiveOptions]="routeMatch(link)"
       [attr.aria-current]="activeLink.isActive ? 'page' : null"
     >
-      <span class="link-label">{{ link.label }}</span>
-      <span class="link-description">{{ link.description }}</span>
+      <span
+        class="link-icon"
+        [class.home]="link.icon === 'home'"
+        [class.map]="link.icon === 'map'"
+        [class.notebook]="link.icon === 'notebook'"
+        aria-hidden="true"
+      ></span>
+      <span class="link-copy">
+        <span class="link-label">{{ link.label }}</span>
+        <span class="link-description">{{ link.description }}</span>
+      </span>
     </a>
   }
 </nav>
