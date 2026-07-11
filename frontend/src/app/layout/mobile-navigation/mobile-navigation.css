@@ -82,8 +82,8 @@ a.active .link-icon.map::after {
 }
 
 .link-icon.notebook::after {
-  right: 0.08rem;
-  top: 0;
+  right: .5rem;
+  top: -0.3rem;
   width: 0.32rem;
   height: 1.36rem;
   background: currentColor;

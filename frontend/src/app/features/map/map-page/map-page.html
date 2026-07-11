@@ -1,5 +1,79 @@
-<section class="page-intro" aria-labelledby="map-title">
-  <p class="eyebrow">Carte</p>
-  <h1 id="map-title">Carte de l'aventure</h1>
-  <p>La carte progressive sera intégrée avec une description accessible dans un lot dédié.</p>
+<section class="map-page" aria-labelledby="map-title">
+  <header class="map-intro">
+    <p class="eyebrow">Carte</p>
+    <h1 id="map-title">Carte de l'aventure</h1>
+    <p>La carte révèle progressivement les lieux liés aux quêtes publiques.</p>
+  </header>
+
+  @if (loading()) {
+    <p class="state-message" role="status">Chargement de la carte.</p>
+  } @else if (loadError()) {
+    <p class="state-message error" role="alert">
+      Impossible de charger la carte pour le moment.
+    </p>
+  } @else if (vision(); as currentVision) {
+    <article class="map-shell" aria-labelledby="vision-title">
+      <div class="vision-heading">
+        <p class="eyebrow">Vision active</p>
+        <h2 id="vision-title">{{ currentVision.name }}</h2>
+      </div>
+
+      <div class="map-frame">
+        <img [src]="currentVision.assetPath" [alt]="currentVision.imageAlt" />
+
+        @for (marker of markers(); track marker.id) {
+          <a
+            class="map-marker"
+            [routerLink]="['/notebook', marker.questCode]"
+            [style.left]="marker.positionX + '%'"
+            [style.top]="marker.positionY + '%'"
+            [attr.aria-label]="'Consulter ' + marker.title + ' dans le carnet'"
+          >
+            <span aria-hidden="true" class="flag"></span>
+            <span>{{ marker.title }}</span>
+          </a>
+        }
+      </div>
+
+      <section class="map-description" aria-labelledby="map-description-title">
+        <h2 id="map-description-title">Description accessible</h2>
+        <div class="markdown-content">
+          @for (block of descriptionBlocks(); track $index) {
+            @if (block.kind === 'heading') {
+              <h3>{{ block.text }}</h3>
+            } @else if (block.kind === 'list') {
+              <ul>
+                @for (item of block.items; track item) {
+                  <li>{{ item }}</li>
+                }
+              </ul>
+            } @else {
+              <p>{{ block.text }}</p>
+            }
+          } @empty {
+            <p>Aucune description détaillée n'est encore publiée pour cette carte.</p>
+          }
+        </div>
+      </section>
+
+      <section class="marker-list" aria-labelledby="marker-list-title">
+        <h2 id="marker-list-title">Lieux révélés</h2>
+        @if (markers().length > 0) {
+          <ul>
+            @for (marker of markers(); track marker.id) {
+              <li>
+                <a [routerLink]="['/notebook', marker.questCode]">
+                  {{ marker.title }}
+                </a>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p>Aucun lieu n'est révélé pour le moment.</p>
+        }
+      </section>
+    </article>
+  } @else {
+    <p class="state-message">Aucune carte publiée n'est active pour le moment.</p>
+  }
 </section>
