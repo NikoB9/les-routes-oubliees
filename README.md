@@ -33,24 +33,70 @@ Les contenus en cours de préparation resteront invisibles jusqu’à leur publi
 
 ### Frontend
 
-* Angular ;
-* TypeScript ;
+* Angular 22.x ;
+* TypeScript strict ;
 * composants standalone ;
 * interface responsive.
 
 ### Backend
 
-* Java ;
-* Spring Boot ;
+* Java 25 LTS ;
+* Spring Boot 4.1.x ;
 * Spring Security ;
 * API REST ;
 * authentification Google OpenID Connect.
 
 ### Données
 
-* PostgreSQL ;
+* PostgreSQL 18 ;
 * migrations Flyway ;
 * stockage persistant des médias.
+
+## Prérequis de développement
+
+Les lots de socle devront fournir les projets exécutables, mais les versions cibles sont déjà fixées :
+
+* Node.js LTS compatible Angular 22 et npm ;
+* Java 25 LTS ;
+* Docker Compose ou équivalent pour PostgreSQL local ;
+* Maven Wrapper côté backend une fois le socle créé.
+
+## Lancement local
+
+Le service déjà préparé est PostgreSQL :
+
+```bash
+docker compose -f infra/compose.yml up db
+```
+
+Lorsque les socles Angular et Spring Boot seront créés, les commandes cibles seront :
+
+```bash
+cd frontend
+npm ci
+npm run lint
+npm test -- --watch=false
+npm run build
+```
+
+```bash
+cd backend
+./mvnw verify
+```
+
+Le profil Compose applicatif sera activable après ajout des Dockerfiles :
+
+```bash
+docker compose -f infra/compose.yml --profile app up --build
+```
+
+Sur un poste sans Node/npm ou Java 25 installés localement, les validations peuvent être lancées via Docker :
+
+```powershell
+.\scripts\frontend-check.ps1 -Task lint
+.\scripts\frontend-check.ps1 -Task build
+.\scripts\backend-check.ps1 -SkipTests
+```
 
 ## Administration
 
@@ -81,7 +127,7 @@ Les instructions destinées aux agents de développement se trouvent dans :
 AGENTS.md
 ```
 
-Les instructions d’installation et de lancement local seront ajoutées après la création du socle technique du projet.
+Les commandes de lancement local sont décrites plus haut et seront complétées à mesure que les lots applicatifs ajoutent des fonctionnalités.
 
 ## État du projet
 

@@ -1,0 +1,27 @@
+[Unit]
+Description=Les Routes Oubliees backend
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=routesoubliees
+Group=routesoubliees
+WorkingDirectory=/opt/les-routes-oubliees/backend/current
+EnvironmentFile=/etc/les-routes-oubliees/application.env
+ExecStart=/usr/bin/java -jar /opt/les-routes-oubliees/backend/current/les-routes-oubliees-backend.jar
+Restart=on-failure
+RestartSec=10
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/les-routes-oubliees/media
+ReadOnlyPaths=/opt/les-routes-oubliees/backend/current
+CapabilityBoundingSet=
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target

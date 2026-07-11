@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: routes-oubliees
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://127.0.0.1:5432/routes_oubliees}
+    username: ${DATABASE_USERNAME:routes_oubliees}
+    password: ${DATABASE_PASSWORD:routes_oubliees_dev_password}
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+server:
+  forward-headers-strategy: framework
+
+routes-oubliees:
+  media-storage-path: ${MEDIA_STORAGE_PATH:./media}
+  public-url: ${SITE_PUBLIC_URL:http://localhost:4200}
+  timezone: ${SITE_TIMEZONE:Europe/Paris}
+  admin-bootstrap-emails: ${ADMIN_BOOTSTRAP_EMAILS:admin@example.invalid}
