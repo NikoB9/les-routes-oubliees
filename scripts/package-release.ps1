@@ -69,6 +69,21 @@ function Resolve-Tar {
     throw "tar was not found. Install tar or ensure C:\Windows\System32\tar.exe is available."
 }
 
+function Get-TestcontainersDockerArguments {
+    $arguments = @(
+        "-v",
+        "/var/run/docker.sock:/var/run/docker.sock",
+        "-v",
+        "les-routes-oubliees-maven-cache:/root/.m2"
+    )
+
+    if ($PSVersionTable.PSEdition -eq "Desktop" -or ($PSVersionTable.ContainsKey("Platform") -and $PSVersionTable.Platform -eq "Win32NT")) {
+        $arguments += @("-e", "TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal")
+    }
+
+    return $arguments
+}
+
 if (Test-Path $StageDir) {
     Remove-Item -LiteralPath $StageDir -Recurse -Force
 }
@@ -116,7 +131,11 @@ else {
     if ($SkipTests) {
         $mavenCommand = "sh ./mvnw -B -DskipTests package"
     }
-    Invoke-DockerRun -Image "eclipse-temurin:25-jdk" -MountPath $BackendDir -Command @("sh", "-lc", $mavenCommand)
+    Invoke-DockerRun `
+        -Image "eclipse-temurin:25-jdk" `
+        -MountPath $BackendDir `
+        -Command @("sh", "-lc", $mavenCommand) `
+        -ExtraDockerArguments (Get-TestcontainersDockerArguments)
 }
 
 $IndexFiles = @(Get-ChildItem -LiteralPath (Join-Path $FrontendDir "dist") -Recurse -Filter "index.html")
