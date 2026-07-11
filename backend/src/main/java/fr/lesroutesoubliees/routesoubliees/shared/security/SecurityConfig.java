@@ -10,17 +10,21 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
+import fr.lesroutesoubliees.routesoubliees.auth.AdminOidcUserService;
+
 @Configuration
 class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(
 		HttpSecurity http,
-		ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository
+		ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository,
+		AdminOidcUserService adminOidcUserService
 	) throws Exception {
 		http
 			.authorizeHttpRequests((authorize) -> authorize
 				.requestMatchers("/", "/error", "/actuator/health").permitAll()
+				.requestMatchers("/oauth2/**", "/login/**").permitAll()
 				.requestMatchers("/api/public/**", "/media/**").permitAll()
 				.requestMatchers("/api/admin/**", "/admin/**").authenticated()
 				.anyRequest().permitAll())
@@ -28,7 +32,11 @@ class SecurityConfig {
 				.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
 
 		if (clientRegistrationRepository.getIfAvailable() != null) {
-			http.oauth2Login(withDefaults());
+			http.oauth2Login((oauth2) -> oauth2
+				.defaultSuccessUrl("/admin", true)
+				.failureUrl("/admin/login?error=access_denied")
+				.userInfoEndpoint((userInfo) -> userInfo
+					.oidcUserService(adminOidcUserService)));
 		}
 
 		return http

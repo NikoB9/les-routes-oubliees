@@ -1,6 +1,9 @@
 <section class="page-intro" aria-labelledby="admin-login-title">
   <p class="eyebrow">Administration</p>
   <h1 id="admin-login-title">Connexion</h1>
-  <p>La connexion Google OpenID Connect sera branchée côté backend dans le lot dédié.</p>
+  @if (accessDenied()) {
+    <p class="alert" role="alert">Accès réservé aux éclaireurs autorisés.</p>
+  }
+  <p>Connecte-toi avec le compte Google autorisé pour accéder au tableau de bord.</p>
   <a class="login-link" href="/oauth2/authorization/google">Se connecter avec Google</a>
 </section>
