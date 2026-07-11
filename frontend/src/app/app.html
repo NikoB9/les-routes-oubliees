@@ -1,0 +1,29 @@
+<a class="skip-link" href="#main-content">Aller au contenu principal</a>
+
+<header class="site-header">
+  <a class="brand" routerLink="/" aria-label="Accueil - Les Routes Oubliées">
+    <span class="brand-mark" aria-hidden="true">RO</span>
+    <span>
+      <span class="brand-title">Les Routes Oubliées</span>
+      <span class="brand-subtitle">Compagnie d'aventuriers</span>
+    </span>
+  </a>
+</header>
+
+<div class="app-shell">
+  <nav class="desktop-nav" aria-label="Navigation principale">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Accueil</a>
+    <a routerLink="/map" routerLinkActive="active">Carte</a>
+    <a routerLink="/notebook" routerLinkActive="active">Carnet</a>
+  </nav>
+
+  <main id="main-content" tabindex="-1">
+    <router-outlet />
+  </main>
+</div>
+
+<nav class="mobile-nav" aria-label="Navigation principale mobile">
+  <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Accueil</a>
+  <a routerLink="/map" routerLinkActive="active">Carte</a>
+  <a routerLink="/notebook" routerLinkActive="active">Carnet</a>
+</nav>

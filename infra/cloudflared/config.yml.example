@@ -1,0 +1,7 @@
+tunnel: CHANGE_ME_TUNNEL_ID
+credentials-file: /etc/cloudflared/CHANGE_ME_TUNNEL_ID.json
+
+ingress:
+  - hostname: example.invalid
+    service: http://127.0.0.1:8088
+  - service: http_status:404

@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+archive="${1:-}"
+if [[ -z "$archive" ]]; then
+  echo "Usage: lro-deploy /tmp/les-routes-oubliees-release.tar.gz" >&2
+  exit 2
+fi
+
+if [[ ! -f "$archive" ]]; then
+  echo "Archive not found: $archive" >&2
+  exit 2
+fi
+
+app_root="${LRO_APP_ROOT:-/opt/les-routes-oubliees}"
+releases_dir="${LRO_RELEASES_DIR:-$app_root/releases}"
+current_link="${LRO_CURRENT_LINK:-$app_root/current}"
+env_file="${LRO_ENV_FILE:-/etc/les-routes-oubliees/application.env}"
+backup_dir="${LRO_DB_BACKUP_DIR:-/var/backups/les-routes-oubliees/database}"
+service_name="${LRO_SERVICE_NAME:-les-routes-oubliees}"
+health_url="${LRO_HEALTH_URL:-http://127.0.0.1:8080/actuator/health}"
+keep_releases="${LRO_KEEP_RELEASES:-5}"
+timestamp="$(date -u +%Y%m%d%H%M%S)"
+release_dir="$releases_dir/$timestamp"
+previous_release=""
+
+require_command() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Missing required command: $1" >&2
+    exit 2
+  fi
+}
+
+require_command tar
+require_command pg_dump
+require_command systemctl
+require_command curl
+require_command readlink
+
+archive_list="$(mktemp)"
+tar -tzf "$archive" > "$archive_list"
+grep -qx "backend/app.jar" "$archive_list" || {
+  echo "Invalid archive: backend/app.jar is missing." >&2
+  rm -f "$archive_list"
+  exit 2
+}
+grep -qx "frontend/index.html" "$archive_list" || {
+  echo "Invalid archive: frontend/index.html is missing." >&2
+  rm -f "$archive_list"
+  exit 2
+}
+rm -f "$archive_list"
+
+if [[ ! -f "$env_file" ]]; then
+  echo "Environment file not found: $env_file" >&2
+  exit 2
+fi
+
+set -a
+# shellcheck disable=SC1090
+. "$env_file"
+set +a
+
+jdbc_url="${SPRING_DATASOURCE_URL:-${DATABASE_URL:-}}"
+db_user="${SPRING_DATASOURCE_USERNAME:-${DATABASE_USERNAME:-}}"
+db_password="${SPRING_DATASOURCE_PASSWORD:-${DATABASE_PASSWORD:-}}"
+
+if [[ -z "$jdbc_url" || -z "$db_user" || -z "$db_password" ]]; then
+  echo "Missing PostgreSQL connection variables in $env_file." >&2
+  exit 2
+fi
+
+db_host="$(printf '%s' "$jdbc_url" | sed -E 's#^jdbc:postgresql://([^:/?]+).*#\1#')"
+db_port="$(printf '%s' "$jdbc_url" | sed -nE 's#^jdbc:postgresql://[^:/?]+:([0-9]+).*#\1#p')"
+db_name="$(printf '%s' "$jdbc_url" | sed -E 's#^jdbc:postgresql://[^/]+/([^?]+).*#\1#')"
+db_port="${db_port:-5432}"
+
+if [[ -z "$db_host" || -z "$db_name" || "$db_host" == "$jdbc_url" || "$db_name" == "$jdbc_url" ]]; then
+  echo "Unable to parse PostgreSQL JDBC URL: $jdbc_url" >&2
+  exit 2
+fi
+
+mkdir -p "$releases_dir" "$backup_dir"
+backup_file="$backup_dir/${db_name}_${timestamp}.dump"
+
+echo "Creating PostgreSQL dump: $backup_file"
+PGPASSWORD="$db_password" pg_dump -Fc -h "$db_host" -p "$db_port" -U "$db_user" -f "$backup_file" "$db_name"
+
+echo "Extracting release: $release_dir"
+mkdir -p "$release_dir"
+tar -xzf "$archive" -C "$release_dir"
+test -f "$release_dir/backend/app.jar"
+test -f "$release_dir/frontend/index.html"
+
+if [[ -L "$current_link" || -e "$current_link" ]]; then
+  previous_release="$(readlink -f "$current_link" || true)"
+fi
+
+rollback() {
+  echo "Deployment failed. Rolling back." >&2
+  systemctl stop "$service_name" >/dev/null 2>&1 || true
+  if [[ -n "$previous_release" && -d "$previous_release" ]]; then
+    ln -sfn "$previous_release" "$current_link"
+    systemctl start "$service_name" || true
+  fi
+  rm -f "$archive"
+}
+
+trap rollback ERR
+
+echo "Stopping service: $service_name"
+systemctl stop "$service_name" || true
+
+echo "Switching current symlink"
+ln -sfn "$release_dir" "$current_link"
+
+echo "Starting service: $service_name"
+systemctl start "$service_name"
+
+echo "Waiting for health check: $health_url"
+for _ in $(seq 1 30); do
+  if curl -fsS "$health_url" >/dev/null; then
+    trap - ERR
+    echo "Deployment succeeded: $release_dir"
+    rm -f "$archive"
+
+    mapfile -t old_releases < <(find "$releases_dir" -mindepth 1 -maxdepth 1 -type d | sort -r | tail -n +"$((keep_releases + 1))")
+    for old_release in "${old_releases[@]}"; do
+      if [[ "$(readlink -f "$current_link")" != "$(readlink -f "$old_release")" ]]; then
+        rm -rf "$old_release"
+      fi
+    done
+
+    exit 0
+  fi
+  sleep 2
+done
+
+echo "Health check did not become ready." >&2
+false

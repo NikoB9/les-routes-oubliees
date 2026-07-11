@@ -1,0 +1,6 @@
+target/
+.mvn/wrapper/dists/
+*.log
+.env
+.env.*
+HELP.md

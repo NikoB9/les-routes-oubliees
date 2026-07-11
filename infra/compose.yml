@@ -1,0 +1,57 @@
+name: les-routes-oubliees
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-routes_oubliees}
+      POSTGRES_USER: ${POSTGRES_USER:-routes_oubliees}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-routes_oubliees_dev_password}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    profiles: ["app"]
+    build:
+      context: ../backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      DATABASE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-routes_oubliees}
+      DATABASE_USERNAME: ${POSTGRES_USER:-routes_oubliees}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-routes_oubliees_dev_password}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dev-google-client-id}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-dev-google-client-secret}
+      ADMIN_BOOTSTRAP_EMAILS: ${ADMIN_BOOTSTRAP_EMAILS:-admin@example.invalid}
+      MEDIA_STORAGE_PATH: /app/media
+      SITE_PUBLIC_URL: ${SITE_PUBLIC_URL:-http://localhost:8088}
+      SITE_TIMEZONE: ${SITE_TIMEZONE:-Europe/Paris}
+    volumes:
+      - media-data:/app/media
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ../frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-4200}:8080"
+
+volumes:
+  postgres-data:
+  media-data:

@@ -1,0 +1,28 @@
+[Unit]
+Description=Les Routes Oubliees - Spring Boot
+Wants=network-online.target
+After=network-online.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=routesoubliees
+Group=routesoubliees
+WorkingDirectory=/var/lib/les-routes-oubliees
+EnvironmentFile=/etc/les-routes-oubliees/application.env
+ExecStart=/usr/bin/java -jar /opt/les-routes-oubliees/current/backend/app.jar
+Restart=on-failure
+RestartSec=10
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/les-routes-oubliees
+ReadOnlyPaths=/opt/les-routes-oubliees/current
+CapabilityBoundingSet=
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target

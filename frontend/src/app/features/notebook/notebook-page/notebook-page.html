@@ -1,0 +1,9 @@
+<section class="page-intro" aria-labelledby="notebook-title">
+  <p class="eyebrow">Carnet</p>
+  <h1 id="notebook-title">Bloc-notes des quêtes</h1>
+  @if (questCode) {
+    <p>Entrée demandée : {{ questCode }}.</p>
+  } @else {
+    <p>Les quêtes révélées seront listées ici lorsque l'API publique sera disponible.</p>
+  }
+</section>
