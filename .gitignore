@@ -55,5 +55,6 @@ media/
 backups/
 *.dump
 *.sql
+!backend/src/main/resources/db/migration/*.sql
 *.sql.gz
 *.pgdump
