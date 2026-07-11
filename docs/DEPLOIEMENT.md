@@ -592,6 +592,18 @@ Installation indicative sur le serveur :
 sudo install -o root -g root -m 0750 infra/deploy/lro-deploy /usr/local/sbin/lro-deploy
 ```
 
+Le service backend de production porte le nom :
+
+```text
+les-routes-oubliees.service
+```
+
+L'exemple d'unité systemd correspondant est :
+
+```text
+infra/systemd/les-routes-oubliees.service.example
+```
+
 Le script serveur :
 
 * verifie l'archive ;
