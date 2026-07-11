@@ -1,0 +1,13 @@
+<nav class="mobile-nav" aria-label="Navigation principale mobile">
+  @for (link of links; track link.path) {
+    <a
+      [routerLink]="link.path"
+      routerLinkActive="active"
+      #activeLink="routerLinkActive"
+      [routerLinkActiveOptions]="routeMatch(link)"
+      [attr.aria-current]="activeLink.isActive ? 'page' : null"
+    >
+      {{ link.label }}
+    </a>
+  }
+</nav>
