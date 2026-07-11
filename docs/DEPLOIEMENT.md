@@ -565,7 +565,7 @@ Serveur actuel :
 ```
 
 ```powershell
-scp `
+C:\Windows\System32\OpenSSH\scp.exe `
   -i "$env:USERPROFILE\.ssh\id_ed25519_routes_oubliees" `
   .\dist\les-routes-oubliees-release.tar.gz `
   deploy@192.168.31.73:/tmp/
@@ -574,7 +574,7 @@ scp `
 ### 23.4 Deploiement serveur
 
 ```powershell
-ssh `
+C:\Windows\System32\OpenSSH\ssh.exe `
   -i "$env:USERPROFILE\.ssh\id_ed25519_routes_oubliees" `
   deploy@192.168.31.73 `
   "sudo /usr/local/sbin/lro-deploy /tmp/les-routes-oubliees-release.tar.gz"
