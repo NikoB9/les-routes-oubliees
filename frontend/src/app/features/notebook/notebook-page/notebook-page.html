@@ -17,17 +17,16 @@
     </p>
   } @else {
     <div class="notebook-layout">
-      <nav class="quest-nav" aria-label="Quetes revelees">
-        <h2>Pages revelees</h2>
+      <nav class="quest-tabs" aria-label="Pages revelees">
         <ul>
           @for (quest of quests(); track quest.id) {
             <li>
               <a
                 [routerLink]="['/notebook', quest.code]"
                 [attr.aria-current]="selectedQuest()?.code === quest.code ? 'page' : null"
+                [title]="quest.summary"
               >
-                <span>{{ quest.title }}</span>
-                <small>{{ quest.summary }}</small>
+                {{ quest.title }}
               </a>
             </li>
           }

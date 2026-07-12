@@ -76,8 +76,7 @@
     }
 
     <div class="quest-admin-layout">
-      <nav class="quest-list" aria-label="Quetes administrables">
-        <h3>Entrees fixes</h3>
+      <nav class="quest-tabs" aria-label="Quetes administrables">
         <ul>
           @for (quest of quests(); track quest.id) {
             <li>
@@ -97,6 +96,7 @@
 
       @if (selectedQuest(); as quest) {
         @if (editor(); as form) {
+          <div class="quest-workspace">
           <form class="quest-form" (ngSubmit)="saveQuest()" [attr.aria-labelledby]="'edit-' + quest.code">
             <h3 [id]="'edit-' + quest.code">{{ quest.code }}</h3>
 
@@ -235,6 +235,7 @@
               <div class="markdown-content" [innerHTML]="quest.adminDraftHtml"></div>
             </article>
           </section>
+          </div>
         }
       } @else {
         <p>Aucune quete disponible dans l'administration.</p>
