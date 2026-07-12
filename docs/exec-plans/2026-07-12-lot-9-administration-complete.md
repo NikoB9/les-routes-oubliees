@@ -2,12 +2,14 @@
 
 ## Objectif
 
-Completer l'administration MVP avec tableau de bord, formulaires manquants, preview, gestion des administrateurs et journal d'audit leger, en conservant une orchestration sobre en tokens.
+Completer l'administration MVP de fondation avec l'easter egg public, la connexion admin, le tableau de bord, les formulaires prioritaires, la gestion des administrateurs et le journal d'audit leger, en conservant une orchestration sobre en tokens.
+
+Ce plan couvre la fondation admin deja livree. Les modules metier encore absents apres la livraison sont explicitement reportes dans le lot suivant.
 
 ## Perimetre
 
 - Backend : APIs admin manquantes, audit, gestion des administrateurs, services de tableau de bord, validations serveur et tests.
-- Frontend : navigation admin structuree, formulaires, etats chargement/erreur/vide, preview identifiee, pages administrateurs et audit.
+- Frontend : navigation admin structuree, entree publique vers la connexion, formulaires, etats chargement/erreur/vide, preview identifiee, pages administrateurs et audit.
 - Securite : maintien OIDC, allowlist, CSRF, routes admin protegees, aucune fuite d'emails ou d'audit via API publique.
 - Accessibilite : formulaires avec labels visibles, erreurs associees, focus utilisable, navigation clavier et messages dynamiques sobres.
 
@@ -100,6 +102,7 @@ Pour chaque delegation mecanique, fournir un contexte court : commande, extrait 
 ## Criteres d'acceptation
 
 - Le tableau de bord affiche les informations minimales prevues par le plan fonctionnel.
+- L'entree publique vers l'administration ne donne aucun droit et ouvre seulement la connexion.
 - Les administrateurs autorises sont gerables sans pouvoir supprimer ou desactiver le dernier actif.
 - Les actions importantes sont auditees avec un resume non sensible.
 - Les previews exigent une session admin et ne modifient pas les statuts.
@@ -107,3 +110,25 @@ Pour chaque delegation mecanique, fournir un contexte court : commande, extrait 
 - Les routes admin restent protegees cote backend.
 - Les API publiques ne contiennent ni brouillons, ni emails admin, ni audit.
 - Les validations applicables reussissent ou toute limite restante est documentee.
+
+## Limites constatees apres livraison
+
+Ces points ne sont pas couverts par le lot 9 et doivent etre traites dans un lot suivant :
+
+- aucune entree secrete publique ne revele encore la connexion admin ;
+- les boutons ou liens admin restants renvoient encore vers l'accueil au lieu du bon module ;
+- les contenus de la page d'accueil ne sont pas tous administrables ;
+- la carte ne propose pas encore le choix de fond ni le placement des reperes ;
+- le carnet de quetes ne dispose pas encore d'un editeur riche adapte ;
+- le contenu HTML brut n'est pas interprete et les contenus de demo doivent rester conformes a la regle Markdown du projet.
+
+## Lots suivants proposes
+
+Le lot 9 ouvre plusieurs lots metiers distincts :
+
+- lot 10 : accueil administrable, avec parchemins, Compagnie et aventuriers ;
+- lot 11 : carte administrable, avec fond actif et reperes ;
+- lot 12 : bloc-notes enrichi, avec editeur Markdown et preview ;
+- lot 13 : parametres du site ;
+- lot 14 : accessibilite et qualite ;
+- lot 15 : preparation production.
