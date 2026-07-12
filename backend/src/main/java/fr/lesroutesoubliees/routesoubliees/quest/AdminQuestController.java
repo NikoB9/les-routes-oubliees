@@ -2,6 +2,7 @@ package fr.lesroutesoubliees.routesoubliees.quest;
 
 import java.util.List;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,15 +14,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 
+import fr.lesroutesoubliees.routesoubliees.auth.AdminIdentity;
+
 @Validated
 @RestController
 @RequestMapping("/api/admin/quest-tabs")
 class AdminQuestController {
 
 	private final AdminQuestService quests;
+	private final AdminIdentity identity;
 
-	AdminQuestController(AdminQuestService quests) {
+	AdminQuestController(AdminQuestService quests, AdminIdentity identity) {
 		this.quests = quests;
+		this.identity = identity;
 	}
 
 	@GetMapping
@@ -35,22 +40,30 @@ class AdminQuestController {
 	}
 
 	@PutMapping("/{code}")
-	AdminQuestResponse updateQuest(@PathVariable String code, @Valid @RequestBody AdminQuestUpdateRequest request) {
-		return quests.updateQuest(code, request);
+	AdminQuestResponse updateQuest(
+		@PathVariable String code,
+		@Valid @RequestBody AdminQuestUpdateRequest request,
+		Authentication authentication
+	) {
+		return quests.updateQuest(code, request, identity.email(authentication));
 	}
 
 	@PostMapping("/{code}/publish")
-	AdminQuestResponse publishQuest(@PathVariable String code, @RequestBody(required = false) AdminQuestPublishRequest request) {
-		return quests.publishQuest(code, request == null || request.visibleToPlayers());
+	AdminQuestResponse publishQuest(
+		@PathVariable String code,
+		@RequestBody(required = false) AdminQuestPublishRequest request,
+		Authentication authentication
+	) {
+		return quests.publishQuest(code, request == null || request.visibleToPlayers(), identity.email(authentication));
 	}
 
 	@PostMapping("/{code}/hide")
-	AdminQuestResponse hideQuest(@PathVariable String code) {
-		return quests.hideQuest(code);
+	AdminQuestResponse hideQuest(@PathVariable String code, Authentication authentication) {
+		return quests.hideQuest(code, identity.email(authentication));
 	}
 
 	@PostMapping("/{code}/archive")
-	AdminQuestResponse archiveQuest(@PathVariable String code) {
-		return quests.archiveQuest(code);
+	AdminQuestResponse archiveQuest(@PathVariable String code, Authentication authentication) {
+		return quests.archiveQuest(code, identity.email(authentication));
 	}
 }

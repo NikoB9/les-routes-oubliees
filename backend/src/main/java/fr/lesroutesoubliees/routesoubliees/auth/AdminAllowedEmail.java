@@ -43,12 +43,33 @@ class AdminAllowedEmail {
 		this.active = true;
 	}
 
+	UUID id() {
+		return id;
+	}
+
 	String email() {
 		return email;
 	}
 
+	String label() {
+		return label;
+	}
+
 	boolean active() {
 		return active;
+	}
+
+	OffsetDateTime createdAt() {
+		return createdAt;
+	}
+
+	OffsetDateTime updatedAt() {
+		return updatedAt;
+	}
+
+	void update(String label, boolean active) {
+		this.label = label;
+		this.active = active;
 	}
 
 	@PrePersist

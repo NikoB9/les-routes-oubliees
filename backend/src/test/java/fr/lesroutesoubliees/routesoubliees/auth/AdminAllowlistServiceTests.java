@@ -11,10 +11,13 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
+import fr.lesroutesoubliees.routesoubliees.audit.AuditService;
+
 class AdminAllowlistServiceTests {
 
 	private final AdminAllowedEmailRepository repository = mock(AdminAllowedEmailRepository.class);
-	private final AdminAllowlistService service = new AdminAllowlistService(repository);
+	private final AuditService audit = mock(AuditService.class);
+	private final AdminAllowlistService service = new AdminAllowlistService(repository, audit);
 
 	@Test
 	void normalizeEmailTrimsAndLowercases() {

@@ -177,6 +177,20 @@ Tester obligatoirement :
 * refus d’un email non autorisé ;
 * expiration de session.
 
+### 8.1 Recuperation allowlist admin
+
+L'amorcage `ADMIN_BOOTSTRAP_EMAILS` n'est applique que lorsque la table des administrateurs est vide. Il ne reactive pas automatiquement un compte desactive, afin d'eviter qu'un ancien email retire redevienne administrateur au redemarrage.
+
+Si tous les administrateurs actifs ont ete retires par erreur, restaurer l'acces uniquement apres verification hors application, depuis une session PostgreSQL d'exploitation :
+
+```sql
+update admin_allowed_emails
+set active = true, updated_at = now()
+where email = 'admin@example.invalid';
+```
+
+Utiliser une adresse reelle deja controlee et presente dans la table. Ajouter une nouvelle adresse par SQL ne doit etre fait qu'en dernier recours, apres sauvegarde de la base et validation de l'identite du demandeur.
+
 ## 9. Variables d’environnement
 
 Fichier :

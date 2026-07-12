@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,6 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/admin")
 class AdminSessionController {
 
+	private final AdminIdentity identity;
+
+	AdminSessionController(AdminIdentity identity) {
+		this.identity = identity;
+	}
+
 	@GetMapping("/me")
 	AdminSessionResponse me(Authentication authentication, CsrfToken csrfToken) {
 		csrfToken.getToken();
@@ -25,7 +30,7 @@ class AdminSessionController {
 			return new AdminSessionResponse(false, null);
 		}
 
-		return new AdminSessionResponse(true, email(authentication));
+		return new AdminSessionResponse(true, identity.email(authentication));
 	}
 
 	@PostMapping("/logout")
@@ -39,10 +44,4 @@ class AdminSessionController {
 		return ResponseEntity.noContent().build();
 	}
 
-	private String email(Authentication authentication) {
-		if (authentication.getPrincipal() instanceof OidcUser oidcUser) {
-			return oidcUser.getEmail();
-		}
-		return authentication.getName();
-	}
 }

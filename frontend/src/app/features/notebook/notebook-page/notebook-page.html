@@ -1,6 +1,5 @@
 <section class="notebook-page" aria-labelledby="notebook-title">
   <header class="page-intro">
-    <p class="eyebrow">Carnet</p>
     <h1 id="notebook-title">Bloc-notes des quetes</h1>
     <p>Consultez uniquement les pages publiees et revelees a la Compagnie.</p>
   </header>
@@ -37,7 +36,6 @@
 
       @if (selectedQuest(); as quest) {
         <article class="quest-entry" [attr.aria-labelledby]="'quest-' + quest.code">
-          <p class="eyebrow">Quete revelee</p>
           <h2 [id]="'quest-' + quest.code">{{ quest.title }}</h2>
           <p class="summary">{{ quest.summary }}</p>
 

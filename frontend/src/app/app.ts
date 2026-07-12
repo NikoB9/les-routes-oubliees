@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -29,6 +30,7 @@ export class App {
 
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly document = inject(DOCUMENT);
 
   constructor() {
     this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
@@ -43,6 +45,9 @@ export class App {
         event instanceof NavigationError
       ) {
         this.isNavigating.set(false);
+        if (event instanceof NavigationEnd) {
+          queueMicrotask(() => this.document.getElementById('main-content')?.focus());
+        }
       }
     });
   }

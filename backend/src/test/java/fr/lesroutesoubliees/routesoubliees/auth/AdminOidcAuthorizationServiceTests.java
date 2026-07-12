@@ -7,10 +7,13 @@ import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
 
+import fr.lesroutesoubliees.routesoubliees.audit.AuditService;
+
 class AdminOidcAuthorizationServiceTests {
 
 	private final AdminAllowlistService allowlistService = mock(AdminAllowlistService.class);
-	private final AdminOidcAuthorizationService service = new AdminOidcAuthorizationService(allowlistService);
+	private final AuditService audit = mock(AuditService.class);
+	private final AdminOidcAuthorizationService service = new AdminOidcAuthorizationService(allowlistService, audit);
 
 	@Test
 	void acceptsVerifiedAllowedEmail() {
