@@ -5,8 +5,14 @@ import {
   AdminAllowedEmail,
   AdminAllowedEmailCreate,
   AdminAllowedEmailUpdate,
+  AdminAdventurer,
+  AdminAdventurerUpsert,
   AdminAuditLog,
+  AdminCompany,
+  AdminCompanyUpdate,
   AdminDashboard,
+  AdminHomeMessage,
+  AdminHomeMessageUpsert,
 } from './admin-api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -38,5 +44,62 @@ export class AdminApiService {
 
   listAuditLogs() {
     return this.http.get<AdminAuditLog[]>('/api/admin/audit-logs');
+  }
+
+  listHomeMessages() {
+    return this.http.get<AdminHomeMessage[]>('/api/admin/home/messages');
+  }
+
+  createHomeMessage(payload: AdminHomeMessageUpsert) {
+    return this.http.post<AdminHomeMessage>('/api/admin/home/messages', payload);
+  }
+
+  updateHomeMessage(id: string, payload: AdminHomeMessageUpsert) {
+    return this.http.put<AdminHomeMessage>(
+      `/api/admin/home/messages/${encodeURIComponent(id)}`,
+      payload,
+    );
+  }
+
+  activateHomeMessage(id: string) {
+    return this.http.post<AdminHomeMessage>(
+      `/api/admin/home/messages/${encodeURIComponent(id)}/activate`,
+      {},
+    );
+  }
+
+  deleteHomeMessage(id: string) {
+    return this.http.delete<void>(`/api/admin/home/messages/${encodeURIComponent(id)}`);
+  }
+
+  getCompany() {
+    return this.http.get<AdminCompany>('/api/admin/group');
+  }
+
+  updateCompany(payload: AdminCompanyUpdate) {
+    return this.http.put<AdminCompany>('/api/admin/group', payload);
+  }
+
+  listAdventurers() {
+    return this.http.get<AdminAdventurer[]>('/api/admin/adventurers');
+  }
+
+  createAdventurer(payload: AdminAdventurerUpsert) {
+    return this.http.post<AdminAdventurer>('/api/admin/adventurers', payload);
+  }
+
+  updateAdventurer(id: string, payload: AdminAdventurerUpsert) {
+    return this.http.put<AdminAdventurer>(
+      `/api/admin/adventurers/${encodeURIComponent(id)}`,
+      payload,
+    );
+  }
+
+  reorderAdventurers(orderedIds: string[]) {
+    return this.http.put<AdminAdventurer[]>('/api/admin/adventurers/reorder', { orderedIds });
+  }
+
+  deleteAdventurer(id: string) {
+    return this.http.delete<void>(`/api/admin/adventurers/${encodeURIComponent(id)}`);
   }
 }

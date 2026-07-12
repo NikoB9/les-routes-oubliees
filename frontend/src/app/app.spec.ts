@@ -55,24 +55,15 @@ describe('App', () => {
     expect(mobileLinks).toEqual(['Accueil', 'Carte', 'Carnet']);
   });
 
-  it('should reveal the admin login through the public easter egg', async () => {
+  it('should expose a direct accessible admin login link', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const trigger = compiled.querySelector<HTMLButtonElement>('.admin-seal-trigger');
-
-    expect(trigger?.getAttribute('aria-label')).toBe("Reveler l'acces administrateur");
-    expect(compiled.querySelector('.admin-gate-link')).toBeNull();
-
-    trigger?.click();
-    trigger?.click();
-    trigger?.click();
-    fixture.detectChanges();
-
     const adminLink = compiled.querySelector<HTMLAnchorElement>('.admin-gate-link');
-    expect(adminLink?.textContent).toContain('Passage des eclaireurs');
+
+    expect(adminLink?.textContent).toContain('Acces admin');
     expect(adminLink?.getAttribute('href')).toBe('/admin/login');
   });
 });

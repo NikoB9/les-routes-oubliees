@@ -59,6 +59,30 @@ class HomeMessage {
 	protected HomeMessage() {
 	}
 
+	HomeMessage(
+		UUID id,
+		String title,
+		String contentMarkdown,
+		HomeMessageImportance importance,
+		EditorialStatus status,
+		boolean active,
+		boolean countdownEnabled,
+		OffsetDateTime endsAt,
+		String expiredMessage,
+		String lastModifiedBy
+	) {
+		this.id = id;
+		this.title = title;
+		this.contentMarkdown = contentMarkdown;
+		this.importance = importance;
+		this.status = status;
+		this.active = active && status == EditorialStatus.PUBLISHED;
+		this.countdownEnabled = countdownEnabled;
+		this.endsAt = countdownEnabled ? endsAt : null;
+		this.expiredMessage = expiredMessage;
+		this.lastModifiedBy = lastModifiedBy;
+	}
+
 	UUID id() {
 		return id;
 	}
@@ -75,6 +99,14 @@ class HomeMessage {
 		return importance;
 	}
 
+	EditorialStatus status() {
+		return status;
+	}
+
+	boolean active() {
+		return active;
+	}
+
 	boolean countdownEnabled() {
 		return countdownEnabled;
 	}
@@ -85,6 +117,53 @@ class HomeMessage {
 
 	String expiredMessage() {
 		return expiredMessage;
+	}
+
+	String lastModifiedBy() {
+		return lastModifiedBy;
+	}
+
+	OffsetDateTime createdAt() {
+		return createdAt;
+	}
+
+	OffsetDateTime updatedAt() {
+		return updatedAt;
+	}
+
+	void update(
+		String title,
+		String contentMarkdown,
+		HomeMessageImportance importance,
+		EditorialStatus status,
+		boolean countdownEnabled,
+		OffsetDateTime endsAt,
+		String expiredMessage,
+		String actorEmail
+	) {
+		this.title = title;
+		this.contentMarkdown = contentMarkdown;
+		this.importance = importance;
+		this.status = status;
+		this.countdownEnabled = countdownEnabled;
+		this.endsAt = countdownEnabled ? endsAt : null;
+		this.expiredMessage = expiredMessage;
+		this.lastModifiedBy = actorEmail;
+		if (status != EditorialStatus.PUBLISHED) {
+			active = false;
+		}
+	}
+
+	void activate(String actorEmail) {
+		if (status != EditorialStatus.PUBLISHED) {
+			throw new IllegalStateException("Only a published home message can be active");
+		}
+		active = true;
+		lastModifiedBy = actorEmail;
+	}
+
+	void deactivate() {
+		active = false;
 	}
 
 	@PrePersist

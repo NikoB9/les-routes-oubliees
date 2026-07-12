@@ -6,14 +6,14 @@
     <p>Session ouverte pour {{ adminSession.email }}.</p>
     <button type="button" class="logout-button" (click)="logout()">Se deconnecter</button>
     <nav class="admin-navigation" aria-label="Navigation administration">
-      <a routerLink="/admin" fragment="admin-dashboard-title">Dashboard</a>
-      <a routerLink="/admin/notebook" fragment="admin-notebook-title">Quetes</a>
-      <a routerLink="/admin/media" fragment="admin-media-title">Medias</a>
-      <a routerLink="/admin/administrators" fragment="admin-allowed-title">Administrateurs</a>
-      <a routerLink="/admin/audit" fragment="admin-audit-title">Audit</a>
-      <a routerLink="/admin/home" fragment="admin-planned-title">Accueil</a>
-      <a routerLink="/admin/map" fragment="admin-planned-title">Carte</a>
-      <a routerLink="/admin/settings" fragment="admin-planned-title">Parametres</a>
+      <a routerLink="/admin/dashboard" [class.active]="section() === 'dashboard'">Dashboard</a>
+      <a routerLink="/admin/notebook" [class.active]="section() === 'notebook'">Quetes</a>
+      <a routerLink="/admin/media" [class.active]="section() === 'media'">Medias</a>
+      <a routerLink="/admin/administrators" [class.active]="section() === 'administrators'">Administrateurs</a>
+      <a routerLink="/admin/audit" [class.active]="section() === 'audit'">Audit</a>
+      <a routerLink="/admin/home" [class.active]="section() === 'home'">Accueil</a>
+      <a routerLink="/admin/group" [class.active]="section() === 'group'">Compagnie</a>
+      <a routerLink="/admin/adventurers" [class.active]="section() === 'adventurers'">Aventuriers</a>
     </nav>
   } @else {
     <p>Verification de la session administrateur.</p>
@@ -21,6 +21,8 @@
 </section>
 
 @if (session()) {
+  @switch (section()) {
+  @case ('dashboard') {
   <section class="admin-panel" aria-labelledby="admin-dashboard-title">
     <div class="panel-heading">
       <h2 id="admin-dashboard-title">Synthese</h2>
@@ -63,33 +65,244 @@
       <p>Chargement de la synthese.</p>
     }
   </section>
-
-  <section class="admin-panel" aria-labelledby="admin-planned-title">
+  }
+  @case ('home') {
+  <section class="admin-panel" aria-labelledby="admin-home-title">
     <div class="panel-heading">
-      <h2 id="admin-planned-title">Modules metier planifies</h2>
+      <h2 id="admin-home-title">Parchemins d'accueil</h2>
     </div>
 
-    <p>
-      Ces entrees admin sont routees et protegees, mais leur edition de contenu est decoupee
-      dans les lots metier suivants.
-    </p>
+    @if (homeMessageError()) {
+      <p class="alert" role="alert">Impossible de traiter les parchemins. Verifiez les champs obligatoires.</p>
+    }
+    @if (homeMessageSaved()) {
+      <p class="status" role="status">Parchemin mis a jour.</p>
+    }
 
-    <ul class="planned-modules" aria-label="Modules admin planifies">
-      <li>
-        <strong>Accueil</strong>
-        <span>Lot 10 - parchemins, Compagnie et aventuriers.</span>
-      </li>
-      <li>
-        <strong>Carte</strong>
-        <span>Lot 11 - fond actif et reperes.</span>
-      </li>
-      <li>
-        <strong>Parametres</strong>
-        <span>Lot 13 - nom du site, logo, fuseau et maintenance.</span>
-      </li>
-    </ul>
+    <div class="content-admin-layout">
+      <ul class="admin-list" aria-label="Parchemins disponibles">
+        @for (message of homeMessages(); track message.id) {
+          <li>
+            <button type="button" (click)="selectHomeMessage(message)">
+              <span>{{ message.title }}</span>
+              <small>{{ message.status }} - {{ message.active ? 'actif' : 'inactif' }}</small>
+            </button>
+          </li>
+        }
+      </ul>
+
+      @if (homeMessageForm(); as form) {
+        <form class="content-form" (ngSubmit)="saveHomeMessage()" aria-labelledby="home-message-form-title">
+          <h3 id="home-message-form-title">
+            {{ selectedHomeMessage() ? 'Modifier le parchemin' : 'Nouveau parchemin' }}
+          </h3>
+
+          <label>
+            Titre
+            <input
+              type="text"
+              required
+              maxlength="160"
+              [ngModel]="form.title"
+              name="homeTitle"
+              (ngModelChange)="updateHomeMessageField('title', $event)"
+            />
+          </label>
+
+          <label>
+            Contenu Markdown
+            <textarea
+              required
+              rows="6"
+              [ngModel]="form.contentMarkdown"
+              name="homeContent"
+              (ngModelChange)="updateHomeMessageField('contentMarkdown', $event)"
+            ></textarea>
+          </label>
+
+          <div class="form-row">
+            <label>
+              Importance
+              <select
+                [ngModel]="form.importance"
+                name="homeImportance"
+                (ngModelChange)="updateHomeMessageField('importance', $event)"
+              >
+                @for (importance of homeMessageImportances; track importance) {
+                  <option [value]="importance">{{ importance }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              Statut
+              <select
+                [ngModel]="form.status"
+                name="homeStatus"
+                (ngModelChange)="updateHomeMessageField('status', $event)"
+              >
+                @for (status of homeMessageStatuses; track status) {
+                  <option [value]="status">{{ status }}</option>
+                }
+              </select>
+            </label>
+          </div>
+
+          <label class="checkbox-field">
+            <input
+              type="checkbox"
+              [ngModel]="form.countdownEnabled"
+              name="homeCountdownEnabled"
+              (ngModelChange)="updateHomeMessageField('countdownEnabled', $event)"
+            />
+            Activer le compte a rebours
+          </label>
+
+          <label>
+            Date de fin ISO
+            <input
+              type="text"
+              placeholder="2026-07-12T20:00:00Z"
+              [ngModel]="form.endsAt || ''"
+              name="homeEndsAt"
+              (ngModelChange)="updateHomeMessageField('endsAt', $event || null)"
+            />
+          </label>
+
+          <label>
+            Message apres expiration
+            <input
+              type="text"
+              maxlength="280"
+              [ngModel]="form.expiredMessage || ''"
+              name="homeExpiredMessage"
+              (ngModelChange)="updateHomeMessageField('expiredMessage', $event || null)"
+            />
+          </label>
+
+          <div class="button-row">
+            <button type="submit">Enregistrer</button>
+            <button type="button" (click)="selectHomeMessage(null)">Nouveau</button>
+            @if (selectedHomeMessage(); as message) {
+              <button type="button" (click)="activateHomeMessage(message)">Activer</button>
+              <button type="button" class="danger" [disabled]="message.active" (click)="deleteHomeMessage(message)">
+                Supprimer
+              </button>
+            }
+          </div>
+        </form>
+      }
+    </div>
   </section>
+  }
+  @case ('group') {
+  <section class="admin-panel" aria-labelledby="admin-company-title">
+    <div class="panel-heading">
+      <h2 id="admin-company-title">Compagnie</h2>
+    </div>
 
+    @if (companyError()) {
+      <p class="alert" role="alert">Impossible de traiter la Compagnie.</p>
+    }
+    @if (companySaved()) {
+      <p class="status" role="status">Compagnie mise a jour.</p>
+    }
+
+    @if (companyForm(); as form) {
+      <form class="content-form" (ngSubmit)="saveCompany()" aria-labelledby="company-form-title">
+        <h3 id="company-form-title">Presentation de la Compagnie</h3>
+
+        <label>
+          Nom
+          <input type="text" required maxlength="160" [ngModel]="form.name" name="companyName" (ngModelChange)="updateCompanyField('name', $event)" />
+        </label>
+
+        <label>
+          Chemin du logo
+          <input type="text" maxlength="255" [ngModel]="form.emblemPath || ''" name="companyEmblem" (ngModelChange)="updateCompanyField('emblemPath', $event || null)" />
+        </label>
+
+        <label>
+          Texte alternatif
+          <input type="text" maxlength="280" [ngModel]="form.imageAlt || ''" name="companyImageAlt" (ngModelChange)="updateCompanyField('imageAlt', $event || null)" />
+        </label>
+
+        <label>
+          Description courte
+          <textarea required maxlength="500" rows="3" [ngModel]="form.shortDescription" name="companyShortDescription" (ngModelChange)="updateCompanyField('shortDescription', $event)"></textarea>
+        </label>
+
+        <label>
+          Description longue Markdown
+          <textarea required rows="6" [ngModel]="form.longDescriptionMarkdown" name="companyLongDescription" (ngModelChange)="updateCompanyField('longDescriptionMarkdown', $event)"></textarea>
+        </label>
+
+        <button type="submit">Enregistrer la Compagnie</button>
+      </form>
+    }
+  </section>
+  }
+  @case ('adventurers') {
+  <section class="admin-panel" aria-labelledby="admin-adventurers-title">
+    <div class="panel-heading">
+      <h2 id="admin-adventurers-title">Aventuriers</h2>
+    </div>
+
+    @if (adventurerError()) {
+      <p class="alert" role="alert">Impossible de traiter les aventuriers.</p>
+    }
+    @if (adventurerSaved()) {
+      <p class="status" role="status">Aventuriers mis a jour.</p>
+    }
+
+    <div class="content-admin-layout">
+      <ul class="admin-list" aria-label="Aventuriers administrables">
+        @for (adventurer of adventurers(); track adventurer.id) {
+          <li>
+            <button type="button" (click)="selectAdventurer(adventurer)">
+              <span>{{ adventurer.displayOrder }}. {{ adventurer.name }}</span>
+              <small>{{ adventurer.title }} - {{ adventurer.visible ? 'visible' : 'masque' }}</small>
+            </button>
+            <div class="button-row">
+              <button type="button" (click)="moveAdventurer(adventurer, -1)">Monter</button>
+              <button type="button" (click)="moveAdventurer(adventurer, 1)">Descendre</button>
+            </div>
+          </li>
+        }
+      </ul>
+
+      @if (adventurerForm(); as form) {
+        <form class="content-form" (ngSubmit)="saveAdventurer()" aria-labelledby="adventurer-form-title">
+          <h3 id="adventurer-form-title">
+            {{ selectedAdventurer() ? 'Modifier l aventurier' : 'Nouvel aventurier' }}
+          </h3>
+
+          <label>Nom <input type="text" required maxlength="160" [ngModel]="form.name" name="adventurerName" (ngModelChange)="updateAdventurerField('name', $event)" /></label>
+          <label>Titre <input type="text" required maxlength="160" [ngModel]="form.title" name="adventurerTitle" (ngModelChange)="updateAdventurerField('title', $event)" /></label>
+          <label>Chemin avatar <input type="text" maxlength="255" [ngModel]="form.avatarPath || ''" name="adventurerAvatar" (ngModelChange)="updateAdventurerField('avatarPath', $event || null)" /></label>
+          <label>Texte alternatif <input type="text" maxlength="280" [ngModel]="form.avatarAlt || ''" name="adventurerAvatarAlt" (ngModelChange)="updateAdventurerField('avatarAlt', $event || null)" /></label>
+          <label>Description courte <textarea required maxlength="500" rows="3" [ngModel]="form.shortDescription" name="adventurerShortDescription" (ngModelChange)="updateAdventurerField('shortDescription', $event)"></textarea></label>
+          <label>Forces <textarea required rows="3" [ngModel]="form.strengths" name="adventurerStrengths" (ngModelChange)="updateAdventurerField('strengths', $event)"></textarea></label>
+          <label>Faiblesses <textarea required rows="3" [ngModel]="form.weaknesses" name="adventurerWeaknesses" (ngModelChange)="updateAdventurerField('weaknesses', $event)"></textarea></label>
+
+          <label class="checkbox-field">
+            <input type="checkbox" [ngModel]="form.visible" name="adventurerVisible" (ngModelChange)="updateAdventurerField('visible', $event)" />
+            Afficher publiquement
+          </label>
+
+          <div class="button-row">
+            <button type="submit">Enregistrer</button>
+            <button type="button" (click)="selectAdventurer(null)">Nouveau</button>
+            @if (selectedAdventurer(); as adventurer) {
+              <button type="button" class="danger" (click)="deleteAdventurer(adventurer)">Supprimer</button>
+            }
+          </div>
+        </form>
+      }
+    </div>
+  </section>
+  }
+  @case ('notebook') {
   <section class="admin-panel" aria-labelledby="admin-notebook-title">
     <div class="panel-heading">
       <h2 id="admin-notebook-title">Gestion des quetes</h2>
@@ -106,21 +319,23 @@
 
     <div class="quest-admin-layout">
       <nav class="quest-tabs" aria-label="Quetes administrables">
-        <ul>
-          @for (quest of quests(); track quest.id) {
-            <li>
-              <button
-                type="button"
-                [class.active]="selectedQuest()?.code === quest.code"
-                [attr.aria-current]="selectedQuest()?.code === quest.code ? 'true' : null"
-                (click)="selectQuest(quest.code)"
-              >
-                <span>{{ quest.title }}</span>
-                <small>{{ quest.status }} - {{ quest.visibleToPlayers ? 'visible' : 'masquee' }}</small>
-              </button>
-            </li>
-          }
-        </ul>
+        <app-tab-bar>
+          <ul>
+            @for (quest of quests(); track quest.id) {
+              <li>
+                <button
+                  type="button"
+                  [class.active]="selectedQuest()?.code === quest.code"
+                  [attr.aria-current]="selectedQuest()?.code === quest.code ? 'true' : null"
+                  (click)="selectQuest(quest.code)"
+                >
+                  <span>{{ quest.title }}</span>
+                  <small>{{ quest.status }} - {{ quest.visibleToPlayers ? 'visible' : 'masquee' }}</small>
+                </button>
+              </li>
+            }
+          </ul>
+        </app-tab-bar>
       </nav>
 
       @if (selectedQuest(); as quest) {
@@ -271,7 +486,8 @@
       }
     </div>
   </section>
-
+  }
+  @case ('media') {
   <section class="admin-panel" aria-labelledby="admin-media-title">
     <div class="panel-heading">
       <h2 id="admin-media-title">Mediatheque</h2>
@@ -339,7 +555,8 @@
       <p>Aucun media ajoute pour le moment.</p>
     }
   </section>
-
+  }
+  @case ('administrators') {
   <section class="admin-panel" aria-labelledby="admin-allowed-title">
     <div class="panel-heading">
       <h2 id="admin-allowed-title">Administrateurs autorises</h2>
@@ -419,7 +636,8 @@
       <p>Aucun administrateur autorise.</p>
     }
   </section>
-
+  }
+  @case ('audit') {
   <section class="admin-panel" aria-labelledby="admin-audit-title">
     <div class="panel-heading">
       <h2 id="admin-audit-title">Journal d'audit</h2>
@@ -442,4 +660,14 @@
       <p>Aucune action auditee pour le moment.</p>
     }
   </section>
+  }
+  @default {
+  <section class="admin-panel" aria-labelledby="admin-unknown-title">
+    <div class="panel-heading">
+      <h2 id="admin-unknown-title">Section indisponible</h2>
+    </div>
+    <p>Cette section d'administration n'est pas encore disponible.</p>
+  </section>
+  }
+}
 }

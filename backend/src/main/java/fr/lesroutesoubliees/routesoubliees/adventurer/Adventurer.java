@@ -54,6 +54,30 @@ class Adventurer {
 	protected Adventurer() {
 	}
 
+	Adventurer(
+		UUID id,
+		String name,
+		String title,
+		String avatarPath,
+		String avatarAlt,
+		String shortDescription,
+		String strengths,
+		String weaknesses,
+		boolean visible,
+		int displayOrder
+	) {
+		this.id = id;
+		this.name = name;
+		this.title = title;
+		this.avatarPath = avatarPath;
+		this.avatarAlt = avatarAlt;
+		this.shortDescription = shortDescription;
+		this.strengths = strengths;
+		this.weaknesses = weaknesses;
+		this.visible = visible;
+		this.displayOrder = displayOrder;
+	}
+
 	UUID id() {
 		return id;
 	}
@@ -86,8 +110,46 @@ class Adventurer {
 		return weaknesses;
 	}
 
+	boolean visible() {
+		return visible;
+	}
+
 	int displayOrder() {
 		return displayOrder;
+	}
+
+	OffsetDateTime createdAt() {
+		return createdAt;
+	}
+
+	OffsetDateTime updatedAt() {
+		return updatedAt;
+	}
+
+	void update(
+		String name,
+		String title,
+		String avatarPath,
+		String avatarAlt,
+		String shortDescription,
+		String strengths,
+		String weaknesses,
+		boolean visible,
+		int displayOrder
+	) {
+		this.name = name;
+		this.title = title;
+		this.avatarPath = avatarPath;
+		this.avatarAlt = avatarAlt;
+		this.shortDescription = shortDescription;
+		this.strengths = strengths;
+		this.weaknesses = weaknesses;
+		this.visible = visible;
+		this.displayOrder = displayOrder;
+	}
+
+	void changeDisplayOrder(int displayOrder) {
+		this.displayOrder = displayOrder;
 	}
 
 	@PrePersist

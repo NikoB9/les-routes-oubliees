@@ -12,19 +12,23 @@
     </span>
   </a>
 
-  <div class="admin-seal">
-    <button
-      type="button"
-      class="admin-seal-trigger"
-      aria-label="Reveler l'acces administrateur"
-      title="Sceau des eclaireurs"
-      (click)="revealAdminGate()"
-    >
-      <span aria-hidden="true">*</span>
-    </button>
-
-    @if (adminGateRevealed()) {
-      <a class="admin-gate-link" routerLink="/admin/login">Passage des eclaireurs</a>
-    }
-  </div>
+  <a class="admin-gate-link" routerLink="/admin/login" title="Acces admin">
+    <span class="sr-only">Acces admin</span>
+    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <path
+        d="M12 3l7 3v5c0 4.6-2.8 8.7-7 10-4.2-1.3-7-5.4-7-10V6l7-3z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M9 12c.5-1 1.5-1.6 3-1.6s2.5.6 3 1.6M8.5 15c1 1 2.2 1.5 3.5 1.5s2.5-.5 3.5-1.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+      />
+    </svg>
+  </a>
 </header>

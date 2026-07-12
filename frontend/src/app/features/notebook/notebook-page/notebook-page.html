@@ -18,19 +18,21 @@
   } @else {
     <div class="notebook-layout">
       <nav class="quest-tabs" aria-label="Pages revelees">
-        <ul>
-          @for (quest of quests(); track quest.id) {
-            <li>
-              <a
-                [routerLink]="['/notebook', quest.code]"
-                [attr.aria-current]="selectedQuest()?.code === quest.code ? 'page' : null"
-                [title]="quest.summary"
-              >
-                {{ quest.title }}
-              </a>
-            </li>
-          }
-        </ul>
+        <app-tab-bar>
+          <ul>
+            @for (quest of quests(); track quest.id) {
+              <li>
+                <a
+                  [routerLink]="['/notebook', quest.code]"
+                  [attr.aria-current]="selectedQuest()?.code === quest.code ? 'page' : null"
+                  [title]="quest.summary"
+                >
+                  {{ quest.title }}
+                </a>
+              </li>
+            }
+          </ul>
+        </app-tab-bar>
       </nav>
 
       @if (selectedQuest(); as quest) {

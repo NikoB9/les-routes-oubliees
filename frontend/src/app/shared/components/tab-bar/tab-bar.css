@@ -1,0 +1,54 @@
+:host {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.tab-viewport {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  /* Masque la barre de defilement : le defilement reste possible (tactile,
+     molette shift, fleches), mais l'affichage reste propre. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tab-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-arrow {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #211914;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tab-arrow:hover:not(:disabled) {
+  background: #f3dfb6;
+}
+
+.tab-arrow:disabled {
+  color: #c2b48f;
+  cursor: default;
+}
+
+.tab-arrow[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-viewport {
+    scroll-behavior: auto;
+  }
+}

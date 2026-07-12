@@ -1,0 +1,27 @@
+<button
+  type="button"
+  class="tab-arrow tab-arrow--prev"
+  aria-label="Faire defiler les onglets vers la gauche"
+  tabindex="-1"
+  [hidden]="!overflowing()"
+  [disabled]="!canScrollPrev()"
+  (click)="scrollByStep(-1)"
+>
+  <span aria-hidden="true">&#8249;</span>
+</button>
+
+<div #viewport class="tab-viewport" (scroll)="update()">
+  <ng-content></ng-content>
+</div>
+
+<button
+  type="button"
+  class="tab-arrow tab-arrow--next"
+  aria-label="Faire defiler les onglets vers la droite"
+  tabindex="-1"
+  [hidden]="!overflowing()"
+  [disabled]="!canScrollNext()"
+  (click)="scrollByStep(1)"
+>
+  <span aria-hidden="true">&#8250;</span>
+</button>

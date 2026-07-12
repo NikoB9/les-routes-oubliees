@@ -4,10 +4,11 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { NotebookApiService } from '../notebook-api.service';
 import { PublicQuestDetail, PublicQuestSummary } from '../notebook-api.models';
+import { TabBarComponent } from '../../../shared/components/tab-bar/tab-bar';
 
 @Component({
   selector: 'app-notebook-page',
-  imports: [RouterLink],
+  imports: [RouterLink, TabBarComponent],
   templateUrl: './notebook-page.html',
   styleUrl: './notebook-page.css',
 })

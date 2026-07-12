@@ -4,19 +4,8 @@ describe('adminRoutes', () => {
   it('registers the expected protected admin module paths', () => {
     const paths = adminRoutes.map((route) => route.path);
 
-    expect(paths).toEqual([
-      'login',
-      '',
-      'home',
-      'group',
-      'adventurers',
-      'map',
-      'notebook',
-      'media',
-      'administrators',
-      'audit',
-      'settings',
-    ]);
+    expect(paths).toEqual(['login', '']);
+    expect(adminRoutes[1].children?.map((route) => route.path)).toEqual(['', ':section']);
   });
 
   it('protects every admin module route except the login page', () => {
