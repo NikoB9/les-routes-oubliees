@@ -93,49 +93,45 @@
 
 .quest-admin-layout {
   display: grid;
-  grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
   gap: 1.25rem;
-  align-items: start;
 }
 
-.quest-list {
-  border: 1px solid #d1ad68;
-  background: #fff8e8;
-}
-
-.quest-list h3 {
-  padding: 1rem 1rem 0;
-}
-
-.quest-list ul {
-  display: grid;
+.quest-tabs ul {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.35rem;
   margin: 0;
-  padding: 0 0.75rem 0.75rem;
+  padding: 0;
   list-style: none;
+  border-bottom: 2px solid #d1ad68;
 }
 
-.quest-list button {
+.quest-tabs button {
   display: grid;
-  gap: 0.25rem;
-  width: 100%;
-  padding: 0.75rem;
-  border: 0;
-  border-left: 4px solid transparent;
+  gap: 0.15rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  margin-bottom: -2px;
   background: transparent;
   color: #211914;
   text-align: left;
   cursor: pointer;
 }
 
-.quest-list button:hover,
-.quest-list button:focus-visible,
-.quest-list button.active {
+.quest-tabs button:hover,
+.quest-tabs button:focus-visible {
   background: #f3dfb6;
-  border-left-color: #7a261d;
 }
 
-.quest-list button:focus-visible,
+.quest-tabs button.active {
+  background: #fffaf0;
+  border-color: #d1ad68;
+  border-bottom-color: #fffaf0;
+}
+
+.quest-tabs button:focus-visible,
 .quest-form :where(input, textarea, select, button):focus-visible,
 .media-form :where(input, button):focus-visible,
 .media-grid button:focus-visible,
@@ -147,12 +143,19 @@
   outline-offset: 2px;
 }
 
-.quest-list span {
+.quest-tabs span {
   font-weight: 900;
 }
 
-.quest-list small {
+.quest-tabs small {
   color: #5c4632;
+}
+
+.quest-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
 }
 
 .quest-form {
@@ -406,8 +409,8 @@
   background: #7a261d;
 }
 
-@media (max-width: 760px) {
-  .quest-admin-layout {
+@media (max-width: 960px) {
+  .quest-workspace {
     grid-template-columns: 1fr;
   }
 }

@@ -339,7 +339,7 @@ Message vide initial suggéré :
 
 ### 9.1 Fonctionnalités
 
-L’éditeur permet :
+L’éditeur permet une saisie Markdown enrichie :
 
 * paragraphes ;
 * titres ;
@@ -378,7 +378,7 @@ L’easter egg :
 
 L’accès direct à `/admin/login` peut exister. L’absence de lien visible n’est pas une mesure de sécurité.
 
-Le geste exact de l’easter egg sera choisi lors du lot UI. Cette décision n’est pas bloquante.
+Le geste exact de l’easter egg sera choisi lors du lot 9. Cette décision n’est pas bloquante.
 
 ### 10.2 Authentification Google
 
@@ -888,13 +888,50 @@ Les données de démonstration doivent être fictives.
 
 ### Lot 9 — Administration complète
 
+* easter egg public menant uniquement à la connexion admin ;
+* correction des points d’entrée admin ;
 * tableau de bord ;
 * formulaires ;
 * prévisualisation ;
 * gestion des administrateurs ;
 * journal d’audit.
 
-### Lot 10 — Accessibilité et qualité
+### Lot 10 — Accueil administrable
+
+* parchemins ;
+* Compagnie ;
+* aventuriers ;
+* contenus de la page d’accueil ;
+* publication et prévisualisation ;
+* tests fonctionnels et accessibilité du module.
+
+### Lot 11 — Carte administrable
+
+* fond de carte actif ;
+* repères à positionner ;
+* ordre et visibilité des visions ;
+* prévisualisation de la carte ;
+* tests fonctionnels et accessibilité du module.
+
+### Lot 12 — Bloc-notes enrichi
+
+* éditeur Markdown enrichi ;
+* prévisualisation ;
+* insertion de liens et médias ;
+* sanitation et rendu sécurisé ;
+* tests du rendu public et de l’édition.
+
+### Lot 13 — Paramètres du site
+
+* nom du site ;
+* sous-titre ;
+* logo ;
+* fuseau horaire ;
+* message de maintenance ;
+* état du site ;
+* informations d’accessibilité.
+
+### Lot 14 — Accessibilité et qualité
 
 Ce lot est un audit final et une consolidation. Les vérifications d’accessibilité et les tests pertinents doivent déjà être intégrés dans chaque lot qui modifie l’interface.
 
@@ -906,7 +943,7 @@ Ce lot est un audit final et une consolidation. Les vérifications d’accessibi
 * revue de sécurité ;
 * documentation.
 
-### Lot 11 — Préparation production
+### Lot 15 — Préparation production
 
 * build ;
 * configuration ;
@@ -926,11 +963,15 @@ Le MVP est accepté lorsque :
 * le menu est adapté au desktop et au mobile ;
 * l’accueil affiche le message actif ;
 * le compte à rebours fonctionne ;
+* un easter egg public permet d’ouvrir la connexion admin sans donner de privilège ;
 * la Compagnie est configurable ;
 * les aventuriers sont configurables ;
+* l’accueil, la Compagnie, les aventuriers, la carte, le bloc-notes et les paramètres sont administrables ;
 * une seule carte publiée peut être active ;
+* la carte permet de choisir le fond actif et de positionner les repères ;
 * les cinq quêtes sont toujours présentes dans l’administration ;
 * seules les quêtes publiées et révélées sont publiques ;
+* le bloc-notes propose un éditeur Markdown enrichi avec prévisualisation ;
 * le Markdown est nettoyé ;
 * les médias sont validés ;
 * la connexion Google fonctionne ;
@@ -948,7 +989,6 @@ Le MVP est accepté lorsque :
 
 Les éléments suivants seront décidés pendant les lots concernés :
 
-* geste exact de l’easter egg ;
 * direction artistique définitive ;
 * polices décoratives ;
 * domaine public définitif ;
