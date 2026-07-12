@@ -29,6 +29,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -37,9 +38,14 @@ import tools.jackson.databind.ObjectMapper;
 
 import fr.lesroutesoubliees.routesoubliees.TestcontainersConfiguration;
 
+// Ce test valide un comportement qui repose sur des ecritures COMMITEES lues via
+// une requete JDBC brute (MediaService.isReferenced). @Transactional casserait cette
+// verification (l'update JPA n'est pas flushe pour le JDBC brut) ; on isole donc la
+// classe en recreant le contexte/la base apres son execution.
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
 @SpringBootTest
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class AdminMediaIntegrationTests {
 
 	private static final Path MEDIA_STORAGE = Path.of(
