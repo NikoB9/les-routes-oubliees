@@ -67,7 +67,9 @@ describe('HomePage', () => {
     const compiled = fixture.nativeElement as HTMLElement;
 
     expect(text(fixture)).toContain('Rassemblement');
-    expect(text(fixture)).toContain('Quete imminente');
+    const importanceIcon = compiled.querySelector('.importance-icon');
+    expect(importanceIcon?.getAttribute('aria-label')).toBe('Quete imminente');
+    expect(importanceIcon?.querySelector('svg')).not.toBeNull();
     expect(text(fixture)).toContain('Sac pret');
     expect(text(fixture)).toContain('Compagnie des Routes Oubliees');
     expect(text(fixture)).toContain('Aline des Brumes');
