@@ -297,6 +297,53 @@ Pour tout lot significatif, effectuer au minimum :
 * une revue de sécurité si le lot touche l’authentification, les données, les uploads ou l’API ;
 * une revue d’accessibilité si le lot modifie l’interface.
 
+### 5.5 Routage des modèles et maîtrise du coût
+
+Pour réduire le coût sans dégrader la qualité, utiliser une répartition explicite des tâches entre un modèle principal et un modèle économique lorsque l’environnement le permet.
+
+Le modèle principal conserve les responsabilités suivantes :
+
+* compréhension du besoin ;
+* conception ;
+* architecture ;
+* arbitrages de sécurité, accessibilité et données ;
+* modifications de code non triviales ;
+* résolution d’erreurs ambiguës ;
+* validation finale avant commit ou déploiement.
+
+Un modèle économique ou mini peut être utilisé pour les tâches mécaniques ou bornées :
+
+* lecture et synthèse de sorties Docker, Maven, npm, Playwright ou systemd ;
+* extraction des lignes d’erreur pertinentes ;
+* classification d’un échec connu ;
+* vérification de statut Git ;
+* préparation de comptes rendus factuels ;
+* suivi de commandes déterministes déjà définies.
+
+Rebasculer vers le modèle principal dès qu’une tâche exige :
+
+* une modification de code ;
+* un choix entre plusieurs causes plausibles ;
+* une décision de conception ;
+* une analyse de sécurité ou d’accessibilité ;
+* une interprétation métier ;
+* un échec de migration, d’authentification, d’upload, de publication ou de déploiement.
+
+Les actions critiques restent pilotées par des scripts et vérifiées par le fil principal :
+
+* les tests ne sont jamais déclarés réussis sans sortie de commande réelle ;
+* un commit n’est créé qu’après relecture du diff et validations applicables ;
+* un déploiement n’est lancé qu’à partir d’un commit cohérent et d’une archive validée ;
+* le modèle économique ne décide pas seul de pousser, déployer, ignorer un test ou accepter une régression.
+
+Pour limiter les tokens, les sous-agents et analyses mécaniques doivent recevoir un contexte court :
+
+* objectif précis ;
+* fichiers ou commande concernés ;
+* extrait de log limité ;
+* format de réponse attendu ;
+* critère clair de rebascule vers le modèle principal.
+
 ## 6. Règles Git
 
 * Ne jamais travailler directement sur `main`.
