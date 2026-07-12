@@ -10,6 +10,8 @@ import {
   QuestStatus,
 } from '../../notebook/notebook-api.models';
 import { NotebookApiService } from '../../notebook/notebook-api.service';
+import { AdminMedia } from '../media-api.models';
+import { MediaApiService } from '../media-api.service';
 
 @Component({
   selector: 'app-admin-shell',
@@ -20,6 +22,7 @@ import { NotebookApiService } from '../../notebook/notebook-api.service';
 export class AdminShell {
   private readonly authService = inject(AdminAuthService);
   private readonly notebookApi = inject(NotebookApiService);
+  private readonly mediaApi = inject(MediaApiService);
   private readonly router = inject(Router);
 
   protected readonly session = signal<AdminSession | null>(null);
@@ -30,12 +33,18 @@ export class AdminShell {
   protected readonly selectedQuest = signal<AdminQuest | null>(null);
   protected readonly editor = signal<AdminQuestUpdate | null>(null);
   protected readonly statuses: QuestStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+  protected readonly media = signal<AdminMedia[]>([]);
+  protected readonly mediaError = signal(false);
+  protected readonly mediaSaved = signal(false);
+  protected readonly selectedFile = signal<File | null>(null);
+  protected readonly mediaAltText = signal('');
 
   constructor() {
     this.authService.currentSession().subscribe({
       next: (session) => {
         this.session.set(session);
         this.loadQuests();
+        this.loadMedia();
       },
       error: () => this.error.set(true),
     });
@@ -133,6 +142,48 @@ export class AdminShell {
     });
   }
 
+  protected selectMediaFile(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.selectedFile.set(input.files?.item(0) ?? null);
+    this.mediaSaved.set(false);
+    this.mediaError.set(false);
+  }
+
+  protected updateMediaAltText(value: string) {
+    this.mediaAltText.set(value);
+    this.mediaSaved.set(false);
+  }
+
+  protected uploadMedia() {
+    const file = this.selectedFile();
+    const altText = this.mediaAltText().trim();
+    if (!file || !altText) {
+      this.mediaError.set(true);
+      return;
+    }
+    this.mediaApi.uploadAdminMedia(file, altText).subscribe({
+      next: (created) => {
+        this.media.update((items) => [created, ...items]);
+        this.selectedFile.set(null);
+        this.mediaAltText.set('');
+        this.mediaSaved.set(true);
+        this.mediaError.set(false);
+      },
+      error: () => this.mediaError.set(true),
+    });
+  }
+
+  protected deleteMedia(media: AdminMedia) {
+    this.mediaApi.deleteAdminMedia(media.id).subscribe({
+      next: () => {
+        this.media.update((items) => items.filter((item) => item.id !== media.id));
+        this.mediaSaved.set(true);
+        this.mediaError.set(false);
+      },
+      error: () => this.mediaError.set(true),
+    });
+  }
+
   private loadQuests() {
     this.notebookApi.listAdminQuests().subscribe({
       next: (quests) => {
@@ -142,6 +193,13 @@ export class AdminShell {
         }
       },
       error: () => this.questError.set(true),
+    });
+  }
+
+  private loadMedia() {
+    this.mediaApi.listAdminMedia().subscribe({
+      next: (media) => this.media.set(media),
+      error: () => this.mediaError.set(true),
     });
   }
 
