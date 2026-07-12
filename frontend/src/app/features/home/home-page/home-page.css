@@ -109,14 +109,39 @@ h1 {
   border-color: #284d68;
 }
 
-.importance {
-  display: inline-block;
-  width: fit-content;
-  margin: 0;
-  padding: 0.25rem 0.625rem;
-  border: 1px solid currentColor;
-  font-size: 0.875rem;
-  font-weight: 800;
+#current-message-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.importance-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #211914;
+}
+
+.importance-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.parchment.warning .importance-icon {
+  color: #9d6b2f;
+}
+
+.parchment.quest-imminent .importance-icon {
+  color: #7c4d9f;
+}
+
+.parchment.success .importance-icon {
+  color: #48784a;
+}
+
+.parchment.mystery .importance-icon {
+  color: #284d68;
 }
 
 .markdown-content {
@@ -138,8 +163,9 @@ h1 {
   gap: 0.5rem;
   max-width: 34rem;
   padding: 1rem;
-  background: #221a14;
-  color: #f8f0df;
+  background: rgba(255, 255, 255, 0.31);
+  color: #000;
+  border-radius: 1rem;
 }
 
 .countdown-panel h3,
@@ -149,7 +175,7 @@ h1 {
 }
 
 .exact-date {
-  color: #dbc69e;
+  color: #3a2d21;
 }
 
 .countdown {
@@ -175,7 +201,6 @@ h1 {
   place-items: center;
   width: 8rem;
   aspect-ratio: 1;
-  background: #221a14;
   color: #f8f0df;
   font-size: 2rem;
   font-weight: 900;
