@@ -13,9 +13,11 @@ import fr.lesroutesoubliees.routesoubliees.shared.EditorialStatus;
 public class PublicQuestService {
 
 	private final QuestRepository repository;
+	private final MarkdownRenderer markdownRenderer;
 
-	PublicQuestService(QuestRepository repository) {
+	PublicQuestService(QuestRepository repository, MarkdownRenderer markdownRenderer) {
 		this.repository = repository;
+		this.markdownRenderer = markdownRenderer;
 	}
 
 	@Transactional(readOnly = true)
@@ -49,9 +51,13 @@ public class PublicQuestService {
 			quest.title(),
 			quest.summary(),
 			quest.importantEventsMarkdown(),
+			markdownRenderer.render(quest.importantEventsMarkdown()),
 			quest.discoveredCluesMarkdown(),
+			markdownRenderer.render(quest.discoveredCluesMarkdown()),
 			quest.completedTrialsMarkdown(),
+			markdownRenderer.render(quest.completedTrialsMarkdown()),
 			quest.extraContentMarkdown(),
+			markdownRenderer.render(quest.extraContentMarkdown()),
 			quest.displayOrder());
 	}
 }

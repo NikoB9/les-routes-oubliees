@@ -10,7 +10,11 @@ import fr.lesroutesoubliees.routesoubliees.shared.EditorialStatus;
 
 interface QuestRepository extends JpaRepository<Quest, UUID> {
 
+	List<Quest> findAllByOrderByDisplayOrderAsc();
+
 	List<Quest> findByStatusAndVisibleToPlayersTrueOrderByDisplayOrderAsc(EditorialStatus status);
 
 	Optional<Quest> findByCodeAndStatusAndVisibleToPlayersTrue(String code, EditorialStatus status);
+
+	Optional<Quest> findByCode(String code);
 }

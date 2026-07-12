@@ -29,8 +29,8 @@
             [style.top]="marker.positionY + '%'"
             [attr.aria-label]="'Consulter ' + marker.title + ' dans le carnet'"
           >
-            <span aria-hidden="true" class="flag"></span>
-            <span>{{ marker.title }}</span>
+            <span aria-hidden="true" class="marker-pin"></span>
+            <span class="marker-ribbon">{{ marker.title }}</span>
           </a>
         }
       </div>

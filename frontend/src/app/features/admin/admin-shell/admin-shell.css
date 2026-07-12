@@ -24,3 +24,149 @@
   color: #f8f0df;
   cursor: pointer;
 }
+
+.admin-panel {
+  display: grid;
+  gap: 1rem;
+  max-width: 82rem;
+  margin-top: 2rem;
+}
+
+.panel-heading h2,
+.quest-list h3,
+.quest-form h3 {
+  margin: 0 0 1rem;
+  color: #211914;
+}
+
+.status {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #356b35;
+  background: #edf7e8;
+  color: #244c24;
+}
+
+.quest-admin-layout {
+  display: grid;
+  grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.quest-list {
+  border: 1px solid #d1ad68;
+  background: #fff8e8;
+}
+
+.quest-list h3 {
+  padding: 1rem 1rem 0;
+}
+
+.quest-list ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0 0.75rem 0.75rem;
+  list-style: none;
+}
+
+.quest-list button {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.75rem;
+  border: 0;
+  border-left: 4px solid transparent;
+  background: transparent;
+  color: #211914;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quest-list button:hover,
+.quest-list button:focus-visible,
+.quest-list button.active {
+  background: #f3dfb6;
+  border-left-color: #7a261d;
+}
+
+.quest-list button:focus-visible,
+.quest-form :where(input, textarea, select, button):focus-visible,
+.logout-button:focus-visible {
+  outline: 3px solid #7a261d;
+  outline-offset: 2px;
+}
+
+.quest-list span {
+  font-weight: 900;
+}
+
+.quest-list small {
+  color: #5c4632;
+}
+
+.quest-form {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #d1ad68;
+  background: #fffaf0;
+}
+
+.quest-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: #3a2d21;
+  font-weight: 800;
+}
+
+.quest-form input,
+.quest-form textarea,
+.quest-form select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem;
+  border: 1px solid #8f7650;
+  background: #fff;
+  color: #211914;
+  font: inherit;
+}
+
+.form-row,
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.checkbox-field {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.checkbox-field input {
+  width: auto;
+}
+
+.button-row button {
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border: 0;
+  background: #211914;
+  color: #f8f0df;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.button-row .danger {
+  background: #7a261d;
+}
+
+@media (max-width: 760px) {
+  .quest-admin-layout {
+    grid-template-columns: 1fr;
+  }
+}

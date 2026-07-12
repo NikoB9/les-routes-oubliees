@@ -42,6 +42,9 @@ class Quest {
 	@Column(name = "extra_content_markdown", nullable = false)
 	private String extraContentMarkdown;
 
+	@Column(name = "admin_draft_markdown", nullable = false)
+	private String adminDraftMarkdown;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 32)
 	private EditorialStatus status;
@@ -93,8 +96,64 @@ class Quest {
 		return extraContentMarkdown;
 	}
 
+	String adminDraftMarkdown() {
+		return adminDraftMarkdown;
+	}
+
+	EditorialStatus status() {
+		return status;
+	}
+
+	boolean visibleToPlayers() {
+		return visibleToPlayers;
+	}
+
 	int displayOrder() {
 		return displayOrder;
+	}
+
+	OffsetDateTime createdAt() {
+		return createdAt;
+	}
+
+	OffsetDateTime updatedAt() {
+		return updatedAt;
+	}
+
+	void update(
+		String title,
+		String summary,
+		String importantEventsMarkdown,
+		String discoveredCluesMarkdown,
+		String completedTrialsMarkdown,
+		String extraContentMarkdown,
+		String adminDraftMarkdown,
+		EditorialStatus status,
+		boolean visibleToPlayers
+	) {
+		this.title = title;
+		this.summary = summary;
+		this.importantEventsMarkdown = importantEventsMarkdown;
+		this.discoveredCluesMarkdown = discoveredCluesMarkdown;
+		this.completedTrialsMarkdown = completedTrialsMarkdown;
+		this.extraContentMarkdown = extraContentMarkdown;
+		this.adminDraftMarkdown = adminDraftMarkdown;
+		this.status = status;
+		this.visibleToPlayers = visibleToPlayers && status == EditorialStatus.PUBLISHED;
+	}
+
+	void publish(boolean visibleToPlayers) {
+		status = EditorialStatus.PUBLISHED;
+		this.visibleToPlayers = visibleToPlayers;
+	}
+
+	void hide() {
+		visibleToPlayers = false;
+	}
+
+	void archive() {
+		status = EditorialStatus.ARCHIVED;
+		visibleToPlayers = false;
 	}
 
 	@PrePersist
