@@ -2,18 +2,16 @@
   max-width: 48rem;
 }
 
-.eyebrow {
-  margin: 0 0 0.5rem;
-  color: #6b4f2a;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
 .alert {
   padding: 0.75rem 1rem;
   border-left: 4px solid #9b2c2c;
   background: #f9e8df;
   color: #5c1717;
+}
+
+.alert:focus-visible {
+  outline: 3px solid #7a261d;
+  outline-offset: 2px;
 }
 
 .logout-button {
@@ -25,6 +23,26 @@
   cursor: pointer;
 }
 
+.admin-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.admin-navigation a {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #8f7650;
+  color: #211914;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.admin-navigation a:hover,
+.admin-navigation a:focus-visible {
+  background: #f3dfb6;
+}
+
 .admin-panel {
   display: grid;
   gap: 1rem;
@@ -32,9 +50,36 @@
   margin-top: 2rem;
 }
 
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.dashboard-grid div {
+  padding: 1rem;
+  border: 1px solid #d1ad68;
+  background: #fff8e8;
+}
+
+.dashboard-grid dt {
+  color: #5c4632;
+  font-weight: 800;
+}
+
+.dashboard-grid dd {
+  margin: 0.25rem 0 0;
+  color: #211914;
+  font-size: 1.2rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
 .panel-heading h2,
 .quest-list h3,
-.quest-form h3 {
+.quest-form h3,
+.allowed-form h3 {
   margin: 0 0 1rem;
   color: #211914;
 }
@@ -94,6 +139,9 @@
 .quest-form :where(input, textarea, select, button):focus-visible,
 .media-form :where(input, button):focus-visible,
 .media-grid button:focus-visible,
+.allowed-form :where(input, button):focus-visible,
+.allowed-list :where(input, button):focus-visible,
+.admin-navigation a:focus-visible,
 .logout-button:focus-visible {
   outline: 3px solid #7a261d;
   outline-offset: 2px;
@@ -113,6 +161,31 @@
   padding: 1rem;
   border: 1px solid #d1ad68;
   background: #fffaf0;
+}
+
+.quest-preview {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #8f7650;
+  background: #fff8e8;
+}
+
+.quest-preview h3,
+.quest-preview h4,
+.quest-preview h5,
+.quest-preview p {
+  margin: 0;
+}
+
+.quest-preview article {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.quest-preview h5 {
+  color: #5c4632;
+  font-size: 0.95rem;
 }
 
 .quest-form label {
@@ -173,6 +246,88 @@
   padding: 1rem;
   border: 1px solid #d1ad68;
   background: #fffaf0;
+}
+
+.allowed-form {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1rem;
+  border: 1px solid #d1ad68;
+  background: #fffaf0;
+}
+
+.allowed-form label,
+.allowed-list label {
+  color: #3a2d21;
+  font-weight: 800;
+}
+
+.allowed-form input,
+.allowed-list input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem;
+  border: 1px solid #8f7650;
+  background: #fff;
+  color: #211914;
+  font: inherit;
+}
+
+.allowed-form button {
+  width: fit-content;
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border: 0;
+  background: #211914;
+  color: #f8f0df;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.allowed-list,
+.audit-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.allowed-list li,
+.audit-list li {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+  border: 1px solid #d1ad68;
+  background: #fff8e8;
+}
+
+.allowed-list li > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  justify-content: space-between;
+}
+
+.allowed-list strong,
+.audit-list strong {
+  overflow-wrap: anywhere;
+}
+
+.audit-list p,
+.audit-list small,
+.audit-list time {
+  overflow-wrap: anywhere;
+}
+
+.allowed-list span,
+.audit-list time,
+.audit-list small {
+  color: #5c4632;
+}
+
+.audit-list p {
+  margin: 0;
 }
 
 .media-form h3,

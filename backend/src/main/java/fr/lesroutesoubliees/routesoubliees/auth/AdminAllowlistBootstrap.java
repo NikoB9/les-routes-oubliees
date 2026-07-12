@@ -19,7 +19,7 @@ class AdminAllowlistBootstrap implements ApplicationRunner {
 
 	@Override
 	public void run(ApplicationArguments args) {
-		if (allowlistService.hasActiveAdmin() || siteProperties.adminBootstrapEmails() == null) {
+		if (allowlistService.hasAnyAdmin() || siteProperties.adminBootstrapEmails() == null) {
 			return;
 		}
 

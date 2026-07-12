@@ -20,6 +20,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import fr.lesroutesoubliees.routesoubliees.audit.AuditService;
 import fr.lesroutesoubliees.routesoubliees.shared.config.SiteProperties;
 
 @Service
@@ -29,12 +30,14 @@ class MediaService {
 
 	private final MediaAssetRepository mediaAssets;
 	private final JdbcTemplate jdbc;
+	private final AuditService audit;
 	private final Path storageRoot;
 	private final long maxUploadBytes;
 
-	MediaService(MediaAssetRepository mediaAssets, JdbcTemplate jdbc, SiteProperties properties) {
+	MediaService(MediaAssetRepository mediaAssets, JdbcTemplate jdbc, AuditService audit, SiteProperties properties) {
 		this.mediaAssets = mediaAssets;
 		this.jdbc = jdbc;
+		this.audit = audit;
 		this.storageRoot = Path.of(properties.mediaStoragePath()).toAbsolutePath().normalize();
 		this.maxUploadBytes = properties.mediaMaxUploadBytes();
 	}
@@ -79,6 +82,7 @@ class MediaService {
 				dimensions.height(),
 				normalizedAlt,
 				createdBy));
+			audit.record(createdBy, "MEDIA_UPLOADED", "MEDIA", asset.id().toString(), "Media ajoute");
 			return AdminMediaResponse.from(asset);
 		}
 		catch (IOException ex) {
@@ -102,7 +106,7 @@ class MediaService {
 	}
 
 	@Transactional
-	void delete(UUID id) {
+	void delete(UUID id, String actorEmail) {
 		var asset = mediaAssets.findById(id)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Media introuvable."));
 		if (isReferenced(asset)) {
@@ -110,6 +114,7 @@ class MediaService {
 		}
 		mediaAssets.delete(asset);
 		deleteQuietly(resolveStoragePath(asset.relativePath()));
+		audit.record(actorEmail, "MEDIA_DELETED", "MEDIA", id.toString(), "Media supprime");
 	}
 
 	private boolean isReferenced(MediaAsset asset) {

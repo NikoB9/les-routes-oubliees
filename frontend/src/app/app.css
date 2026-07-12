@@ -26,6 +26,11 @@
 }
 
 .sidebar {
+  position: sticky;
+  inset-block-start: 4.25rem;
+  align-self: start;
+  block-size: calc(100dvh - 4.25rem);
+  overflow-y: auto;
   background: #30251c;
   color: #f8f0df;
   border-right: 1px solid #776142;

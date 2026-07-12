@@ -7,15 +7,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import fr.lesroutesoubliees.routesoubliees.audit.AuditService;
+
 @Service
 public class AdminQuestService {
 
 	private final QuestRepository repository;
 	private final MarkdownRenderer markdownRenderer;
+	private final AuditService audit;
 
-	AdminQuestService(QuestRepository repository, MarkdownRenderer markdownRenderer) {
+	AdminQuestService(QuestRepository repository, MarkdownRenderer markdownRenderer, AuditService audit) {
 		this.repository = repository;
 		this.markdownRenderer = markdownRenderer;
+		this.audit = audit;
 	}
 
 	@Transactional(readOnly = true)
@@ -32,7 +36,7 @@ public class AdminQuestService {
 	}
 
 	@Transactional
-	public AdminQuestResponse updateQuest(String code, AdminQuestUpdateRequest request) {
+	public AdminQuestResponse updateQuest(String code, AdminQuestUpdateRequest request, String actorEmail) {
 		var quest = findQuest(code);
 		quest.update(
 			request.title().trim(),
@@ -44,27 +48,31 @@ public class AdminQuestService {
 			request.adminDraftMarkdown().trim(),
 			request.status(),
 			request.visibleToPlayers());
+		audit.record(actorEmail, "QUEST_UPDATED", "QUEST", quest.code(), "Quete mise a jour");
 		return toResponse(quest);
 	}
 
 	@Transactional
-	public AdminQuestResponse publishQuest(String code, boolean visibleToPlayers) {
+	public AdminQuestResponse publishQuest(String code, boolean visibleToPlayers, String actorEmail) {
 		var quest = findQuest(code);
 		quest.publish(visibleToPlayers);
+		audit.record(actorEmail, "QUEST_PUBLISHED", "QUEST", quest.code(), "Quete publiee");
 		return toResponse(quest);
 	}
 
 	@Transactional
-	public AdminQuestResponse hideQuest(String code) {
+	public AdminQuestResponse hideQuest(String code, String actorEmail) {
 		var quest = findQuest(code);
 		quest.hide();
+		audit.record(actorEmail, "QUEST_HIDDEN", "QUEST", quest.code(), "Quete masquee");
 		return toResponse(quest);
 	}
 
 	@Transactional
-	public AdminQuestResponse archiveQuest(String code) {
+	public AdminQuestResponse archiveQuest(String code, String actorEmail) {
 		var quest = findQuest(code);
 		quest.archive();
+		audit.record(actorEmail, "QUEST_ARCHIVED", "QUEST", quest.code(), "Quete archivee");
 		return toResponse(quest);
 	}
 

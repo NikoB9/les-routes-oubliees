@@ -1,10 +1,10 @@
 package fr.lesroutesoubliees.routesoubliees.media;
 
-import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,15 +18,19 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import fr.lesroutesoubliees.routesoubliees.auth.AdminIdentity;
+
 @Validated
 @RestController
 @RequestMapping("/api/admin/media")
 class AdminMediaController {
 
 	private final MediaService media;
+	private final AdminIdentity identity;
 
-	AdminMediaController(MediaService media) {
+	AdminMediaController(MediaService media, AdminIdentity identity) {
 		this.media = media;
+		this.identity = identity;
 	}
 
 	@GetMapping
@@ -39,15 +43,14 @@ class AdminMediaController {
 	AdminMediaResponse uploadMedia(
 		@RequestParam("file") MultipartFile file,
 		@RequestParam("altText") @NotBlank @Size(max = 280) String altText,
-		Principal principal
+		Authentication authentication
 	) {
-		var createdBy = principal == null ? null : principal.getName();
-		return media.upload(file, altText, createdBy);
+		return media.upload(file, altText, identity.email(authentication));
 	}
 
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	void deleteMedia(@org.springframework.web.bind.annotation.PathVariable UUID id) {
-		media.delete(id);
+	void deleteMedia(@org.springframework.web.bind.annotation.PathVariable UUID id, Authentication authentication) {
+		media.delete(id, identity.email(authentication));
 	}
 }

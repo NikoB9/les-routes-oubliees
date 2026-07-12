@@ -13,6 +13,7 @@
 a {
   min-height: 4rem;
   display: grid;
+  gap: 0.2rem;
   place-items: center;
   padding: 0.5rem;
   color: #f8f0df;
@@ -93,13 +94,9 @@ a.active .link-icon.map::after {
   transform-origin: center;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+.link-label {
+  font-size: 0.78rem;
+  line-height: 1.1;
 }
 
 @media (max-width: 767px) {

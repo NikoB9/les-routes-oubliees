@@ -53,15 +53,37 @@ Pour chaque delegation mecanique, fournir un contexte court : commande, extrait 
 
 ## Plan
 
-1. [ ] Cartographier l'administration existante et decouper les modules manquants.
-2. [ ] Ajouter le journal d'audit backend et l'integrer aux actions critiques deja presentes.
-3. [ ] Ajouter la gestion admin des emails autorises avec protection du dernier actif.
-4. [ ] Ajouter le tableau de bord admin et les endpoints de synthese.
-5. [ ] Completer les formulaires et previews prioritaires sans exposer les brouillons publiquement.
-6. [ ] Structurer la navigation admin Angular et les etats accessibles.
-7. [ ] Ajouter les tests backend, frontend et e2e/a11y pertinents.
-8. [ ] Effectuer les revues coherence, tests, securite et accessibilite.
-9. [ ] Executer les validations applicables et relire le diff final.
+1. [x] Cartographier l'administration existante et decouper les modules manquants.
+2. [x] Ajouter le journal d'audit backend et l'integrer aux actions critiques deja presentes.
+3. [x] Ajouter la gestion admin des emails autorises avec protection du dernier actif.
+4. [x] Ajouter le tableau de bord admin et les endpoints de synthese.
+5. [x] Completer les formulaires et previews prioritaires sans exposer les brouillons publiquement.
+6. [x] Structurer la navigation admin Angular et les etats accessibles.
+7. [x] Ajouter les tests backend, frontend et e2e/a11y pertinents.
+8. [x] Effectuer les revues coherence, tests, securite et accessibilite.
+9. [x] Executer les validations applicables et relire le diff final.
+
+## Avancement du 2026-07-12
+
+- Cartographie backend/frontend realisee en lecture seule via sous-agents.
+- Ajout du module d'audit, de la migration Flyway, du dashboard admin et du CRUD des emails autorises.
+- Audit raccorde aux connexions OIDC, aux mutations de quetes et aux uploads/suppressions media.
+- Bootstrap admin limite aux bases sans aucun email admin enregistre.
+- Interface admin completee avec synthese, navigation interne, gestion des administrateurs autorises et journal d'audit.
+- Tests d'integration ajoutes pour les endpoints admin principaux et l'invariant du dernier administrateur actif.
+- Validation `test-compile` backend reussie pendant l'integration initiale.
+
+## Cloture du 2026-07-12
+
+- Revue securite, accessibilite et qualite/tests effectuees en lecture seule via sous-agents.
+- Revalidation allowlist ajoutee sur chaque requete `/api/admin/**`.
+- Extraction de l'email OIDC centralisee pour les audits et `/api/admin/me`.
+- Invariant du dernier administrateur actif renforce par verrou transactionnel pessimiste.
+- Preview admin des quetes ajoutee dans le shell sans modification de statut editorial.
+- Formulaires admin corriges avec resumes d'erreurs focusables et associations ARIA.
+- Navigation mobile avec libelles visibles et focus vers le contenu principal apres navigation.
+- Procedure de recuperation allowlist documentee dans `docs/DEPLOIEMENT.md`.
+- Validations finales reussies : frontend lint/tests/build, backend `clean verify`, `git diff --check`.
 
 ## Validations prevues
 

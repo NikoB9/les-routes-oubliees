@@ -1,25 +1,75 @@
 <section class="page-intro" aria-labelledby="admin-title">
-  <p class="eyebrow">Administration</p>
   <h1 id="admin-title">Tableau de bord</h1>
   @if (error()) {
     <p class="alert" role="alert">La session administrateur ne peut pas etre verifiee.</p>
   } @else if (session(); as adminSession) {
     <p>Session ouverte pour {{ adminSession.email }}.</p>
     <button type="button" class="logout-button" (click)="logout()">Se deconnecter</button>
+    <nav class="admin-navigation" aria-label="Navigation administration">
+      <a href="#admin-dashboard-title">Dashboard</a>
+      <a href="#admin-notebook-title">Quetes</a>
+      <a href="#admin-media-title">Medias</a>
+      <a href="#admin-allowed-title">Administrateurs</a>
+      <a href="#admin-audit-title">Audit</a>
+    </nav>
   } @else {
     <p>Verification de la session administrateur.</p>
   }
 </section>
 
 @if (session()) {
+  <section class="admin-panel" aria-labelledby="admin-dashboard-title">
+    <div class="panel-heading">
+      <h2 id="admin-dashboard-title">Synthese</h2>
+    </div>
+
+    @if (dashboardError()) {
+      <p class="alert" role="alert">Impossible de charger la synthese d'administration.</p>
+    } @else if (dashboard(); as summary) {
+      <dl class="dashboard-grid">
+        <div>
+          <dt>Parchemin actif</dt>
+          <dd>{{ summary.activeHomeMessageTitle || 'Aucun' }}</dd>
+        </div>
+        <div>
+          <dt>Carte active</dt>
+          <dd>{{ summary.activeMapVisionName || 'Aucune' }}</dd>
+        </div>
+        <div>
+          <dt>Compagnie active</dt>
+          <dd>{{ summary.activeCompanyName || 'Aucune' }}</dd>
+        </div>
+        <div>
+          <dt>Quetes visibles</dt>
+          <dd>{{ summary.visibleQuestCount }}</dd>
+        </div>
+        <div>
+          <dt>Aventuriers visibles</dt>
+          <dd>{{ summary.visibleAdventurerCount }}</dd>
+        </div>
+        <div>
+          <dt>Medias</dt>
+          <dd>{{ summary.mediaCount }}</dd>
+        </div>
+        <div>
+          <dt>Administrateurs actifs</dt>
+          <dd>{{ summary.activeAdministratorCount }}</dd>
+        </div>
+      </dl>
+    } @else {
+      <p>Chargement de la synthese.</p>
+    }
+  </section>
+
   <section class="admin-panel" aria-labelledby="admin-notebook-title">
     <div class="panel-heading">
-      <p class="eyebrow">Bloc-notes</p>
       <h2 id="admin-notebook-title">Gestion des quetes</h2>
     </div>
 
     @if (questError()) {
-      <p class="alert" role="alert">Impossible de traiter le carnet pour le moment.</p>
+      <p id="quest-error-summary" #questErrorSummary class="alert" role="alert" tabindex="-1">
+        Impossible de traiter le carnet pour le moment. Verifiez les champs obligatoires et reessayez.
+      </p>
     }
     @if (questSaved()) {
       <p class="status" role="status">Quete enregistree.</p>
@@ -34,6 +84,7 @@
               <button
                 type="button"
                 [class.active]="selectedQuest()?.code === quest.code"
+                [attr.aria-current]="selectedQuest()?.code === quest.code ? 'true' : null"
                 (click)="selectQuest(quest.code)"
               >
                 <span>{{ quest.title }}</span>
@@ -57,6 +108,8 @@
                 name="title"
                 required
                 maxlength="160"
+                [attr.aria-invalid]="questError() ? 'true' : null"
+                [attr.aria-describedby]="questError() ? 'quest-error-summary' : null"
                 (ngModelChange)="updateField('title', $event)"
               />
             </label>
@@ -69,6 +122,8 @@
                 required
                 maxlength="700"
                 rows="3"
+                [attr.aria-invalid]="questError() ? 'true' : null"
+                [attr.aria-describedby]="questError() ? 'quest-error-summary' : null"
                 (ngModelChange)="updateField('summary', $event)"
               ></textarea>
             </label>
@@ -155,6 +210,31 @@
               <button type="button" class="danger" (click)="archiveQuest()">Archiver</button>
             </div>
           </form>
+
+          <section class="quest-preview" aria-labelledby="quest-preview-title">
+            <h3 id="quest-preview-title">Previsualisation admin</h3>
+            <p>Cette previsualisation ne change pas le statut de publication.</p>
+
+            <article>
+              <h4>{{ quest.title }}</h4>
+              <p>{{ quest.summary }}</p>
+
+              <h5>Evenements importants</h5>
+              <div class="markdown-content" [innerHTML]="quest.importantEventsHtml"></div>
+
+              <h5>Indices decouverts</h5>
+              <div class="markdown-content" [innerHTML]="quest.discoveredCluesHtml"></div>
+
+              <h5>Epreuves realisees</h5>
+              <div class="markdown-content" [innerHTML]="quest.completedTrialsHtml"></div>
+
+              <h5>Notes complementaires</h5>
+              <div class="markdown-content" [innerHTML]="quest.extraContentHtml"></div>
+
+              <h5>Brouillon administrateur</h5>
+              <div class="markdown-content" [innerHTML]="quest.adminDraftHtml"></div>
+            </article>
+          </section>
         }
       } @else {
         <p>Aucune quete disponible dans l'administration.</p>
@@ -164,12 +244,13 @@
 
   <section class="admin-panel" aria-labelledby="admin-media-title">
     <div class="panel-heading">
-      <p class="eyebrow">Medias</p>
       <h2 id="admin-media-title">Mediatheque</h2>
     </div>
 
     @if (mediaError()) {
-      <p class="alert" role="alert">Impossible de traiter les medias pour le moment.</p>
+      <p id="media-error-summary" #mediaErrorSummary class="alert" role="alert" tabindex="-1">
+        Impossible de traiter les medias pour le moment. Le fichier et le texte alternatif sont obligatoires.
+      </p>
     }
     @if (mediaSaved()) {
       <p class="status" role="status">Mediatheque mise a jour.</p>
@@ -185,6 +266,8 @@
           name="mediaFile"
           accept="image/png,image/jpeg,image/webp"
           required
+          [attr.aria-invalid]="mediaError() ? 'true' : null"
+          [attr.aria-describedby]="mediaError() ? 'media-error-summary' : null"
           (change)="selectMediaFile($event)"
         />
       </label>
@@ -196,6 +279,8 @@
           name="mediaAltText"
           required
           maxlength="280"
+          [attr.aria-invalid]="mediaError() ? 'true' : null"
+          [attr.aria-describedby]="mediaError() ? 'media-error-summary' : null"
           [ngModel]="mediaAltText()"
           (ngModelChange)="updateMediaAltText($event)"
         />
@@ -222,6 +307,109 @@
       </ul>
     } @else {
       <p>Aucun media ajoute pour le moment.</p>
+    }
+  </section>
+
+  <section class="admin-panel" aria-labelledby="admin-allowed-title">
+    <div class="panel-heading">
+      <h2 id="admin-allowed-title">Administrateurs autorises</h2>
+    </div>
+
+    @if (allowedEmailError()) {
+      <p id="allowed-email-error-summary" #allowedEmailErrorSummary class="alert" role="alert" tabindex="-1">
+        Impossible de traiter les administrateurs autorises. Verifiez l'email et l'invariant du dernier administrateur actif.
+      </p>
+    }
+    @if (allowedEmailSaved()) {
+      <p class="status" role="status">Liste des administrateurs mise a jour.</p>
+    }
+
+    <form class="allowed-form" (ngSubmit)="createAllowedEmail()" aria-labelledby="allowed-create-title">
+      <h3 id="allowed-create-title">Ajouter un administrateur</h3>
+
+      <label for="allowed-email">Email verifie Google</label>
+      <input
+        id="allowed-email"
+        type="email"
+        name="allowedEmail"
+        autocomplete="email"
+        required
+        maxlength="320"
+        [attr.aria-invalid]="allowedEmailError() ? 'true' : null"
+        [attr.aria-describedby]="allowedEmailError() ? 'allowed-email-error-summary' : null"
+        [ngModel]="allowedEmailForm().email"
+        (ngModelChange)="updateAllowedEmailForm('email', $event)"
+      />
+
+      <label for="allowed-label">Libelle interne</label>
+      <input
+        id="allowed-label"
+        type="text"
+        name="allowedLabel"
+        maxlength="120"
+        [attr.aria-describedby]="allowedEmailError() ? 'allowed-email-error-summary' : null"
+        [ngModel]="allowedEmailForm().label"
+        (ngModelChange)="updateAllowedEmailForm('label', $event)"
+      />
+
+      <button type="submit">Ajouter</button>
+    </form>
+
+    @if (allowedEmails().length > 0) {
+      <ul class="allowed-list" aria-label="Emails administrateurs autorises">
+        @for (allowedEmail of allowedEmails(); track allowedEmail.id) {
+          <li>
+            <div>
+              <strong>{{ allowedEmail.email }}</strong>
+              <span>{{ allowedEmail.active ? 'actif' : 'inactif' }}</span>
+            </div>
+
+            <label [for]="'allowed-label-' + allowedEmail.id">Libelle</label>
+            <input
+              [id]="'allowed-label-' + allowedEmail.id"
+              type="text"
+              maxlength="120"
+              [ngModel]="allowedEmail.label || ''"
+              [name]="'allowedLabel-' + allowedEmail.id"
+              (change)="updateAllowedEmailLabel(allowedEmail, $any($event.target).value)"
+            />
+
+            <div class="button-row">
+              <button type="button" (click)="toggleAllowedEmail(allowedEmail)">
+                {{ allowedEmail.active ? 'Desactiver' : 'Activer' }}
+              </button>
+              <button type="button" class="danger" (click)="deleteAllowedEmail(allowedEmail)">
+                Supprimer
+              </button>
+            </div>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p>Aucun administrateur autorise.</p>
+    }
+  </section>
+
+  <section class="admin-panel" aria-labelledby="admin-audit-title">
+    <div class="panel-heading">
+      <h2 id="admin-audit-title">Journal d'audit</h2>
+    </div>
+
+    @if (auditError()) {
+      <p class="alert" role="alert">Impossible de charger le journal d'audit.</p>
+    } @else if (auditLogs().length > 0) {
+      <ol class="audit-list">
+        @for (log of auditLogs(); track log.id) {
+          <li>
+            <strong>{{ log.action }}</strong>
+            <time [attr.datetime]="log.createdAt">{{ log.createdAt }}</time>
+            <p>{{ log.summary }}</p>
+            <small>{{ log.actorEmail || 'acteur inconnu' }} - {{ log.entityType }} {{ log.entityId || '' }}</small>
+          </li>
+        }
+      </ol>
+    } @else {
+      <p>Aucune action auditee pour le moment.</p>
     }
   </section>
 }

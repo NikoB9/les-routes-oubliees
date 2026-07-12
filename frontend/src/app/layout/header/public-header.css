@@ -1,4 +1,7 @@
 .site-header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 50;
   background: #221a14;
   color: #f8f0df;
   border-bottom: 1px solid #776142;

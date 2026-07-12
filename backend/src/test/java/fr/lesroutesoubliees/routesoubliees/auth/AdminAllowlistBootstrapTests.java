@@ -16,8 +16,8 @@ class AdminAllowlistBootstrapTests {
 	private final AdminAllowlistService allowlistService = mock(AdminAllowlistService.class);
 
 	@Test
-	void importsBootstrapEmailsWhenNoActiveAdminExists() {
-		when(allowlistService.hasActiveAdmin()).thenReturn(false);
+	void importsBootstrapEmailsWhenNoAdminExists() {
+		when(allowlistService.hasAnyAdmin()).thenReturn(false);
 		var properties = new SiteProperties("./media", 5_242_880, "http://localhost:4200", "Europe/Paris",
 			List.of("admin@example.com", "second@example.com"));
 		var bootstrap = new AdminAllowlistBootstrap(properties, allowlistService);
@@ -29,8 +29,8 @@ class AdminAllowlistBootstrapTests {
 	}
 
 	@Test
-	void doesNotImportBootstrapEmailsWhenActiveAdminExists() {
-		when(allowlistService.hasActiveAdmin()).thenReturn(true);
+	void doesNotImportBootstrapEmailsWhenAnyAdminExists() {
+		when(allowlistService.hasAnyAdmin()).thenReturn(true);
 		var properties = new SiteProperties("./media", 5_242_880, "http://localhost:4200", "Europe/Paris",
 			List.of("admin@example.com"));
 		var bootstrap = new AdminAllowlistBootstrap(properties, allowlistService);

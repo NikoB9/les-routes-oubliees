@@ -463,6 +463,7 @@ Règles :
 * aucune chaîne utilisateur importante codée en dur à plusieurs endroits ;
 * aucun HTML riche rendu avec une désactivation globale de la sécurité Angular ;
 * ne jamais utiliser `bypassSecurityTrustHtml` pour contourner la sanitation ;
+* ne pas utiliser de libellés « eyebrow » (kicker / sur-titre en majuscules au-dessus des titres) ; s’appuyer directement sur les titres `<h1>`/`<h2>` ;
 * respecter les règles de `docs/ACCESSIBILITE.md`.
 
 ## 10. Authentification et autorisation
