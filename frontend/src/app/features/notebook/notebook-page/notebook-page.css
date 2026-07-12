@@ -1,5 +1,12 @@
-.page-intro {
-  max-width: 48rem;
+.notebook-page {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 78rem;
+}
+
+.page-intro,
+.quest-entry {
+  max-width: 58rem;
 }
 
 .eyebrow {
@@ -9,7 +16,142 @@
   text-transform: uppercase;
 }
 
-h1 {
+h1,
+h2,
+h3,
+p,
+a,
+small {
+  overflow-wrap: anywhere;
+}
+
+h1,
+h2,
+h3 {
   margin: 0 0 1rem;
+  color: #211914;
+}
+
+h1 {
   font-size: 2rem;
+}
+
+.page-intro p,
+.summary,
+.quest-section,
+.markdown-content {
+  color: #4d3b2b;
+  line-height: 1.6;
+}
+
+.state-message {
+  margin: 0;
+  max-width: 42rem;
+  padding: 1rem;
+  background: #fff8e8;
+  border: 1px solid #d1ad68;
+  color: #3a2d21;
+  font-weight: 700;
+}
+
+.state-message.error {
+  border-color: #9d3b30;
+  color: #7a261d;
+}
+
+.notebook-layout {
+  display: grid;
+  grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.quest-nav {
+  border: 1px solid #d1ad68;
+  background: #fff8e8;
+}
+
+.quest-nav h2 {
+  margin: 0;
+  padding: 1rem;
+  font-size: 1.1rem;
+}
+
+.quest-nav ul {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0 0.75rem 0.75rem;
+  list-style: none;
+}
+
+.quest-nav a {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.8rem;
+  color: #211914;
+  text-decoration: none;
+  border-left: 4px solid transparent;
+}
+
+.quest-nav a:hover,
+.quest-nav a:focus-visible,
+.quest-nav a[aria-current='page'] {
+  background: #f3dfb6;
+  border-left-color: #7a261d;
+}
+
+.quest-nav a:focus-visible {
+  outline: 3px solid #7a261d;
+  outline-offset: 2px;
+}
+
+.quest-nav span {
+  font-weight: 900;
+}
+
+.quest-nav small {
+  color: #5c4632;
+  line-height: 1.35;
+}
+
+.quest-entry {
+  padding: 1.25rem;
+  border: 1px solid #d1ad68;
+  background: #fffaf0;
+}
+
+.summary {
+  margin: 0 0 1.5rem;
+  font-weight: 700;
+}
+
+.quest-section {
+  padding-top: 1rem;
+  border-top: 1px solid #e4c98f;
+}
+
+.quest-section + .quest-section {
+  margin-top: 1rem;
+}
+
+.markdown-content :where(p, ul, blockquote) {
+  margin: 0 0 1rem;
+}
+
+.markdown-content :where(a) {
+  color: #694116;
+  font-weight: 800;
+}
+
+.markdown-content :where(blockquote) {
+  padding-left: 1rem;
+  border-left: 4px solid #d1ad68;
+  color: #3a2d21;
+}
+
+@media (max-width: 760px) {
+  .notebook-layout {
+    grid-template-columns: 1fr;
+  }
 }

@@ -1,8 +1,11 @@
 package fr.lesroutesoubliees.routesoubliees.quest;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
-public record PublicQuestDetailResponse(
+import fr.lesroutesoubliees.routesoubliees.shared.EditorialStatus;
+
+public record AdminQuestResponse(
 	UUID id,
 	String code,
 	String title,
@@ -15,6 +18,12 @@ public record PublicQuestDetailResponse(
 	String completedTrialsHtml,
 	String extraContentMarkdown,
 	String extraContentHtml,
-	int displayOrder
+	String adminDraftMarkdown,
+	String adminDraftHtml,
+	EditorialStatus status,
+	boolean visibleToPlayers,
+	int displayOrder,
+	OffsetDateTime createdAt,
+	OffsetDateTime updatedAt
 ) {
 }

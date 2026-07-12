@@ -1,9 +1,58 @@
-<section class="page-intro" aria-labelledby="notebook-title">
-  <p class="eyebrow">Carnet</p>
-  <h1 id="notebook-title">Bloc-notes des quêtes</h1>
-  @if (questCode) {
-    <p>Entrée demandée : {{ questCode }}.</p>
+<section class="notebook-page" aria-labelledby="notebook-title">
+  <header class="page-intro">
+    <p class="eyebrow">Carnet</p>
+    <h1 id="notebook-title">Bloc-notes des quetes</h1>
+    <p>Consultez uniquement les pages publiees et revelees a la Compagnie.</p>
+  </header>
+
+  @if (loading()) {
+    <p class="state-message" role="status">Chargement du carnet.</p>
+  } @else if (loadError()) {
+    <p class="state-message error" role="alert">
+      Impossible de charger le carnet pour le moment.
+    </p>
+  } @else if (!hasQuests()) {
+    <p class="state-message">
+      Les pages du carnet demeurent encore scellees. Elles se devoileront lorsque la
+      Compagnie aura franchi ses premieres epreuves.
+    </p>
   } @else {
-    <p>Les quêtes révélées seront listées ici lorsque l'API publique sera disponible.</p>
+    <div class="notebook-layout">
+      <nav class="quest-nav" aria-label="Quetes revelees">
+        <h2>Pages revelees</h2>
+        <ul>
+          @for (quest of quests(); track quest.id) {
+            <li>
+              <a
+                [routerLink]="['/notebook', quest.code]"
+                [attr.aria-current]="selectedQuest()?.code === quest.code ? 'page' : null"
+              >
+                <span>{{ quest.title }}</span>
+                <small>{{ quest.summary }}</small>
+              </a>
+            </li>
+          }
+        </ul>
+      </nav>
+
+      @if (selectedQuest(); as quest) {
+        <article class="quest-entry" [attr.aria-labelledby]="'quest-' + quest.code">
+          <p class="eyebrow">Quete revelee</p>
+          <h2 [id]="'quest-' + quest.code">{{ quest.title }}</h2>
+          <p class="summary">{{ quest.summary }}</p>
+
+          @for (section of sections(quest); track section.title) {
+            <section class="quest-section" [attr.aria-labelledby]="quest.code + '-' + $index">
+              <h3 [id]="quest.code + '-' + $index">{{ section.title }}</h3>
+              @if (section.html) {
+                <div class="markdown-content" [innerHTML]="section.html"></div>
+              } @else {
+                <p>Aucune note publique n'est encore disponible.</p>
+              }
+            </section>
+          }
+        </article>
+      }
+    </div>
   }
 </section>

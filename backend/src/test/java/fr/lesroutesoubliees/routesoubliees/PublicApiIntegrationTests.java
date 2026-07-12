@@ -69,13 +69,20 @@ class PublicApiIntegrationTests {
 			.andExpect(jsonPath("$", hasSize(2)))
 			.andExpect(jsonPath("$[0].code").value("QUEST_1"))
 			.andExpect(jsonPath("$[1].code").value("QUEST_2"));
+
+		mvc.perform(get("/api/public/notebook"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$", hasSize(2)));
 	}
 
 	@Test
 	void rejectsDraftHiddenAndArchivedQuestDetails() throws Exception {
 		mvc.perform(get("/api/public/quests/QUEST_1"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.title").value("Premiere quete de demonstration"));
+			.andExpect(jsonPath("$.title").value("Premiere quete de demonstration"))
+			.andExpect(jsonPath("$.importantEventsHtml").exists())
+			.andExpect(jsonPath("$.adminDraftMarkdown").doesNotExist())
+			.andExpect(jsonPath("$.adminDraftHtml").doesNotExist());
 
 		mvc.perform(get("/api/public/quests/QUEST_3"))
 			.andExpect(status().isNotFound());

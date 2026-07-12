@@ -2,11 +2,163 @@
   <p class="eyebrow">Administration</p>
   <h1 id="admin-title">Tableau de bord</h1>
   @if (error()) {
-    <p class="alert" role="alert">La session administrateur ne peut pas être vérifiée.</p>
+    <p class="alert" role="alert">La session administrateur ne peut pas etre verifiee.</p>
   } @else if (session(); as adminSession) {
     <p>Session ouverte pour {{ adminSession.email }}.</p>
-    <button type="button" class="logout-button" (click)="logout()">Se déconnecter</button>
+    <button type="button" class="logout-button" (click)="logout()">Se deconnecter</button>
   } @else {
-    <p>Vérification de la session administrateur.</p>
+    <p>Verification de la session administrateur.</p>
   }
 </section>
+
+@if (session()) {
+  <section class="admin-panel" aria-labelledby="admin-notebook-title">
+    <div class="panel-heading">
+      <p class="eyebrow">Bloc-notes</p>
+      <h2 id="admin-notebook-title">Gestion des quetes</h2>
+    </div>
+
+    @if (questError()) {
+      <p class="alert" role="alert">Impossible de traiter le carnet pour le moment.</p>
+    }
+    @if (questSaved()) {
+      <p class="status" role="status">Quete enregistree.</p>
+    }
+
+    <div class="quest-admin-layout">
+      <nav class="quest-list" aria-label="Quetes administrables">
+        <h3>Entrees fixes</h3>
+        <ul>
+          @for (quest of quests(); track quest.id) {
+            <li>
+              <button
+                type="button"
+                [class.active]="selectedQuest()?.code === quest.code"
+                (click)="selectQuest(quest.code)"
+              >
+                <span>{{ quest.title }}</span>
+                <small>{{ quest.status }} - {{ quest.visibleToPlayers ? 'visible' : 'masquee' }}</small>
+              </button>
+            </li>
+          }
+        </ul>
+      </nav>
+
+      @if (selectedQuest(); as quest) {
+        @if (editor(); as form) {
+          <form class="quest-form" (ngSubmit)="saveQuest()" [attr.aria-labelledby]="'edit-' + quest.code">
+            <h3 [id]="'edit-' + quest.code">{{ quest.code }}</h3>
+
+            <label>
+              Titre public
+              <input
+                type="text"
+                [ngModel]="form.title"
+                name="title"
+                required
+                maxlength="160"
+                (ngModelChange)="updateField('title', $event)"
+              />
+            </label>
+
+            <label>
+              Resume public
+              <textarea
+                [ngModel]="form.summary"
+                name="summary"
+                required
+                maxlength="700"
+                rows="3"
+                (ngModelChange)="updateField('summary', $event)"
+              ></textarea>
+            </label>
+
+            <label>
+              Evenements importants
+              <textarea
+                [ngModel]="form.importantEventsMarkdown"
+                name="importantEventsMarkdown"
+                rows="5"
+                (ngModelChange)="updateField('importantEventsMarkdown', $event)"
+              ></textarea>
+            </label>
+
+            <label>
+              Indices decouverts
+              <textarea
+                [ngModel]="form.discoveredCluesMarkdown"
+                name="discoveredCluesMarkdown"
+                rows="5"
+                (ngModelChange)="updateField('discoveredCluesMarkdown', $event)"
+              ></textarea>
+            </label>
+
+            <label>
+              Epreuves realisees
+              <textarea
+                [ngModel]="form.completedTrialsMarkdown"
+                name="completedTrialsMarkdown"
+                rows="5"
+                (ngModelChange)="updateField('completedTrialsMarkdown', $event)"
+              ></textarea>
+            </label>
+
+            <label>
+              Notes complementaires publiables
+              <textarea
+                [ngModel]="form.extraContentMarkdown"
+                name="extraContentMarkdown"
+                rows="5"
+                (ngModelChange)="updateField('extraContentMarkdown', $event)"
+              ></textarea>
+            </label>
+
+            <label>
+              Brouillon administrateur
+              <textarea
+                [ngModel]="form.adminDraftMarkdown"
+                name="adminDraftMarkdown"
+                rows="5"
+                (ngModelChange)="updateField('adminDraftMarkdown', $event)"
+              ></textarea>
+            </label>
+
+            <div class="form-row">
+              <label>
+                Statut
+                <select
+                  [ngModel]="form.status"
+                  name="status"
+                  (ngModelChange)="updateStatus($event)"
+                >
+                  @for (status of statuses; track status) {
+                    <option [value]="status">{{ status }}</option>
+                  }
+                </select>
+              </label>
+
+              <label class="checkbox-field">
+                <input
+                  type="checkbox"
+                  [ngModel]="form.visibleToPlayers"
+                  name="visibleToPlayers"
+                  (ngModelChange)="updateField('visibleToPlayers', $event)"
+                />
+                Afficher aux aventuriers
+              </label>
+            </div>
+
+            <div class="button-row">
+              <button type="submit">Enregistrer</button>
+              <button type="button" (click)="publishQuest()">Publier et afficher</button>
+              <button type="button" (click)="hideQuest()">Masquer</button>
+              <button type="button" class="danger" (click)="archiveQuest()">Archiver</button>
+            </div>
+          </form>
+        }
+      } @else {
+        <p>Aucune quete disponible dans l'administration.</p>
+      }
+    </div>
+  </section>
+}
