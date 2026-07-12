@@ -161,4 +161,67 @@
       }
     </div>
   </section>
+
+  <section class="admin-panel" aria-labelledby="admin-media-title">
+    <div class="panel-heading">
+      <p class="eyebrow">Medias</p>
+      <h2 id="admin-media-title">Mediatheque</h2>
+    </div>
+
+    @if (mediaError()) {
+      <p class="alert" role="alert">Impossible de traiter les medias pour le moment.</p>
+    }
+    @if (mediaSaved()) {
+      <p class="status" role="status">Mediatheque mise a jour.</p>
+    }
+
+    <form class="media-form" (ngSubmit)="uploadMedia()" aria-labelledby="media-upload-title">
+      <h3 id="media-upload-title">Ajouter une image</h3>
+
+      <label>
+        Fichier image PNG, JPEG ou WebP
+        <input
+          type="file"
+          name="mediaFile"
+          accept="image/png,image/jpeg,image/webp"
+          required
+          (change)="selectMediaFile($event)"
+        />
+      </label>
+
+      <label>
+        Texte alternatif
+        <input
+          type="text"
+          name="mediaAltText"
+          required
+          maxlength="280"
+          [ngModel]="mediaAltText()"
+          (ngModelChange)="updateMediaAltText($event)"
+        />
+      </label>
+
+      <button type="submit">Ajouter le media</button>
+    </form>
+
+    @if (media().length > 0) {
+      <ul class="media-grid" aria-label="Medias disponibles">
+        @for (item of media(); track item.id) {
+          <li>
+            <img [src]="item.url" [alt]="item.altText" />
+            <div>
+              <h3>{{ item.originalFilename }}</h3>
+              <p>{{ item.mimeType }} - {{ item.width }} x {{ item.height }} - {{ item.sizeBytes }} octets</p>
+              <p><code>{{ item.url }}</code></p>
+              <button type="button" class="danger" (click)="deleteMedia(item)">
+                Supprimer ce media
+              </button>
+            </div>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p>Aucun media ajoute pour le moment.</p>
+    }
+  </section>
 }

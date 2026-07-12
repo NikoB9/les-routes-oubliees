@@ -92,6 +92,8 @@
 
 .quest-list button:focus-visible,
 .quest-form :where(input, textarea, select, button):focus-visible,
+.media-form :where(input, button):focus-visible,
+.media-grid button:focus-visible,
 .logout-button:focus-visible {
   outline: 3px solid #7a261d;
   outline-offset: 2px;
@@ -162,6 +164,90 @@
 }
 
 .button-row .danger {
+  background: #7a261d;
+}
+
+.media-form {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #d1ad68;
+  background: #fffaf0;
+}
+
+.media-form h3,
+.media-grid h3 {
+  margin: 0;
+  color: #211914;
+}
+
+.media-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: #3a2d21;
+  font-weight: 800;
+}
+
+.media-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem;
+  border: 1px solid #8f7650;
+  background: #fff;
+  color: #211914;
+  font: inherit;
+}
+
+.media-form button,
+.media-grid button {
+  width: fit-content;
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border: 0;
+  background: #211914;
+  color: #f8f0df;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.media-grid li {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #d1ad68;
+  background: #fff8e8;
+}
+
+.media-grid img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  background: #f1e4c9;
+}
+
+.media-grid div {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.media-grid p {
+  margin: 0;
+}
+
+.media-grid code {
+  overflow-wrap: anywhere;
+}
+
+.media-grid .danger {
   background: #7a261d;
 }
 
