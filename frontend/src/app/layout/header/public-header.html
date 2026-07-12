@@ -11,4 +11,20 @@
       <span class="brand-subtitle">Compagnie d'Arkhavel</span>
     </span>
   </a>
+
+  <div class="admin-seal">
+    <button
+      type="button"
+      class="admin-seal-trigger"
+      aria-label="Reveler l'acces administrateur"
+      title="Sceau des eclaireurs"
+      (click)="revealAdminGate()"
+    >
+      <span aria-hidden="true">*</span>
+    </button>
+
+    @if (adminGateRevealed()) {
+      <a class="admin-gate-link" routerLink="/admin/login">Passage des eclaireurs</a>
+    }
+  </div>
 </header>

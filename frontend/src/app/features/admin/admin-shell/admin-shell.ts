@@ -1,6 +1,6 @@
 import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { AdminAuthService } from '../../../core/auth/admin-auth.service';
 import { AdminSession } from '../../../core/auth/admin-session';
@@ -22,7 +22,7 @@ import { AdminApiService } from '../admin-api.service';
 
 @Component({
   selector: 'app-admin-shell',
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './admin-shell.html',
   styleUrl: './admin-shell.css',
 })

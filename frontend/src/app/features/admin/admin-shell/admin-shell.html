@@ -6,11 +6,14 @@
     <p>Session ouverte pour {{ adminSession.email }}.</p>
     <button type="button" class="logout-button" (click)="logout()">Se deconnecter</button>
     <nav class="admin-navigation" aria-label="Navigation administration">
-      <a href="#admin-dashboard-title">Dashboard</a>
-      <a href="#admin-notebook-title">Quetes</a>
-      <a href="#admin-media-title">Medias</a>
-      <a href="#admin-allowed-title">Administrateurs</a>
-      <a href="#admin-audit-title">Audit</a>
+      <a routerLink="/admin" fragment="admin-dashboard-title">Dashboard</a>
+      <a routerLink="/admin/notebook" fragment="admin-notebook-title">Quetes</a>
+      <a routerLink="/admin/media" fragment="admin-media-title">Medias</a>
+      <a routerLink="/admin/administrators" fragment="admin-allowed-title">Administrateurs</a>
+      <a routerLink="/admin/audit" fragment="admin-audit-title">Audit</a>
+      <a routerLink="/admin/home" fragment="admin-planned-title">Accueil</a>
+      <a routerLink="/admin/map" fragment="admin-planned-title">Carte</a>
+      <a routerLink="/admin/settings" fragment="admin-planned-title">Parametres</a>
     </nav>
   } @else {
     <p>Verification de la session administrateur.</p>
@@ -59,6 +62,32 @@
     } @else {
       <p>Chargement de la synthese.</p>
     }
+  </section>
+
+  <section class="admin-panel" aria-labelledby="admin-planned-title">
+    <div class="panel-heading">
+      <h2 id="admin-planned-title">Modules metier planifies</h2>
+    </div>
+
+    <p>
+      Ces entrees admin sont routees et protegees, mais leur edition de contenu est decoupee
+      dans les lots metier suivants.
+    </p>
+
+    <ul class="planned-modules" aria-label="Modules admin planifies">
+      <li>
+        <strong>Accueil</strong>
+        <span>Lot 10 - parchemins, Compagnie et aventuriers.</span>
+      </li>
+      <li>
+        <strong>Carte</strong>
+        <span>Lot 11 - fond actif et reperes.</span>
+      </li>
+      <li>
+        <strong>Parametres</strong>
+        <span>Lot 13 - nom du site, logo, fuseau et maintenance.</span>
+      </li>
+    </ul>
   </section>
 
   <section class="admin-panel" aria-labelledby="admin-notebook-title">
