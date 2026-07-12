@@ -1,9 +1,26 @@
-import { Routes } from '@angular/router';
+import { ActivatedRouteSnapshot, ResolveFn, Routes } from '@angular/router';
 
 import { adminAuthGuard } from '../../core/guards/admin-auth.guard';
 
 const loadAdminShell = () =>
   import('./admin-shell/admin-shell').then((module) => module.AdminShell);
+
+const SECTION_TITLES: Record<string, string> = {
+  dashboard: 'Administration - Les Routes Oubliees',
+  home: 'Accueil admin - Les Routes Oubliees',
+  group: 'Compagnie admin - Les Routes Oubliees',
+  adventurers: 'Aventuriers admin - Les Routes Oubliees',
+  map: 'Carte admin - Les Routes Oubliees',
+  notebook: 'Quetes admin - Les Routes Oubliees',
+  media: 'Medias admin - Les Routes Oubliees',
+  administrators: 'Administrateurs - Les Routes Oubliees',
+  audit: 'Audit admin - Les Routes Oubliees',
+  settings: 'Parametres admin - Les Routes Oubliees',
+};
+
+const adminSectionTitle: ResolveFn<string> = (route: ActivatedRouteSnapshot) =>
+  SECTION_TITLES[route.paramMap.get('section') ?? 'dashboard'] ??
+  'Administration - Les Routes Oubliees';
 
 export const adminRoutes: Routes = [
   {
@@ -13,63 +30,15 @@ export const adminRoutes: Routes = [
     title: 'Connexion administration - Les Routes Oubliees',
   },
   {
+    // Le guard n'est evalue qu'a l'entree de l'espace admin : la navigation
+    // entre sections ne change que le parametre `:section`, donc l'instance
+    // AdminShell est reutilisee (pas de re-verification de session ni de
+    // re-chargement complet a chaque clic).
     path: '',
     canActivate: [adminAuthGuard],
-    loadComponent: loadAdminShell,
-    title: 'Administration - Les Routes Oubliees',
-  },
-  {
-    path: 'home',
-    canActivate: [adminAuthGuard],
-    loadComponent: loadAdminShell,
-    title: 'Accueil admin - Les Routes Oubliees',
-  },
-  {
-    path: 'group',
-    canActivate: [adminAuthGuard],
-    loadComponent: loadAdminShell,
-    title: 'Compagnie admin - Les Routes Oubliees',
-  },
-  {
-    path: 'adventurers',
-    canActivate: [adminAuthGuard],
-    loadComponent: loadAdminShell,
-    title: 'Aventuriers admin - Les Routes Oubliees',
-  },
-  {
-    path: 'map',
-    canActivate: [adminAuthGuard],
-    loadComponent: loadAdminShell,
-    title: 'Carte admin - Les Routes Oubliees',
-  },
-  {
-    path: 'notebook',
-    canActivate: [adminAuthGuard],
-    loadComponent: loadAdminShell,
-    title: 'Quetes admin - Les Routes Oubliees',
-  },
-  {
-    path: 'media',
-    canActivate: [adminAuthGuard],
-    loadComponent: loadAdminShell,
-    title: 'Medias admin - Les Routes Oubliees',
-  },
-  {
-    path: 'administrators',
-    canActivate: [adminAuthGuard],
-    loadComponent: loadAdminShell,
-    title: 'Administrateurs - Les Routes Oubliees',
-  },
-  {
-    path: 'audit',
-    canActivate: [adminAuthGuard],
-    loadComponent: loadAdminShell,
-    title: 'Audit admin - Les Routes Oubliees',
-  },
-  {
-    path: 'settings',
-    canActivate: [adminAuthGuard],
-    loadComponent: loadAdminShell,
-    title: 'Parametres admin - Les Routes Oubliees',
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      { path: ':section', loadComponent: loadAdminShell, title: adminSectionTitle },
+    ],
   },
 ];

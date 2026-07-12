@@ -45,6 +45,24 @@ class CompanyProfile {
 	protected CompanyProfile() {
 	}
 
+	CompanyProfile(
+		UUID id,
+		String name,
+		String emblemPath,
+		String imageAlt,
+		String shortDescription,
+		String longDescriptionMarkdown,
+		boolean active
+	) {
+		this.id = id;
+		this.name = name;
+		this.emblemPath = emblemPath;
+		this.imageAlt = imageAlt;
+		this.shortDescription = shortDescription;
+		this.longDescriptionMarkdown = longDescriptionMarkdown;
+		this.active = active;
+	}
+
 	UUID id() {
 		return id;
 	}
@@ -67,6 +85,38 @@ class CompanyProfile {
 
 	String longDescriptionMarkdown() {
 		return longDescriptionMarkdown;
+	}
+
+	boolean active() {
+		return active;
+	}
+
+	OffsetDateTime createdAt() {
+		return createdAt;
+	}
+
+	OffsetDateTime updatedAt() {
+		return updatedAt;
+	}
+
+	void update(
+		String name,
+		String emblemPath,
+		String imageAlt,
+		String shortDescription,
+		String longDescriptionMarkdown,
+		boolean active
+	) {
+		this.name = name;
+		this.emblemPath = emblemPath;
+		this.imageAlt = imageAlt;
+		this.shortDescription = shortDescription;
+		this.longDescriptionMarkdown = longDescriptionMarkdown;
+		this.active = active;
+	}
+
+	void deactivate() {
+		active = false;
 	}
 
 	@PrePersist

@@ -1,6 +1,7 @@
-import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AdminAuthService } from '../../../core/auth/admin-auth.service';
 import { AdminSession } from '../../../core/auth/admin-session';
@@ -14,15 +15,24 @@ import { AdminMedia } from '../media-api.models';
 import { MediaApiService } from '../media-api.service';
 import {
   AdminAllowedEmail,
+  AdminAdventurer,
+  AdminAdventurerUpsert,
   AdminAllowedEmailUpdate,
   AdminAuditLog,
+  AdminCompany,
+  AdminCompanyUpdate,
   AdminDashboard,
+  AdminHomeMessage,
+  AdminHomeMessageUpsert,
+  EditorialStatus,
+  HomeMessageImportance,
 } from '../admin-api.models';
 import { AdminApiService } from '../admin-api.service';
+import { TabBarComponent } from '../../../shared/components/tab-bar/tab-bar';
 
 @Component({
   selector: 'app-admin-shell',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, TabBarComponent],
   templateUrl: './admin-shell.html',
   styleUrl: './admin-shell.css',
 })
@@ -32,11 +42,14 @@ export class AdminShell {
   private readonly notebookApi = inject(NotebookApiService);
   private readonly mediaApi = inject(MediaApiService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly questErrorSummary = viewChild<ElementRef<HTMLElement>>('questErrorSummary');
   private readonly mediaErrorSummary = viewChild<ElementRef<HTMLElement>>('mediaErrorSummary');
   private readonly allowedEmailErrorSummary = viewChild<ElementRef<HTMLElement>>('allowedEmailErrorSummary');
 
   protected readonly session = signal<AdminSession | null>(null);
+  protected readonly section = signal<string>('dashboard');
   protected readonly error = signal(false);
   protected readonly questError = signal(false);
   protected readonly questSaved = signal(false);
@@ -51,6 +64,28 @@ export class AdminShell {
   protected readonly mediaAltText = signal('');
   protected readonly dashboard = signal<AdminDashboard | null>(null);
   protected readonly dashboardError = signal(false);
+  protected readonly homeMessages = signal<AdminHomeMessage[]>([]);
+  protected readonly selectedHomeMessage = signal<AdminHomeMessage | null>(null);
+  protected readonly homeMessageForm = signal<AdminHomeMessageUpsert>(this.emptyHomeMessageForm());
+  protected readonly homeMessageError = signal(false);
+  protected readonly homeMessageSaved = signal(false);
+  protected readonly homeMessageStatuses: EditorialStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+  protected readonly homeMessageImportances: HomeMessageImportance[] = [
+    'INFORMATION',
+    'WARNING',
+    'QUEST_IMMINENT',
+    'SUCCESS',
+    'MYSTERY',
+  ];
+  protected readonly company = signal<AdminCompany | null>(null);
+  protected readonly companyForm = signal<AdminCompanyUpdate>(this.emptyCompanyForm());
+  protected readonly companyError = signal(false);
+  protected readonly companySaved = signal(false);
+  protected readonly adventurers = signal<AdminAdventurer[]>([]);
+  protected readonly selectedAdventurer = signal<AdminAdventurer | null>(null);
+  protected readonly adventurerForm = signal<AdminAdventurerUpsert>(this.emptyAdventurerForm());
+  protected readonly adventurerError = signal(false);
+  protected readonly adventurerSaved = signal(false);
   protected readonly allowedEmails = signal<AdminAllowedEmail[]>([]);
   protected readonly allowedEmailError = signal(false);
   protected readonly allowedEmailSaved = signal(false);
@@ -59,23 +94,216 @@ export class AdminShell {
   protected readonly auditError = signal(false);
 
   constructor() {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.section.set(params.get('section') ?? 'dashboard');
+      if (this.session()) {
+        this.loadSectionData(this.section());
+      }
+    });
+
     this.authService.currentSession().subscribe({
       next: (session) => {
         this.session.set(session);
-        this.loadDashboard();
-        this.loadQuests();
-        this.loadMedia();
-        this.loadAllowedEmails();
-        this.loadAuditLogs();
+        this.loadSectionData(this.section());
       },
       error: () => this.error.set(true),
     });
+  }
+
+  private loadSectionData(section: string) {
+    switch (section) {
+      case 'dashboard':
+        this.loadDashboard();
+        break;
+      case 'home':
+        this.loadHomeMessages();
+        break;
+      case 'group':
+        this.loadCompany();
+        break;
+      case 'adventurers':
+        this.loadAdventurers();
+        break;
+      case 'notebook':
+        this.loadQuests();
+        break;
+      case 'media':
+        this.loadMedia();
+        break;
+      case 'administrators':
+        this.loadAllowedEmails();
+        break;
+      case 'audit':
+        this.loadAuditLogs();
+        break;
+      default:
+        break;
+    }
   }
 
   protected logout() {
     this.authService.logout().subscribe({
       next: () => void this.router.navigate(['/admin/login']),
       error: () => this.error.set(true),
+    });
+  }
+
+  protected selectHomeMessage(message: AdminHomeMessage | null) {
+    this.selectedHomeMessage.set(message);
+    this.homeMessageSaved.set(false);
+    this.homeMessageError.set(false);
+    this.homeMessageForm.set(message ? this.toHomeMessageForm(message) : this.emptyHomeMessageForm());
+  }
+
+  protected updateHomeMessageField<K extends keyof AdminHomeMessageUpsert>(
+    field: K,
+    value: AdminHomeMessageUpsert[K],
+  ) {
+    this.homeMessageForm.update((form) => ({ ...form, [field]: value }));
+    this.homeMessageSaved.set(false);
+    this.homeMessageError.set(false);
+  }
+
+  protected saveHomeMessage() {
+    const message = this.selectedHomeMessage();
+    const payload = this.normalizedHomeMessagePayload();
+    const request = message
+      ? this.adminApi.updateHomeMessage(message.id, payload)
+      : this.adminApi.createHomeMessage(payload);
+
+    request.subscribe({
+      next: (saved) => {
+        this.upsertHomeMessage(saved);
+        this.selectHomeMessage(saved);
+        this.homeMessageSaved.set(true);
+        this.loadDashboard();
+        this.loadAuditLogs();
+      },
+      error: () => this.homeMessageError.set(true),
+    });
+  }
+
+  protected activateHomeMessage(message: AdminHomeMessage) {
+    this.adminApi.activateHomeMessage(message.id).subscribe({
+      next: (updated) => {
+        this.homeMessages.update((messages) =>
+          messages.map((item) => ({ ...item, active: item.id === updated.id })),
+        );
+        this.upsertHomeMessage(updated);
+        this.selectHomeMessage(updated);
+        this.homeMessageSaved.set(true);
+        this.loadDashboard();
+        this.loadAuditLogs();
+      },
+      error: () => this.homeMessageError.set(true),
+    });
+  }
+
+  protected deleteHomeMessage(message: AdminHomeMessage) {
+    this.adminApi.deleteHomeMessage(message.id).subscribe({
+      next: () => {
+        this.homeMessages.update((messages) => messages.filter((item) => item.id !== message.id));
+        if (this.selectedHomeMessage()?.id === message.id) {
+          this.selectHomeMessage(null);
+        }
+        this.homeMessageSaved.set(true);
+        this.loadDashboard();
+        this.loadAuditLogs();
+      },
+      error: () => this.homeMessageError.set(true),
+    });
+  }
+
+  protected updateCompanyField<K extends keyof AdminCompanyUpdate>(
+    field: K,
+    value: AdminCompanyUpdate[K],
+  ) {
+    this.companyForm.update((form) => ({ ...form, [field]: value }));
+    this.companySaved.set(false);
+    this.companyError.set(false);
+  }
+
+  protected saveCompany() {
+    const payload = this.normalizedCompanyPayload();
+    this.adminApi.updateCompany(payload).subscribe({
+      next: (company) => {
+        this.company.set(company);
+        this.companyForm.set(this.toCompanyForm(company));
+        this.companySaved.set(true);
+        this.companyError.set(false);
+        this.loadDashboard();
+        this.loadAuditLogs();
+      },
+      error: () => this.companyError.set(true),
+    });
+  }
+
+  protected selectAdventurer(adventurer: AdminAdventurer | null) {
+    this.selectedAdventurer.set(adventurer);
+    this.adventurerSaved.set(false);
+    this.adventurerError.set(false);
+    this.adventurerForm.set(adventurer ? this.toAdventurerForm(adventurer) : this.emptyAdventurerForm());
+  }
+
+  protected updateAdventurerField<K extends keyof AdminAdventurerUpsert>(
+    field: K,
+    value: AdminAdventurerUpsert[K],
+  ) {
+    this.adventurerForm.update((form) => ({ ...form, [field]: value }));
+    this.adventurerSaved.set(false);
+    this.adventurerError.set(false);
+  }
+
+  protected saveAdventurer() {
+    const adventurer = this.selectedAdventurer();
+    const payload = this.normalizedAdventurerPayload();
+    const request = adventurer
+      ? this.adminApi.updateAdventurer(adventurer.id, payload)
+      : this.adminApi.createAdventurer(payload);
+
+    request.subscribe({
+      next: (saved) => {
+        this.upsertAdventurer(saved);
+        this.selectAdventurer(saved);
+        this.adventurerSaved.set(true);
+        this.loadDashboard();
+        this.loadAuditLogs();
+      },
+      error: () => this.adventurerError.set(true),
+    });
+  }
+
+  protected moveAdventurer(adventurer: AdminAdventurer, direction: -1 | 1) {
+    const current = this.adventurers();
+    const index = current.findIndex((item) => item.id === adventurer.id);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= current.length) {
+      return;
+    }
+    const reordered = [...current];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    this.adminApi.reorderAdventurers(reordered.map((item) => item.id)).subscribe({
+      next: (updated) => {
+        this.adventurers.set(updated);
+        this.adventurerSaved.set(true);
+        this.loadAuditLogs();
+      },
+      error: () => this.adventurerError.set(true),
+    });
+  }
+
+  protected deleteAdventurer(adventurer: AdminAdventurer) {
+    this.adminApi.deleteAdventurer(adventurer.id).subscribe({
+      next: () => {
+        this.adventurers.update((items) => items.filter((item) => item.id !== adventurer.id));
+        if (this.selectedAdventurer()?.id === adventurer.id) {
+          this.selectAdventurer(null);
+        }
+        this.adventurerSaved.set(true);
+        this.loadDashboard();
+        this.loadAuditLogs();
+      },
+      error: () => this.adventurerError.set(true),
     });
   }
 
@@ -288,6 +516,39 @@ export class AdminShell {
     });
   }
 
+  private loadHomeMessages() {
+    this.adminApi.listHomeMessages().subscribe({
+      next: (messages) => {
+        this.homeMessages.set(messages);
+        this.selectHomeMessage(messages[0] ?? null);
+        this.homeMessageError.set(false);
+      },
+      error: () => this.homeMessageError.set(true),
+    });
+  }
+
+  private loadCompany() {
+    this.adminApi.getCompany().subscribe({
+      next: (company) => {
+        this.company.set(company);
+        this.companyForm.set(this.toCompanyForm(company));
+        this.companyError.set(false);
+      },
+      error: () => this.companyError.set(true),
+    });
+  }
+
+  private loadAdventurers() {
+    this.adminApi.listAdventurers().subscribe({
+      next: (adventurers) => {
+        this.adventurers.set(adventurers);
+        this.selectAdventurer(adventurers[0] ?? null);
+        this.adventurerError.set(false);
+      },
+      error: () => this.adventurerError.set(true),
+    });
+  }
+
   private loadDashboard() {
     this.adminApi.getDashboard().subscribe({
       next: (dashboard) => {
@@ -344,6 +605,142 @@ export class AdminShell {
     this.quests.update((quests) =>
       quests.map((quest) => (quest.code === updated.code ? updated : quest)),
     );
+  }
+
+  private upsertHomeMessage(saved: AdminHomeMessage) {
+    this.homeMessages.update((messages) => {
+      const exists = messages.some((message) => message.id === saved.id);
+      if (exists) {
+        return messages.map((message) => (message.id === saved.id ? saved : message));
+      }
+      return [saved, ...messages];
+    });
+  }
+
+  private emptyHomeMessageForm(): AdminHomeMessageUpsert {
+    return {
+      title: '',
+      contentMarkdown: '',
+      importance: 'INFORMATION',
+      status: 'DRAFT',
+      countdownEnabled: false,
+      endsAt: null,
+      expiredMessage: null,
+    };
+  }
+
+  private toHomeMessageForm(message: AdminHomeMessage): AdminHomeMessageUpsert {
+    return {
+      title: message.title,
+      contentMarkdown: message.contentMarkdown,
+      importance: message.importance,
+      status: message.status,
+      countdownEnabled: message.countdownEnabled,
+      endsAt: message.endsAt,
+      expiredMessage: message.expiredMessage,
+    };
+  }
+
+  private normalizedHomeMessagePayload(): AdminHomeMessageUpsert {
+    const form = this.homeMessageForm();
+    return {
+      ...form,
+      title: form.title.trim(),
+      contentMarkdown: form.contentMarkdown.trim(),
+      endsAt: form.countdownEnabled ? form.endsAt : null,
+      expiredMessage: this.trimToNull(form.expiredMessage),
+    };
+  }
+
+  private emptyCompanyForm(): AdminCompanyUpdate {
+    return {
+      name: '',
+      emblemPath: null,
+      imageAlt: null,
+      shortDescription: '',
+      longDescriptionMarkdown: '',
+    };
+  }
+
+  private toCompanyForm(company: AdminCompany): AdminCompanyUpdate {
+    return {
+      name: company.name,
+      emblemPath: company.emblemPath,
+      imageAlt: company.imageAlt,
+      shortDescription: company.shortDescription,
+      longDescriptionMarkdown: company.longDescriptionMarkdown,
+    };
+  }
+
+  private normalizedCompanyPayload(): AdminCompanyUpdate {
+    const form = this.companyForm();
+    return {
+      name: form.name.trim(),
+      emblemPath: this.trimToNull(form.emblemPath),
+      imageAlt: this.trimToNull(form.imageAlt),
+      shortDescription: form.shortDescription.trim(),
+      longDescriptionMarkdown: form.longDescriptionMarkdown.trim(),
+    };
+  }
+
+  private upsertAdventurer(saved: AdminAdventurer) {
+    this.adventurers.update((adventurers) => {
+      const exists = adventurers.some((adventurer) => adventurer.id === saved.id);
+      const updated = exists
+        ? adventurers.map((adventurer) => (adventurer.id === saved.id ? saved : adventurer))
+        : [...adventurers, saved];
+      return updated.sort((left, right) => left.displayOrder - right.displayOrder);
+    });
+  }
+
+  private emptyAdventurerForm(): AdminAdventurerUpsert {
+    return {
+      name: '',
+      title: '',
+      avatarPath: null,
+      avatarAlt: null,
+      shortDescription: '',
+      strengths: '',
+      weaknesses: '',
+      visible: true,
+      displayOrder: this.adventurers().length + 1,
+    };
+  }
+
+  private toAdventurerForm(adventurer: AdminAdventurer): AdminAdventurerUpsert {
+    return {
+      name: adventurer.name,
+      title: adventurer.title,
+      avatarPath: adventurer.avatarPath,
+      avatarAlt: adventurer.avatarAlt,
+      shortDescription: adventurer.shortDescription,
+      strengths: adventurer.strengths,
+      weaknesses: adventurer.weaknesses,
+      visible: adventurer.visible,
+      displayOrder: adventurer.displayOrder,
+    };
+  }
+
+  private normalizedAdventurerPayload(): AdminAdventurerUpsert {
+    const form = this.adventurerForm();
+    return {
+      name: form.name.trim(),
+      title: form.title.trim(),
+      avatarPath: this.trimToNull(form.avatarPath),
+      avatarAlt: this.trimToNull(form.avatarAlt),
+      shortDescription: form.shortDescription.trim(),
+      strengths: form.strengths.trim(),
+      weaknesses: form.weaknesses.trim(),
+      visible: form.visible,
+      displayOrder: Number(form.displayOrder),
+    };
+  }
+
+  private trimToNull(value: string | null): string | null {
+    if (!value || !value.trim()) {
+      return null;
+    }
+    return value.trim();
   }
 
   private updateAllowedEmail(
