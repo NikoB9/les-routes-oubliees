@@ -87,6 +87,15 @@ Pour chaque delegation mecanique, fournir un contexte court : commande, extrait 
 - Procedure de recuperation allowlist documentee dans `docs/DEPLOIEMENT.md`.
 - Validations finales reussies : frontend lint/tests/build, backend `clean verify`, `git diff --check`.
 
+## Correctif lot 9 du 2026-07-12
+
+- Easter egg public ajoute dans le header : trois activations du sceau revelent uniquement un lien vers `/admin/login`.
+- Le declencheur de l'easter egg reste utilisable au clavier et possede un nom accessible.
+- Les routes admin attendues par l'architecture existent maintenant : `/admin/home`, `/admin/group`, `/admin/adventurers`, `/admin/map`, `/admin/notebook`, `/admin/media`, `/admin/administrators`, `/admin/audit` et `/admin/settings`.
+- Les liens de navigation du shell admin utilisent le router Angular et ciblent les sections disponibles.
+- Les modules metier non encore implementes sont affiches comme planifies, sans masquer leur report vers les lots 10, 11 et 13.
+- Tests frontend ajoutes pour l'easter egg et la presence des routes admin.
+
 ## Validations prevues
 
 - Tests backend cibles pour audit, administrateurs et dashboard.
@@ -115,8 +124,6 @@ Pour chaque delegation mecanique, fournir un contexte court : commande, extrait 
 
 Ces points ne sont pas couverts par le lot 9 et doivent etre traites dans un lot suivant :
 
-- aucune entree secrete publique ne revele encore la connexion admin ;
-- les boutons ou liens admin restants renvoient encore vers l'accueil au lieu du bon module ;
 - les contenus de la page d'accueil ne sont pas tous administrables ;
 - la carte ne propose pas encore le choix de fond ni le placement des reperes ;
 - le carnet de quetes ne dispose pas encore d'un editeur riche adapte ;

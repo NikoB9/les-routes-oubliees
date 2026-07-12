@@ -76,6 +76,32 @@
   overflow-wrap: anywhere;
 }
 
+.planned-modules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planned-modules li {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid #d1ad68;
+  background: #fff8e8;
+}
+
+.planned-modules strong {
+  color: #211914;
+}
+
+.planned-modules span {
+  color: #5c4632;
+  overflow-wrap: anywhere;
+}
+
 .panel-heading h2,
 .quest-list h3,
 .quest-form h3,
