@@ -1,0 +1,25 @@
+{
+  "name": "Les Routes Oubliées",
+  "short_name": "Routes Oubliées",
+  "description": "Carnet public de la Compagnie des Routes Oubliées.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7ead3",
+  "theme_color": "#5f3f1e",
+  "icons": [
+    {
+      "src": "/favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

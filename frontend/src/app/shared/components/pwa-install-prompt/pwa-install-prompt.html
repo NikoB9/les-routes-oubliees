@@ -1,0 +1,19 @@
+@if (prompt.canInstall() || prompt.showIosHelp()) {
+  <section class="install-prompt" aria-labelledby="install-prompt-title" aria-live="polite" role="status">
+    <div class="install-prompt-content">
+      <h2 id="install-prompt-title">Installer l'application</h2>
+      @if (prompt.canInstall()) {
+        <p>Ajoutez Les Routes Oubliées à votre appareil pour retrouver les contenus publics plus facilement.</p>
+      } @else {
+        <p>Sur iPhone ou iPad, utilisez le bouton de partage de Safari puis choisissez Ajouter à l'écran d'accueil.</p>
+      }
+    </div>
+
+    <div class="install-prompt-actions">
+      @if (prompt.canInstall()) {
+        <button type="button" class="primary-action" (click)="prompt.install()">Installer</button>
+      }
+      <button type="button" class="secondary-action" aria-label="Fermer l'invite d'installation" (click)="prompt.dismiss()">Fermer</button>
+    </div>
+  </section>
+}

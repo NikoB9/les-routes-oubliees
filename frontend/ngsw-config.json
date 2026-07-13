@@ -1,0 +1,41 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "navigationUrls": [
+    "/**",
+    "!/api/**",
+    "!/media/**",
+    "!/oauth2/**",
+    "!/login/**",
+    "!/admin/**",
+    "!/**/*.*"
+  ],
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/favicon-32.png",
+          "/favicon-192.png",
+          "/apple-touch-icon.png",
+          "/manifest.webmanifest",
+          "/*.css",
+          "/*.js"
+        ]
+      }
+    },
+    {
+      "name": "public-assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/assets/**",
+          "/favicon-512.png"
+        ]
+      }
+    }
+  ]
+}

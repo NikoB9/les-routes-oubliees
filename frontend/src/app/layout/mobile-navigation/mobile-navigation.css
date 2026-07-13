@@ -5,6 +5,7 @@
   z-index: 20;
   display: none;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-bottom: env(safe-area-inset-bottom);
   background: #221a14;
   border-top: 1px solid #776142;
   box-shadow: 0 -8px 24px rgb(0 0 0 / 20%);

@@ -13,7 +13,10 @@ import {
 import { DesktopNavigationComponent } from './layout/desktop-navigation/desktop-navigation';
 import { PublicHeaderComponent } from './layout/header/public-header';
 import { MobileNavigationComponent } from './layout/mobile-navigation/mobile-navigation';
+import { PublicContentCacheService } from './core/offline/public-content-cache.service';
+import { PwaInstallPromptService } from './core/pwa/pwa-install-prompt.service';
 import { LoadingIndicatorComponent } from './shared/components/loading-indicator/loading-indicator';
+import { PwaInstallPromptComponent } from './shared/components/pwa-install-prompt/pwa-install-prompt';
 
 @Component({
   selector: 'app-root',
@@ -22,6 +25,7 @@ import { LoadingIndicatorComponent } from './shared/components/loading-indicator
     LoadingIndicatorComponent,
     MobileNavigationComponent,
     PublicHeaderComponent,
+    PwaInstallPromptComponent,
     RouterOutlet,
   ],
   templateUrl: './app.html',
@@ -29,12 +33,20 @@ import { LoadingIndicatorComponent } from './shared/components/loading-indicator
 })
 export class App {
   protected readonly isNavigating = signal(false);
+  protected readonly pwaPrompt = inject(PwaInstallPromptService);
 
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
+  private readonly publicContentCache = inject(PublicContentCacheService);
+  private readonly onlineListener = () => this.refreshPublicCache();
 
   constructor() {
+    this.refreshPublicCache();
+
+    window.addEventListener('online', this.onlineListener);
+    this.destroyRef.onDestroy(() => window.removeEventListener('online', this.onlineListener));
+
     this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
       if (event instanceof NavigationStart) {
         this.isNavigating.set(true);
@@ -51,6 +63,12 @@ export class App {
           queueMicrotask(() => this.document.getElementById('main-content')?.focus());
         }
       }
+    });
+  }
+
+  private refreshPublicCache(): void {
+    void this.publicContentCache.refreshIfNeeded().catch(() => {
+      // The cache is opportunistic: public pages keep their normal error or fallback states.
     });
   }
 }

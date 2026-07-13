@@ -1,6 +1,7 @@
 package fr.lesroutesoubliees.routesoubliees;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -99,5 +100,36 @@ class PublicApiIntegrationTests {
 
 		mvc.perform(get("/api/public/quests/VAL_D_AURELUNE"))
 			.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void exposesPublicOfflineContentVersion() throws Exception {
+		mvc.perform(get("/api/public/content-version"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.version").value(matchesPattern("[a-f0-9]{64}")));
+	}
+
+	@Test
+	void exposesOnlyPublicOfflineSnapshotContent() throws Exception {
+		mvc.perform(get("/api/public/offline-snapshot"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.version").value(matchesPattern("[a-f0-9]{64}")))
+			.andExpect(jsonPath("$.settings.siteName").value("Les Routes OubliÃ©es"))
+			.andExpect(jsonPath("$.home.message.title").value("Message de dÃ©monstration"))
+			.andExpect(jsonPath("$.home.message.contentMarkdown").doesNotExist())
+			.andExpect(jsonPath("$.home.message.contentHtml").exists())
+			.andExpect(jsonPath("$.home.company.longDescriptionMarkdown").doesNotExist())
+			.andExpect(jsonPath("$.map.vision.name").value("Carte voilÃ©e"))
+			.andExpect(jsonPath("$.map.vision.descriptionMarkdown").doesNotExist())
+			.andExpect(jsonPath("$.quests", hasSize(2)))
+			.andExpect(jsonPath("$.quests[0].code").value("QUEST_1"))
+			.andExpect(jsonPath("$.quests[1].code").value("QUEST_2"))
+			.andExpect(jsonPath("$.questDetails", hasSize(2)))
+			.andExpect(jsonPath("$.questDetails[0].importantEventsHtml").exists())
+			.andExpect(jsonPath("$.questDetails[0].importantEventsMarkdown").doesNotExist())
+			.andExpect(jsonPath("$.questDetails[0].adminDraftMarkdown").doesNotExist())
+			.andExpect(jsonPath("$.questDetails[?(@.code == 'QUEST_3')]").isEmpty())
+			.andExpect(jsonPath("$.questDetails[?(@.code == 'QUEST_4')]").isEmpty())
+			.andExpect(jsonPath("$.questDetails[?(@.code == 'VAL_D_AURELUNE')]").isEmpty());
 	}
 }

@@ -1,0 +1,77 @@
+.install-prompt {
+  position: fixed;
+  right: 1rem;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  z-index: 50;
+  display: flex;
+  max-width: min(28rem, calc(100vw - 2rem));
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  color: #20170f;
+  background: #f7ead3;
+  border: 1px solid #9f7b45;
+  border-radius: 0.5rem;
+  box-shadow: 0 1rem 2rem rgb(23 18 12 / 24%);
+}
+
+.install-prompt-content {
+  min-width: 0;
+}
+
+.install-prompt h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.install-prompt p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.install-prompt-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+}
+
+.install-prompt button {
+  min-height: 2.5rem;
+  padding: 0.55rem 0.8rem;
+  font: inherit;
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+
+.primary-action {
+  color: #fffaf0;
+  background: #5f3f1e;
+  border: 1px solid #5f3f1e;
+}
+
+.secondary-action {
+  color: #332315;
+  background: transparent;
+  border: 1px solid #8c6a3d;
+}
+
+.install-prompt button:focus-visible {
+  outline: 3px solid #1f6feb;
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .install-prompt {
+    right: 0.75rem;
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    left: 0.75rem;
+    max-width: none;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .install-prompt-actions {
+    justify-content: flex-end;
+  }
+}

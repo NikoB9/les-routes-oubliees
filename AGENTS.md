@@ -44,6 +44,7 @@ En cas de contradiction :
 * TypeScript en mode strict ;
 * composants standalone ;
 * Angular Router ;
+* PWA Angular pour l'application publique lorsque le service worker est actif en production ;
 * formulaires réactifs ;
 * Angular Signals lorsque cela simplifie réellement l’état local ;
 * HTML sémantique ;
@@ -534,6 +535,21 @@ Règles :
 * préserver une structure de titres cohérente ;
 * tester les contenus malveillants ;
 * ne jamais contourner la sanitation pour résoudre un problème d’affichage.
+
+## 13.1 PWA et cache public
+
+La PWA concerne uniquement l'expérience publique.
+
+Règles :
+
+* le backend reste la source canonique des contenus publics ;
+* le cache hors ligne doit utiliser uniquement un snapshot public filtré par le backend ;
+* ne jamais inclure de brouillon, contenu masqué, champ admin, audit, email administrateur, secret ou Markdown source non public dans le snapshot ;
+* ne jamais mettre en cache les routes admin, les opérations d'écriture, OAuth2 ou les sessions ;
+* le service worker ne doit pas contourner les contrôles backend ;
+* IndexedDB peut stocker le dernier snapshot public pour consultation hors ligne ;
+* la mise à jour du cache doit comparer une version ou empreinte publique avant de remplacer le snapshot local ;
+* l'installation PWA native est disponible selon le navigateur ; sur iOS, afficher une aide d'ajout manuel à l'écran d'accueil.
 
 ## 14. Tests et validations
 

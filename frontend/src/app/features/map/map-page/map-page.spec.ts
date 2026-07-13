@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { PublicContentCacheService } from '../../../core/offline/public-content-cache.service';
 import { PublicMapResponse } from '../map-api.models';
 import { MapPage } from './map-page';
 
@@ -33,7 +34,17 @@ describe('MapPage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [MapPage],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: PublicContentCacheService,
+          useValue: {
+            readMap: () => Promise.resolve(null),
+          },
+        },
+      ],
     }).compileComponents();
 
     http = TestBed.inject(HttpTestingController);
@@ -71,11 +82,12 @@ describe('MapPage', () => {
     );
   });
 
-  it('renders an error state when the map API fails', () => {
+  it('renders an error state when the map API fails', async () => {
     const fixture = TestBed.createComponent(MapPage);
     fixture.detectChanges();
 
     http.expectOne('/api/public/map').flush({}, { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable();
     fixture.detectChanges();
 
     const alert = (fixture.nativeElement as HTMLElement).querySelector('[role="alert"]');

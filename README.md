@@ -17,6 +17,8 @@ Le site permettra aux aventuriers de suivre la progression de leurs quêtes, de 
 * interface d’administration permettant de gérer les contenus ;
 * authentification des administrateurs avec Google ;
 * affichage responsive sur ordinateur, tablette et mobile ;
+* installation PWA des pages publiques ;
+* consultation hors ligne du dernier contenu public synchronise ;
 * prise en compte des exigences d’accessibilité.
 
 ## Structure du site

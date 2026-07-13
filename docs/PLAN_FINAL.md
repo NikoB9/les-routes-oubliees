@@ -78,6 +78,8 @@ Le MVP comprend :
 * l’administration ;
 * la gestion des médias hors cartes ;
 * la prévisualisation ;
+* l'installation PWA des pages publiques ;
+* la consultation hors ligne du dernier contenu public synchronise ;
 * le responsive ;
 * les exigences d’accessibilité ;
 * le journal d’audit léger ;
@@ -89,6 +91,7 @@ Le MVP n’inclut pas :
 * Telegram ;
 * le temps réel ;
 * les notifications push ;
+* la modification admin hors ligne ;
 * le versioning complet des contenus ;
 * le rollback éditorial ;
 * une gestion complexe des rôles ;
@@ -134,6 +137,18 @@ Entrées :
 1. Accueil ;
 2. Carte ;
 3. Notes.
+
+### 5.4 PWA publique
+
+L'application publique est installable comme PWA lorsque le navigateur le permet.
+
+Regles :
+
+* le service worker sert le shell public et les assets versionnes ;
+* les contenus publics sont sauvegardes dans un snapshot local pour consultation hors ligne ;
+* la mise a jour compare une empreinte publique avant de remplacer le snapshot ;
+* l'administration reste une experience en ligne ;
+* aucune notification push n'est prevue dans le MVP.
 
 ## 6. Page d’accueil
 

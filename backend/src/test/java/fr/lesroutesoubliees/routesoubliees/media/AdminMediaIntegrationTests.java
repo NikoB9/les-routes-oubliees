@@ -79,7 +79,7 @@ class AdminMediaIntegrationTests {
 	}
 
 	@Test
-	void uploadsAndServesPngMedia() throws Exception {
+	void uploadsPngMediaWithoutMakingItPublic() throws Exception {
 		var result = uploadPng("Embleme de test")
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.originalFilename").value("emblem.png"))
@@ -90,6 +90,17 @@ class AdminMediaIntegrationTests {
 			.andReturn();
 
 		var id = idFrom(result);
+		mvc.perform(get("/media/" + id))
+			.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void servesMediaReferencedByVisiblePublishedQuest() throws Exception {
+		var result = uploadPng("Indice illustre").andExpect(status().isCreated()).andReturn();
+		var id = idFrom(result);
+
+		publishQuestWithMediaReference(id);
+
 		mvc.perform(get("/media/" + id))
 			.andExpect(status().isOk())
 			.andExpect(header().string("Content-Type", containsString("image/png")))
@@ -117,6 +128,24 @@ class AdminMediaIntegrationTests {
 		var result = uploadPng("Indice illustre").andExpect(status().isCreated()).andReturn();
 		var id = idFrom(result);
 
+		publishQuestWithMediaReference(id);
+
+		mvc.perform(delete("/api/admin/media/" + id)
+				.with(user("admin@example.invalid"))
+				.with(csrf()))
+			.andExpect(status().isConflict());
+	}
+
+	private org.springframework.test.web.servlet.ResultActions uploadPng(String altText) throws Exception {
+		var png = new MockMultipartFile("file", "emblem.png", "image/png", onePixelPng());
+		return mvc.perform(multipart("/api/admin/media")
+			.file(png)
+			.param("altText", altText)
+			.with(user("admin@example.invalid"))
+			.with(csrf()));
+	}
+
+	private void publishQuestWithMediaReference(String id) throws Exception {
 		mvc.perform(put("/api/admin/quest-tabs/QUEST_1")
 				.with(user("admin@example.invalid"))
 				.with(csrf())
@@ -135,20 +164,6 @@ class AdminMediaIntegrationTests {
 					}
 					""".formatted(id)))
 			.andExpect(status().isOk());
-
-		mvc.perform(delete("/api/admin/media/" + id)
-				.with(user("admin@example.invalid"))
-				.with(csrf()))
-			.andExpect(status().isConflict());
-	}
-
-	private org.springframework.test.web.servlet.ResultActions uploadPng(String altText) throws Exception {
-		var png = new MockMultipartFile("file", "emblem.png", "image/png", onePixelPng());
-		return mvc.perform(multipart("/api/admin/media")
-			.file(png)
-			.param("altText", altText)
-			.with(user("admin@example.invalid"))
-			.with(csrf()));
 	}
 
 	private String idFrom(MvcResult result) throws Exception {
