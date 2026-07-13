@@ -1,12 +1,23 @@
 package fr.lesroutesoubliees.routesoubliees.map;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 interface MapMarkerRepository extends JpaRepository<MapMarker, UUID> {
+
+	List<MapMarker> findAllByOrderByDisplayOrderAsc();
+
+	List<MapMarker> findByActiveTrueOrderByDisplayOrderAsc();
+
+	@Query(value = "select id from quests where code = ?1", nativeQuery = true)
+	Optional<UUID> findQuestIdByCode(String questCode);
+
+	@Query(value = "select code from quests where id = ?1", nativeQuery = true)
+	Optional<String> findQuestCodeById(UUID questId);
 
 	@Query(
 		value = """

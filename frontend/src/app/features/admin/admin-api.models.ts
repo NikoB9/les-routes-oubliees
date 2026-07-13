@@ -117,3 +117,51 @@ export interface AdminAdventurerUpsert {
   visible: boolean;
   displayOrder: number;
 }
+
+export interface AdminMapVision {
+  id: string;
+  name: string;
+  descriptionMarkdown: string;
+  assetPath: string;
+  imageAlt: string;
+  displayOrder: number;
+  status: EditorialStatus;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminMapVisionUpsert {
+  name: string;
+  descriptionMarkdown: string;
+  assetPath: string;
+  imageAlt: string;
+  displayOrder: number;
+  status: EditorialStatus;
+}
+
+export interface AdminMapMarker {
+  id: string;
+  questCode: string;
+  title: string;
+  positionX: number;
+  positionY: number;
+  active: boolean;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminMapMarkerUpsert {
+  questCode: string;
+  title: string;
+  positionX: number;
+  positionY: number;
+  active: boolean;
+  displayOrder: number;
+}
+
+export interface AdminMapPreview {
+  vision: AdminMapVision;
+  markers: AdminMapMarker[];
+}

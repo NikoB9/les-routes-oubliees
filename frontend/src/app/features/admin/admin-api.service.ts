@@ -13,6 +13,11 @@ import {
   AdminDashboard,
   AdminHomeMessage,
   AdminHomeMessageUpsert,
+  AdminMapMarker,
+  AdminMapMarkerUpsert,
+  AdminMapPreview,
+  AdminMapVision,
+  AdminMapVisionUpsert,
 } from './admin-api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -101,5 +106,56 @@ export class AdminApiService {
 
   deleteAdventurer(id: string) {
     return this.http.delete<void>(`/api/admin/adventurers/${encodeURIComponent(id)}`);
+  }
+
+  listMapVisions() {
+    return this.http.get<AdminMapVision[]>('/api/admin/map-views');
+  }
+
+  createMapVision(payload: AdminMapVisionUpsert) {
+    return this.http.post<AdminMapVision>('/api/admin/map-views', payload);
+  }
+
+  updateMapVision(id: string, payload: AdminMapVisionUpsert) {
+    return this.http.put<AdminMapVision>(
+      `/api/admin/map-views/${encodeURIComponent(id)}`,
+      payload,
+    );
+  }
+
+  activateMapVision(id: string) {
+    return this.http.post<AdminMapVision>(
+      `/api/admin/map-views/${encodeURIComponent(id)}/activate`,
+      {},
+    );
+  }
+
+  deleteMapVision(id: string) {
+    return this.http.delete<void>(`/api/admin/map-views/${encodeURIComponent(id)}`);
+  }
+
+  listMapMarkers() {
+    return this.http.get<AdminMapMarker[]>('/api/admin/map-markers');
+  }
+
+  createMapMarker(payload: AdminMapMarkerUpsert) {
+    return this.http.post<AdminMapMarker>('/api/admin/map-markers', payload);
+  }
+
+  updateMapMarker(id: string, payload: AdminMapMarkerUpsert) {
+    return this.http.put<AdminMapMarker>(
+      `/api/admin/map-markers/${encodeURIComponent(id)}`,
+      payload,
+    );
+  }
+
+  deleteMapMarker(id: string) {
+    return this.http.delete<void>(`/api/admin/map-markers/${encodeURIComponent(id)}`);
+  }
+
+  previewMap(visionId: string) {
+    return this.http.get<AdminMapPreview>('/api/admin/map-preview', {
+      params: { visionId },
+    });
   }
 }

@@ -52,6 +52,26 @@ class MapVision {
 	protected MapVision() {
 	}
 
+	MapVision(
+		UUID id,
+		String name,
+		String descriptionMarkdown,
+		String assetPath,
+		String imageAlt,
+		int displayOrder,
+		EditorialStatus status,
+		boolean active
+	) {
+		this.id = id;
+		this.name = name;
+		this.descriptionMarkdown = descriptionMarkdown;
+		this.assetPath = assetPath;
+		this.imageAlt = imageAlt;
+		this.displayOrder = displayOrder;
+		this.status = status;
+		this.active = active;
+	}
+
 	UUID id() {
 		return id;
 	}
@@ -74,6 +94,49 @@ class MapVision {
 
 	int displayOrder() {
 		return displayOrder;
+	}
+
+	EditorialStatus status() {
+		return status;
+	}
+
+	boolean active() {
+		return active;
+	}
+
+	OffsetDateTime createdAt() {
+		return createdAt;
+	}
+
+	OffsetDateTime updatedAt() {
+		return updatedAt;
+	}
+
+	void update(
+		String name,
+		String descriptionMarkdown,
+		String assetPath,
+		String imageAlt,
+		int displayOrder,
+		EditorialStatus status
+	) {
+		this.name = name;
+		this.descriptionMarkdown = descriptionMarkdown;
+		this.assetPath = assetPath;
+		this.imageAlt = imageAlt;
+		this.displayOrder = displayOrder;
+		this.status = status;
+		if (status != EditorialStatus.PUBLISHED) {
+			active = false;
+		}
+	}
+
+	void activate() {
+		active = true;
+	}
+
+	void deactivate() {
+		active = false;
 	}
 
 	@PrePersist

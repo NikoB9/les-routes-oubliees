@@ -46,6 +46,76 @@ class MapMarker {
 	protected MapMarker() {
 	}
 
+	MapMarker(
+		UUID id,
+		UUID questId,
+		String title,
+		BigDecimal positionX,
+		BigDecimal positionY,
+		boolean active,
+		int displayOrder
+	) {
+		this.id = id;
+		this.questId = questId;
+		this.title = title;
+		this.positionX = positionX;
+		this.positionY = positionY;
+		this.active = active;
+		this.displayOrder = displayOrder;
+	}
+
+	UUID id() {
+		return id;
+	}
+
+	UUID questId() {
+		return questId;
+	}
+
+	String title() {
+		return title;
+	}
+
+	BigDecimal positionX() {
+		return positionX;
+	}
+
+	BigDecimal positionY() {
+		return positionY;
+	}
+
+	boolean active() {
+		return active;
+	}
+
+	int displayOrder() {
+		return displayOrder;
+	}
+
+	OffsetDateTime createdAt() {
+		return createdAt;
+	}
+
+	OffsetDateTime updatedAt() {
+		return updatedAt;
+	}
+
+	void update(
+		UUID questId,
+		String title,
+		BigDecimal positionX,
+		BigDecimal positionY,
+		boolean active,
+		int displayOrder
+	) {
+		this.questId = questId;
+		this.title = title;
+		this.positionX = positionX;
+		this.positionY = positionY;
+		this.active = active;
+		this.displayOrder = displayOrder;
+	}
+
 	@PrePersist
 	void prePersist() {
 		var now = OffsetDateTime.now(ZoneOffset.UTC);

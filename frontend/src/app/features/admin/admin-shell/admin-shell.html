@@ -14,6 +14,7 @@
       <a routerLink="/admin/home" [class.active]="section() === 'home'">Accueil</a>
       <a routerLink="/admin/group" [class.active]="section() === 'group'">Compagnie</a>
       <a routerLink="/admin/adventurers" [class.active]="section() === 'adventurers'">Aventuriers</a>
+      <a routerLink="/admin/map" [class.active]="section() === 'map'">Carte</a>
     </nav>
   } @else {
     <p>Verification de la session administrateur.</p>
@@ -300,6 +301,189 @@
         </form>
       }
     </div>
+  </section>
+  }
+  @case ('map') {
+  <section class="admin-panel" aria-labelledby="admin-map-title">
+    <div class="panel-heading">
+      <h2 id="admin-map-title">Carte administrable</h2>
+    </div>
+
+    @if (mapError()) {
+      <p id="map-error-summary" #mapErrorSummary class="alert" role="alert" tabindex="-1">
+        Impossible de traiter la carte. Verifiez les champs, le statut publie avant activation et le chemin /assets/maps/.
+      </p>
+    }
+    @if (mapSaved()) {
+      <p class="status" role="status">Carte mise a jour.</p>
+    }
+
+    <div class="map-admin-layout">
+      <section aria-labelledby="map-visions-title">
+        <h3 id="map-visions-title">Fonds de carte</h3>
+        <ul class="admin-list" aria-label="Visions de carte disponibles">
+          @for (vision of mapVisions(); track vision.id) {
+            <li>
+              <button type="button" (click)="selectMapVision(vision)">
+                <span>{{ vision.displayOrder }}. {{ vision.name }}</span>
+                <small>{{ vision.status }} - {{ vision.active ? 'active' : 'inactive' }}</small>
+              </button>
+              <div class="button-row">
+                <button type="button" (click)="previewMapVision(vision)">Previsualiser</button>
+                <button type="button" [disabled]="vision.status !== 'PUBLISHED'" (click)="activateMapVision(vision)">
+                  Activer
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+
+        @if (mapVisionForm(); as form) {
+          <form class="content-form" (ngSubmit)="saveMapVision()" aria-labelledby="map-vision-form-title">
+            <h3 id="map-vision-form-title">
+              {{ selectedMapVision() ? 'Modifier le fond' : 'Nouveau fond' }}
+            </h3>
+
+            <label>
+              Nom
+              <input type="text" required maxlength="160" [ngModel]="form.name" name="mapVisionName" (ngModelChange)="updateMapVisionField('name', $event)" />
+            </label>
+
+            <label>
+              Description Markdown
+              <textarea required rows="5" [ngModel]="form.descriptionMarkdown" name="mapVisionDescription" (ngModelChange)="updateMapVisionField('descriptionMarkdown', $event)"></textarea>
+            </label>
+
+            <label>
+              Chemin du fond
+              <input type="text" required maxlength="255" [ngModel]="form.assetPath" name="mapVisionAsset" (ngModelChange)="updateMapVisionField('assetPath', $event)" />
+            </label>
+
+            <label>
+              Texte alternatif
+              <input type="text" required maxlength="280" [ngModel]="form.imageAlt" name="mapVisionAlt" (ngModelChange)="updateMapVisionField('imageAlt', $event)" />
+            </label>
+
+            <div class="form-row">
+              <label>
+                Ordre
+                <input type="number" min="1" max="999" required [ngModel]="form.displayOrder" name="mapVisionOrder" (ngModelChange)="updateMapVisionField('displayOrder', $event)" />
+              </label>
+
+              <label>
+                Statut
+                <select [ngModel]="form.status" name="mapVisionStatus" (ngModelChange)="updateMapVisionField('status', $event)">
+                  @for (status of mapStatuses; track status) {
+                    <option [value]="status">{{ status }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+
+            <div class="button-row">
+              <button type="submit">Enregistrer le fond</button>
+              <button type="button" (click)="selectMapVision(null)">Nouveau</button>
+              @if (selectedMapVision(); as vision) {
+                <button type="button" class="danger" [disabled]="vision.active" (click)="deleteMapVision(vision)">
+                  Supprimer
+                </button>
+              }
+            </div>
+          </form>
+        }
+      </section>
+
+      <section aria-labelledby="map-markers-title">
+        <h3 id="map-markers-title">Reperes</h3>
+        <ul class="admin-list" aria-label="Reperes de carte disponibles">
+          @for (marker of mapMarkers(); track marker.id) {
+            <li>
+              <button type="button" (click)="selectMapMarker(marker)">
+                <span>{{ marker.displayOrder }}. {{ marker.title }}</span>
+                <small>{{ marker.questCode }} - {{ marker.active ? 'visible sur carte' : 'masque' }}</small>
+              </button>
+            </li>
+          }
+        </ul>
+
+        @if (mapMarkerForm(); as markerForm) {
+          <form class="content-form" (ngSubmit)="saveMapMarker()" aria-labelledby="map-marker-form-title">
+            <h3 id="map-marker-form-title">
+              {{ selectedMapMarker() ? 'Modifier le repere' : 'Nouveau repere' }}
+            </h3>
+
+            <label>
+              Quete associee
+              <select [ngModel]="markerForm.questCode" name="mapMarkerQuest" (ngModelChange)="updateMapMarkerField('questCode', $event)">
+                @for (questCode of questCodes; track questCode) {
+                  <option [value]="questCode">{{ questCode }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              Titre
+              <input type="text" required maxlength="160" [ngModel]="markerForm.title" name="mapMarkerTitle" (ngModelChange)="updateMapMarkerField('title', $event)" />
+            </label>
+
+            <div class="form-row">
+              <label>
+                Position X (%)
+                <input type="number" min="0" max="100" step="0.001" required [ngModel]="markerForm.positionX" name="mapMarkerX" (ngModelChange)="updateMapMarkerField('positionX', $event)" />
+              </label>
+
+              <label>
+                Position Y (%)
+                <input type="number" min="0" max="100" step="0.001" required [ngModel]="markerForm.positionY" name="mapMarkerY" (ngModelChange)="updateMapMarkerField('positionY', $event)" />
+              </label>
+
+              <label>
+                Ordre
+                <input type="number" min="1" max="999" required [ngModel]="markerForm.displayOrder" name="mapMarkerOrder" (ngModelChange)="updateMapMarkerField('displayOrder', $event)" />
+              </label>
+            </div>
+
+            <label class="checkbox-field">
+              <input type="checkbox" [ngModel]="markerForm.active" name="mapMarkerActive" (ngModelChange)="updateMapMarkerField('active', $event)" />
+              Afficher ce repere
+            </label>
+
+            <div class="button-row">
+              <button type="submit">Enregistrer le repere</button>
+              <button type="button" (click)="selectMapMarker(null)">Nouveau</button>
+              @if (selectedMapMarker(); as marker) {
+                <button type="button" class="danger" (click)="deleteMapMarker(marker)">Supprimer</button>
+              }
+            </div>
+          </form>
+        }
+      </section>
+    </div>
+
+    @if (mapPreview(); as preview) {
+      <section class="map-preview" aria-labelledby="map-preview-title">
+        <h3 id="map-preview-title">Previsualisation admin</h3>
+        <p>Cette previsualisation ne publie rien automatiquement.</p>
+
+        <div class="map-preview-frame">
+          <img [src]="preview.vision.assetPath" [alt]="preview.vision.imageAlt" />
+          @for (marker of preview.markers; track marker.id) {
+            <span class="map-preview-marker" [style.left]="marker.positionX + '%'" [style.top]="marker.positionY + '%'">
+              {{ marker.displayOrder }}
+            </span>
+          }
+        </div>
+
+        <ol class="audit-list">
+          @for (marker of preview.markers; track marker.id) {
+            <li>
+              <strong>{{ marker.title }}</strong>
+              <small>{{ marker.questCode }} - X {{ marker.positionX }} %, Y {{ marker.positionY }} %</small>
+            </li>
+          }
+        </ol>
+      </section>
+    }
   </section>
   }
   @case ('notebook') {

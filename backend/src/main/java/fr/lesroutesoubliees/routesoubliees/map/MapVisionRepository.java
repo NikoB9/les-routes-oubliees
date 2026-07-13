@@ -10,4 +10,8 @@ import fr.lesroutesoubliees.routesoubliees.shared.EditorialStatus;
 interface MapVisionRepository extends JpaRepository<MapVision, UUID> {
 
 	Optional<MapVision> findFirstByActiveTrueAndStatus(EditorialStatus status);
+
+	java.util.List<MapVision> findAllByOrderByDisplayOrderAsc();
+
+	java.util.List<MapVision> findByActiveTrue();
 }

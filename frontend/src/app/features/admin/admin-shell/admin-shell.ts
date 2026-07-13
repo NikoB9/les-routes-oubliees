@@ -24,6 +24,11 @@ import {
   AdminDashboard,
   AdminHomeMessage,
   AdminHomeMessageUpsert,
+  AdminMapMarker,
+  AdminMapMarkerUpsert,
+  AdminMapPreview,
+  AdminMapVision,
+  AdminMapVisionUpsert,
   EditorialStatus,
   HomeMessageImportance,
 } from '../admin-api.models';
@@ -45,6 +50,7 @@ export class AdminShell {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly questErrorSummary = viewChild<ElementRef<HTMLElement>>('questErrorSummary');
+  private readonly mapErrorSummary = viewChild<ElementRef<HTMLElement>>('mapErrorSummary');
   private readonly mediaErrorSummary = viewChild<ElementRef<HTMLElement>>('mediaErrorSummary');
   private readonly allowedEmailErrorSummary = viewChild<ElementRef<HTMLElement>>('allowedEmailErrorSummary');
 
@@ -86,6 +92,17 @@ export class AdminShell {
   protected readonly adventurerForm = signal<AdminAdventurerUpsert>(this.emptyAdventurerForm());
   protected readonly adventurerError = signal(false);
   protected readonly adventurerSaved = signal(false);
+  protected readonly mapVisions = signal<AdminMapVision[]>([]);
+  protected readonly selectedMapVision = signal<AdminMapVision | null>(null);
+  protected readonly mapVisionForm = signal<AdminMapVisionUpsert>(this.emptyMapVisionForm());
+  protected readonly mapMarkers = signal<AdminMapMarker[]>([]);
+  protected readonly selectedMapMarker = signal<AdminMapMarker | null>(null);
+  protected readonly mapMarkerForm = signal<AdminMapMarkerUpsert>(this.emptyMapMarkerForm());
+  protected readonly mapPreview = signal<AdminMapPreview | null>(null);
+  protected readonly mapError = signal(false);
+  protected readonly mapSaved = signal(false);
+  protected readonly mapStatuses: EditorialStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+  protected readonly questCodes = ['QUEST_1', 'QUEST_2', 'QUEST_3', 'QUEST_4', 'VAL_D_AURELUNE'];
   protected readonly allowedEmails = signal<AdminAllowedEmail[]>([]);
   protected readonly allowedEmailError = signal(false);
   protected readonly allowedEmailSaved = signal(false);
@@ -123,6 +140,9 @@ export class AdminShell {
         break;
       case 'adventurers':
         this.loadAdventurers();
+        break;
+      case 'map':
+        this.loadAdminMap();
         break;
       case 'notebook':
         this.loadQuests();
@@ -304,6 +324,131 @@ export class AdminShell {
         this.loadAuditLogs();
       },
       error: () => this.adventurerError.set(true),
+    });
+  }
+
+  protected selectMapVision(vision: AdminMapVision | null) {
+    this.selectedMapVision.set(vision);
+    this.mapPreview.set(null);
+    this.mapSaved.set(false);
+    this.mapError.set(false);
+    this.mapVisionForm.set(vision ? this.toMapVisionForm(vision) : this.emptyMapVisionForm());
+  }
+
+  protected updateMapVisionField<K extends keyof AdminMapVisionUpsert>(
+    field: K,
+    value: AdminMapVisionUpsert[K],
+  ) {
+    this.mapVisionForm.update((form) => ({ ...form, [field]: value }));
+    this.mapSaved.set(false);
+    this.mapError.set(false);
+  }
+
+  protected saveMapVision() {
+    const vision = this.selectedMapVision();
+    const payload = this.normalizedMapVisionPayload();
+    const request = vision
+      ? this.adminApi.updateMapVision(vision.id, payload)
+      : this.adminApi.createMapVision(payload);
+
+    request.subscribe({
+      next: (saved) => {
+        this.upsertMapVision(saved);
+        this.selectMapVision(saved);
+        this.mapSaved.set(true);
+        this.loadDashboard();
+        this.loadAuditLogs();
+      },
+      error: () => this.showMapError(),
+    });
+  }
+
+  protected activateMapVision(vision: AdminMapVision) {
+    this.adminApi.activateMapVision(vision.id).subscribe({
+      next: (updated) => {
+        this.mapVisions.update((visions) =>
+          visions.map((item) => ({ ...item, active: item.id === updated.id })),
+        );
+        this.upsertMapVision(updated);
+        this.selectMapVision(updated);
+        this.mapSaved.set(true);
+        this.loadDashboard();
+        this.loadAuditLogs();
+      },
+      error: () => this.showMapError(),
+    });
+  }
+
+  protected deleteMapVision(vision: AdminMapVision) {
+    this.adminApi.deleteMapVision(vision.id).subscribe({
+      next: () => {
+        this.mapVisions.update((visions) => visions.filter((item) => item.id !== vision.id));
+        if (this.selectedMapVision()?.id === vision.id) {
+          this.selectMapVision(null);
+        }
+        this.mapSaved.set(true);
+        this.loadDashboard();
+        this.loadAuditLogs();
+      },
+      error: () => this.showMapError(),
+    });
+  }
+
+  protected previewMapVision(vision: AdminMapVision) {
+    this.adminApi.previewMap(vision.id).subscribe({
+      next: (preview) => {
+        this.mapPreview.set(preview);
+        this.mapError.set(false);
+      },
+      error: () => this.showMapError(),
+    });
+  }
+
+  protected selectMapMarker(marker: AdminMapMarker | null) {
+    this.selectedMapMarker.set(marker);
+    this.mapSaved.set(false);
+    this.mapError.set(false);
+    this.mapMarkerForm.set(marker ? this.toMapMarkerForm(marker) : this.emptyMapMarkerForm());
+  }
+
+  protected updateMapMarkerField<K extends keyof AdminMapMarkerUpsert>(
+    field: K,
+    value: AdminMapMarkerUpsert[K],
+  ) {
+    this.mapMarkerForm.update((form) => ({ ...form, [field]: value }));
+    this.mapSaved.set(false);
+    this.mapError.set(false);
+  }
+
+  protected saveMapMarker() {
+    const marker = this.selectedMapMarker();
+    const payload = this.normalizedMapMarkerPayload();
+    const request = marker
+      ? this.adminApi.updateMapMarker(marker.id, payload)
+      : this.adminApi.createMapMarker(payload);
+
+    request.subscribe({
+      next: (saved) => {
+        this.upsertMapMarker(saved);
+        this.selectMapMarker(saved);
+        this.mapSaved.set(true);
+        this.loadAuditLogs();
+      },
+      error: () => this.showMapError(),
+    });
+  }
+
+  protected deleteMapMarker(marker: AdminMapMarker) {
+    this.adminApi.deleteMapMarker(marker.id).subscribe({
+      next: () => {
+        this.mapMarkers.update((markers) => markers.filter((item) => item.id !== marker.id));
+        if (this.selectedMapMarker()?.id === marker.id) {
+          this.selectMapMarker(null);
+        }
+        this.mapSaved.set(true);
+        this.loadAuditLogs();
+      },
+      error: () => this.showMapError(),
     });
   }
 
@@ -549,6 +694,23 @@ export class AdminShell {
     });
   }
 
+  private loadAdminMap() {
+    this.adminApi.listMapVisions().subscribe({
+      next: (visions) => {
+        this.mapVisions.set(visions);
+        this.selectMapVision(visions.find((vision) => vision.active) ?? visions[0] ?? null);
+      },
+      error: () => this.showMapError(),
+    });
+    this.adminApi.listMapMarkers().subscribe({
+      next: (markers) => {
+        this.mapMarkers.set(markers);
+        this.selectMapMarker(markers[0] ?? null);
+      },
+      error: () => this.showMapError(),
+    });
+  }
+
   private loadDashboard() {
     this.adminApi.getDashboard().subscribe({
       next: (dashboard) => {
@@ -736,6 +898,94 @@ export class AdminShell {
     };
   }
 
+  private emptyMapVisionForm(): AdminMapVisionUpsert {
+    return {
+      name: '',
+      descriptionMarkdown: '',
+      assetPath: '/assets/maps/map-hidden.png',
+      imageAlt: '',
+      displayOrder: this.mapVisions().length + 1,
+      status: 'DRAFT',
+    };
+  }
+
+  private toMapVisionForm(vision: AdminMapVision): AdminMapVisionUpsert {
+    return {
+      name: vision.name,
+      descriptionMarkdown: vision.descriptionMarkdown,
+      assetPath: vision.assetPath,
+      imageAlt: vision.imageAlt,
+      displayOrder: vision.displayOrder,
+      status: vision.status,
+    };
+  }
+
+  private normalizedMapVisionPayload(): AdminMapVisionUpsert {
+    const form = this.mapVisionForm();
+    return {
+      name: form.name.trim(),
+      descriptionMarkdown: form.descriptionMarkdown.trim(),
+      assetPath: form.assetPath.trim(),
+      imageAlt: form.imageAlt.trim(),
+      displayOrder: Number(form.displayOrder),
+      status: form.status,
+    };
+  }
+
+  private upsertMapVision(saved: AdminMapVision) {
+    this.mapVisions.update((visions) => {
+      const exists = visions.some((vision) => vision.id === saved.id);
+      const updated = exists
+        ? visions.map((vision) => (vision.id === saved.id ? saved : vision))
+        : [...visions, saved];
+      return updated.sort((left, right) => left.displayOrder - right.displayOrder);
+    });
+  }
+
+  private emptyMapMarkerForm(): AdminMapMarkerUpsert {
+    return {
+      questCode: 'QUEST_1',
+      title: '',
+      positionX: 50,
+      positionY: 50,
+      active: true,
+      displayOrder: this.mapMarkers().length + 1,
+    };
+  }
+
+  private toMapMarkerForm(marker: AdminMapMarker): AdminMapMarkerUpsert {
+    return {
+      questCode: marker.questCode,
+      title: marker.title,
+      positionX: marker.positionX,
+      positionY: marker.positionY,
+      active: marker.active,
+      displayOrder: marker.displayOrder,
+    };
+  }
+
+  private normalizedMapMarkerPayload(): AdminMapMarkerUpsert {
+    const form = this.mapMarkerForm();
+    return {
+      questCode: form.questCode,
+      title: form.title.trim(),
+      positionX: Number(form.positionX),
+      positionY: Number(form.positionY),
+      active: form.active,
+      displayOrder: Number(form.displayOrder),
+    };
+  }
+
+  private upsertMapMarker(saved: AdminMapMarker) {
+    this.mapMarkers.update((markers) => {
+      const exists = markers.some((marker) => marker.id === saved.id);
+      const updated = exists
+        ? markers.map((marker) => (marker.id === saved.id ? saved : marker))
+        : [...markers, saved];
+      return updated.sort((left, right) => left.displayOrder - right.displayOrder);
+    });
+  }
+
   private trimToNull(value: string | null): string | null {
     if (!value || !value.trim()) {
       return null;
@@ -764,6 +1014,11 @@ export class AdminShell {
   private showQuestError() {
     this.questError.set(true);
     this.focusSummary(this.questErrorSummary());
+  }
+
+  private showMapError() {
+    this.mapError.set(true);
+    this.focusSummary(this.mapErrorSummary());
   }
 
   private showMediaError() {
