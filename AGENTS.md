@@ -432,6 +432,7 @@ Règles :
 * dates et heures stockées en UTC avec des types adaptés ;
 * erreurs API au format `application/problem+json`;
 * journaux sans secrets ni données sensibles inutiles.
+* les migrations Flyway ne doivent pas réécrire silencieusement les contenus éditoriaux administrables ; toute correction de données doit être explicite, conditionnelle et validée contre les données de production.
 
 ## 9. Architecture frontend
 
