@@ -52,7 +52,9 @@ describe('HomePage', () => {
         {
           provide: PublicContentCacheService,
           useValue: {
+            shouldUseOfflineFallback: () => false,
             readHome: () => Promise.resolve(null),
+            writeHome: () => Promise.resolve(),
           },
         },
       ],

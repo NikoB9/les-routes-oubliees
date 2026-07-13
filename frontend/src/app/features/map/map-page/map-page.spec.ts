@@ -41,7 +41,9 @@ describe('MapPage', () => {
         {
           provide: PublicContentCacheService,
           useValue: {
+            shouldUseOfflineFallback: () => false,
             readMap: () => Promise.resolve(null),
+            writeMap: () => Promise.resolve(),
           },
         },
       ],

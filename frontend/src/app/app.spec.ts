@@ -21,6 +21,9 @@ describe('App', () => {
           provide: PublicContentCacheService,
           useValue: {
             refreshIfNeeded: () => Promise.resolve(),
+            shouldUseOfflineFallback: () => false,
+            readSettings: () => Promise.resolve(null),
+            writeSettings: () => Promise.resolve(),
           },
         },
         {

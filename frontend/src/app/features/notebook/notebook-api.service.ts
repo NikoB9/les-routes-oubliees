@@ -1,6 +1,6 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { catchError, from, of, switchMap, throwError } from 'rxjs';
+import { catchError, from, of, switchMap, tap, throwError } from 'rxjs';
 
 import { PublicContentCacheService } from '../../core/offline/public-content-cache.service';
 import {
@@ -18,8 +18,9 @@ export class NotebookApiService {
 
   listPublicQuests() {
     return this.http.get<PublicQuestSummary[]>('/api/public/notebook').pipe(
+      tap((quests) => this.writeQuestsToCache(quests)),
       catchError((error: unknown) => {
-        if (!this.isNetworkError(error)) {
+        if (!this.cache.shouldUseOfflineFallback(error)) {
           return throwError(() => error);
         }
 
@@ -32,8 +33,9 @@ export class NotebookApiService {
 
   getPublicQuest(code: string) {
     return this.http.get<PublicQuestDetail>(`/api/public/notebook/${encodeURIComponent(code)}`).pipe(
+      tap((quest) => this.writeQuestToCache(quest)),
       catchError((error: unknown) => {
-        if (!this.isNetworkError(error)) {
+        if (!this.cache.shouldUseOfflineFallback(error)) {
           return throwError(() => error);
         }
 
@@ -74,7 +76,15 @@ export class NotebookApiService {
     return this.http.post<AdminQuest>(`/api/admin/quest-tabs/${encodeURIComponent(code)}/archive`, {});
   }
 
-  private isNetworkError(error: unknown): boolean {
-    return error instanceof HttpErrorResponse && error.status === 0;
+  private writeQuestsToCache(quests: PublicQuestSummary[]): void {
+    void this.cache.writeQuests(quests).catch(() => {
+      // Public caching is opportunistic and must not break online rendering.
+    });
+  }
+
+  private writeQuestToCache(quest: PublicQuestDetail): void {
+    void this.cache.writeQuest(quest).catch(() => {
+      // Public caching is opportunistic and must not break online rendering.
+    });
   }
 }

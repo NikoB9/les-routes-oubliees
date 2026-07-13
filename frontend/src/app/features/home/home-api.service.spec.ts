@@ -24,7 +24,9 @@ describe('HomeApiService', () => {
         {
           provide: PublicContentCacheService,
           useValue: {
+            shouldUseOfflineFallback: () => true,
             readHome: () => Promise.resolve(cachedHome),
+            writeHome: () => Promise.resolve(),
           },
         },
       ],

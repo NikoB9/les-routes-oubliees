@@ -28,8 +28,11 @@ describe('NotebookPage', () => {
         {
           provide: PublicContentCacheService,
           useValue: {
+            shouldUseOfflineFallback: () => false,
             readQuests: () => Promise.resolve(null),
             readQuest: () => Promise.resolve(null),
+            writeQuests: () => Promise.resolve(),
+            writeQuest: () => Promise.resolve(),
           },
         },
         {

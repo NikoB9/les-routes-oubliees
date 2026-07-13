@@ -1,6 +1,6 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { catchError, from, of, switchMap, throwError } from 'rxjs';
+import { catchError, from, of, switchMap, tap, throwError } from 'rxjs';
 
 import { PublicContentCacheService } from '../offline/public-content-cache.service';
 import { PublicSiteSettings } from './site-settings.models';
@@ -12,8 +12,9 @@ export class SiteSettingsApiService {
 
   getPublicSettings() {
     return this.http.get<PublicSiteSettings>('/api/public/settings').pipe(
+      tap((settings) => this.writeSettingsToCache(settings)),
       catchError((error: unknown) => {
-        if (!this.isNetworkError(error)) {
+        if (!this.cache.shouldUseOfflineFallback(error)) {
           return throwError(() => error);
         }
 
@@ -24,7 +25,9 @@ export class SiteSettingsApiService {
     );
   }
 
-  private isNetworkError(error: unknown): boolean {
-    return error instanceof HttpErrorResponse && error.status === 0;
+  private writeSettingsToCache(settings: PublicSiteSettings): void {
+    void this.cache.writeSettings(settings).catch(() => {
+      // Public caching is opportunistic and must not break online rendering.
+    });
   }
 }

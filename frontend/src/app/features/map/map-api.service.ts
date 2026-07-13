@@ -1,6 +1,6 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { catchError, from, of, switchMap, throwError } from 'rxjs';
+import { catchError, from, of, switchMap, tap, throwError } from 'rxjs';
 
 import { PublicContentCacheService } from '../../core/offline/public-content-cache.service';
 import { PublicMapResponse } from './map-api.models';
@@ -12,8 +12,9 @@ export class MapApiService {
 
   getMap() {
     return this.http.get<PublicMapResponse>('/api/public/map').pipe(
+      tap((map) => this.writeMapToCache(map)),
       catchError((error: unknown) => {
-        if (!this.isNetworkError(error)) {
+        if (!this.cache.shouldUseOfflineFallback(error)) {
           return throwError(() => error);
         }
 
@@ -24,7 +25,9 @@ export class MapApiService {
     );
   }
 
-  private isNetworkError(error: unknown): boolean {
-    return error instanceof HttpErrorResponse && error.status === 0;
+  private writeMapToCache(map: PublicMapResponse): void {
+    void this.cache.writeMap(map).catch(() => {
+      // Public caching is opportunistic and must not break online rendering.
+    });
   }
 }
