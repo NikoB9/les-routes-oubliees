@@ -25,21 +25,21 @@ export const sectionRouteMatch: IsActiveMatchOptions = {
 export const publicNavLinks: readonly PublicNavLink[] = [
   {
     label: 'Accueil',
-    description: 'Message actuel et compagnie',
+    description: 'Le présage actuel et la Compagnie',
     path: '/',
     exact: true,
     icon: 'home',
   },
   {
     label: 'Carte',
-    description: "Progression de l'aventure",
+    description: 'Les terres où avance la Compagnie',
     path: '/map',
     exact: false,
     icon: 'map',
   },
   {
     label: 'Carnet',
-    description: 'Quetes revelees',
+    description: 'Nouvelles et secrets des quêtes',
     path: '/notebook',
     exact: false,
     icon: 'notebook',

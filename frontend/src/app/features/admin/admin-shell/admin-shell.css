@@ -51,6 +51,7 @@
 
 .admin-panel {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   max-width: 82rem;
   margin-top: 2rem;
@@ -195,10 +196,12 @@
 
 .quest-admin-layout {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
 }
 
 .quest-tabs {
+  min-width: 0;
   border-bottom: 2px solid #d1ad68;
 }
 

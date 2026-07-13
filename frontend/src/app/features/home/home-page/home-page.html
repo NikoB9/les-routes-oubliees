@@ -1,7 +1,7 @@
 <section class="home-page" aria-labelledby="home-title">
   <header class="home-intro">
     <h1 id="home-title">Les Routes Oubliées</h1>
-    <p>Suivez le message de l'étape en cours, la Compagnie et les aventuriers visibles.</p>
+    <p>Le présage du moment, la Compagnie et les compagnons qui marchent à ses côtés.</p>
   </header>
 
   @if (loading()) {
@@ -21,8 +21,52 @@
         aria-labelledby="current-message-title"
       >
         <div class="section-heading">
-          <h2 id="current-message-title">{{ message.title }}</h2>
-          <p class="importance">{{ importanceLabel[message.importance] }}</p>
+          <h2 id="current-message-title">
+            <span
+              class="importance-icon"
+              role="img"
+              [attr.aria-label]="importanceLabel[message.importance]"
+            >
+              @switch (message.importance) {
+                @case ('WARNING') {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                }
+                @case ('QUEST_IMMINENT') {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M5 22h14" />
+                    <path d="M5 2h14" />
+                    <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
+                    <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
+                  </svg>
+                }
+                @case ('SUCCESS') {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m8 12 3 3 5-6" />
+                  </svg>
+                }
+                @case ('MYSTERY') {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                }
+                @default {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="11" x2="12" y2="16" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                }
+              }
+            </span>
+            {{ message.title }}
+          </h2>
         </div>
 
         <div class="markdown-content">
@@ -102,7 +146,7 @@
 
     <section class="adventurers-section" aria-labelledby="adventurers-title">
       <div class="section-heading">
-        <h2 id="adventurers-title">Compagnons visibles</h2>
+        <h2 id="adventurers-title">Compagnons</h2>
       </div>
 
       @if (adventurers().length > 0) {
