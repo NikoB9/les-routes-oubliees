@@ -114,7 +114,7 @@ class PublicApiIntegrationTests {
 		mvc.perform(get("/api/public/offline-snapshot"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.version").value(matchesPattern("[a-f0-9]{64}")))
-			.andExpect(jsonPath("$.settings.siteName").value("Les Routes OubliÃ©es"))
+			.andExpect(jsonPath("$.settings.siteName").value("Les Routes Oubliées"))
 			.andExpect(jsonPath("$.home.message.title").value("Message de dÃ©monstration"))
 			.andExpect(jsonPath("$.home.message.contentMarkdown").doesNotExist())
 			.andExpect(jsonPath("$.home.message.contentHtml").exists())
