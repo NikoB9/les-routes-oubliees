@@ -18,6 +18,8 @@ import {
   AdminMapPreview,
   AdminMapVision,
   AdminMapVisionUpsert,
+  AdminSiteSettings,
+  AdminSiteSettingsUpdate,
 } from './admin-api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -26,6 +28,14 @@ export class AdminApiService {
 
   getDashboard() {
     return this.http.get<AdminDashboard>('/api/admin/dashboard');
+  }
+
+  getSiteSettings() {
+    return this.http.get<AdminSiteSettings>('/api/admin/settings');
+  }
+
+  updateSiteSettings(payload: AdminSiteSettingsUpdate) {
+    return this.http.put<AdminSiteSettings>('/api/admin/settings', payload);
   }
 
   listAllowedEmails() {

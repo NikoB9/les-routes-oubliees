@@ -9,7 +9,7 @@
   min-width: 0;
   overflow-x: auto;
   scroll-behavior: smooth;
-  /* Masque la barre de defilement : le defilement reste possible (tactile,
+  /* Masque la barre de défilement : le défilement reste possible (tactile,
      molette shift, fleches), mais l'affichage reste propre. */
   scrollbar-width: none;
   -ms-overflow-style: none;

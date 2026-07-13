@@ -42,7 +42,7 @@ public class AdminHomeMessageService {
 			trimToNull(request.expiredMessage()),
 			actorEmail);
 		repository.save(message);
-		audit.record(actorEmail, "HOME_MESSAGE_CREATED", "HOME_MESSAGE", message.id().toString(), "Parchemin cree");
+		audit.record(actorEmail, "HOME_MESSAGE_CREATED", "HOME_MESSAGE", message.id().toString(), "Parchemin créé");
 		return toResponse(message);
 	}
 
@@ -59,7 +59,7 @@ public class AdminHomeMessageService {
 			request.endsAt(),
 			trimToNull(request.expiredMessage()),
 			actorEmail);
-		audit.record(actorEmail, "HOME_MESSAGE_UPDATED", "HOME_MESSAGE", message.id().toString(), "Parchemin modifie");
+		audit.record(actorEmail, "HOME_MESSAGE_UPDATED", "HOME_MESSAGE", message.id().toString(), "Parchemin modifié");
 		return toResponse(message);
 	}
 
@@ -83,7 +83,7 @@ public class AdminHomeMessageService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Active home message cannot be deleted");
 		}
 		repository.delete(message);
-		audit.record(actorEmail, "HOME_MESSAGE_DELETED", "HOME_MESSAGE", id.toString(), "Parchemin supprime");
+		audit.record(actorEmail, "HOME_MESSAGE_DELETED", "HOME_MESSAGE", id.toString(), "Parchemin supprimé");
 	}
 
 	private HomeMessage findMessage(UUID id) {

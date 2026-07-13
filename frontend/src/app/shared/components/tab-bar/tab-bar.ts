@@ -8,11 +8,11 @@ import {
 } from '@angular/core';
 
 /**
- * Barre d'onglets a defilement horizontal.
+ * Barre d'onglets à défilement horizontal.
  *
  * Projette une liste d'onglets (`<ul>`) et la maintient sur une seule ligne :
  * quand elle deborde, deux fleches apparaissent pour faire defiler, et se
- * desactivent en bout de course. Aucune dependance externe.
+ * désactivent en bout de course. Aucune dépendance externe.
  */
 @Component({
   selector: 'app-tab-bar',
@@ -32,8 +32,8 @@ export class TabBarComponent implements AfterViewInit, OnDestroy {
     const element = this.viewport().nativeElement;
     this.resizeObserver = new ResizeObserver(() => this.update());
     this.resizeObserver.observe(element);
-    // Observe aussi le contenu projete : les onglets arrivent souvent apres
-    // le premier rendu (chargement asynchrone des donnees).
+    // Observe aussi le contenu projeté : les onglets arrivent souvent après
+    // le premier rendu (chargement asynchrone des données).
     const content = element.firstElementChild;
     if (content) {
       this.resizeObserver.observe(content);

@@ -4,11 +4,12 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { NotebookApiService } from '../notebook-api.service';
 import { PublicQuestDetail, PublicQuestSummary } from '../notebook-api.models';
+import { LoadingIndicatorComponent } from '../../../shared/components/loading-indicator/loading-indicator';
 import { TabBarComponent } from '../../../shared/components/tab-bar/tab-bar';
 
 @Component({
   selector: 'app-notebook-page',
-  imports: [RouterLink, TabBarComponent],
+  imports: [LoadingIndicatorComponent, RouterLink, TabBarComponent],
   templateUrl: './notebook-page.html',
   styleUrl: './notebook-page.css',
 })
@@ -33,10 +34,10 @@ export class NotebookPage {
 
   protected sections(quest: PublicQuestDetail) {
     return [
-      { title: 'Evenements importants', html: quest.importantEventsHtml },
-      { title: 'Indices decouverts', html: quest.discoveredCluesHtml },
-      { title: 'Epreuves realisees', html: quest.completedTrialsHtml },
-      { title: 'Notes complementaires', html: quest.extraContentHtml },
+      { title: 'Événements importants', html: quest.importantEventsHtml },
+      { title: 'Indices découverts', html: quest.discoveredCluesHtml },
+      { title: 'Épreuves réalisées', html: quest.completedTrialsHtml },
+      { title: 'Notes complémentaires', html: quest.extraContentHtml },
     ];
   }
 

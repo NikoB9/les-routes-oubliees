@@ -17,6 +17,8 @@ class AdminMapService {
 
 	private static final Pattern VERSIONED_MAP_ASSET =
 		Pattern.compile("^/assets/maps/[A-Za-z0-9][A-Za-z0-9._-]*\\.(png|jpg|jpeg|webp)$");
+	private static final Pattern MEDIA_ASSET =
+		Pattern.compile("^/media/[0-9a-fA-F-]{36}$");
 
 	private final MapVisionRepository visions;
 	private final MapMarkerRepository markers;
@@ -51,7 +53,7 @@ class AdminMapService {
 			request.status(),
 			false);
 		visions.save(vision);
-		audit.record(actorEmail, "MAP_VISION_CREATED", "MAP_VISION", vision.id().toString(), "Vision de carte creee");
+		audit.record(actorEmail, "MAP_VISION_CREATED", "MAP_VISION", vision.id().toString(), "Vision de carte créée");
 		return toVisionResponse(vision);
 	}
 
@@ -66,7 +68,7 @@ class AdminMapService {
 			request.imageAlt().trim(),
 			request.displayOrder(),
 			request.status());
-		audit.record(actorEmail, "MAP_VISION_UPDATED", "MAP_VISION", vision.id().toString(), "Vision de carte modifiee");
+		audit.record(actorEmail, "MAP_VISION_UPDATED", "MAP_VISION", vision.id().toString(), "Vision de carte modifiée");
 		return toVisionResponse(vision);
 	}
 
@@ -90,7 +92,7 @@ class AdminMapService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Active map vision cannot be deleted");
 		}
 		visions.delete(vision);
-		audit.record(actorEmail, "MAP_VISION_DELETED", "MAP_VISION", id.toString(), "Vision de carte supprimee");
+		audit.record(actorEmail, "MAP_VISION_DELETED", "MAP_VISION", id.toString(), "Vision de carte supprimée");
 	}
 
 	@Transactional(readOnly = true)
@@ -110,7 +112,7 @@ class AdminMapService {
 			request.active(),
 			request.displayOrder());
 		markers.save(marker);
-		audit.record(actorEmail, "MAP_MARKER_CREATED", "MAP_MARKER", marker.id().toString(), "Repere de carte cree");
+		audit.record(actorEmail, "MAP_MARKER_CREATED", "MAP_MARKER", marker.id().toString(), "Repère de carte créé");
 		return toMarkerResponse(marker);
 	}
 
@@ -124,7 +126,7 @@ class AdminMapService {
 			request.positionY(),
 			request.active(),
 			request.displayOrder());
-		audit.record(actorEmail, "MAP_MARKER_UPDATED", "MAP_MARKER", marker.id().toString(), "Repere de carte modifie");
+		audit.record(actorEmail, "MAP_MARKER_UPDATED", "MAP_MARKER", marker.id().toString(), "Repère de carte modifié");
 		return toMarkerResponse(marker);
 	}
 
@@ -132,7 +134,7 @@ class AdminMapService {
 	void deleteMarker(UUID id, String actorEmail) {
 		var marker = findMarker(id);
 		markers.delete(marker);
-		audit.record(actorEmail, "MAP_MARKER_DELETED", "MAP_MARKER", id.toString(), "Repere de carte supprime");
+		audit.record(actorEmail, "MAP_MARKER_DELETED", "MAP_MARKER", id.toString(), "Repère de carte supprimé");
 	}
 
 	@Transactional(readOnly = true)
@@ -159,8 +161,8 @@ class AdminMapService {
 
 	private void validateAssetPath(String assetPath) {
 		var value = assetPath == null ? "" : assetPath.trim();
-		if (!VERSIONED_MAP_ASSET.matcher(value).matches()) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Map asset must be a versioned map asset path");
+		if (!VERSIONED_MAP_ASSET.matcher(value).matches() && !MEDIA_ASSET.matcher(value).matches()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Map asset must be a versioned map asset or media URL");
 		}
 	}
 

@@ -1,24 +1,48 @@
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
 
 describe('App', () => {
+  let http: HttpTestingController;
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter(routes)],
+      providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
+
+    http = TestBed.inject(HttpTestingController);
   });
+
+  afterEach(() => {
+    http.verify();
+  });
+
+  function flushSettings(status: 'ONLINE' | 'MAINTENANCE' = 'ONLINE') {
+    http.expectOne('/api/public/settings').flush({
+      siteName: 'Les Routes Oubliées',
+      subtitle: "Compagnie d'Arkhavel",
+      logoPath: '/assets/brand/logo-compagnie-des-routes-oubliees.png?v=12fa08d',
+      timezone: 'Europe/Paris',
+      status,
+      maintenanceMessage: status === 'MAINTENANCE' ? 'Maintenance courte en cours.' : null,
+      accessibilityInformationMarkdown: 'Informations.',
+    });
+  }
 
   it('should create the app', () => {
     const fixture = TestBed.createComponent(App);
+    flushSettings();
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();
   });
 
   it('should render the application brand', async () => {
     const fixture = TestBed.createComponent(App);
+    flushSettings();
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.brand-title')?.textContent).toContain('Les Routes');
@@ -26,6 +50,7 @@ describe('App', () => {
 
   it('should expose accessible public navigation landmarks', async () => {
     const fixture = TestBed.createComponent(App);
+    flushSettings();
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
 
@@ -41,6 +66,7 @@ describe('App', () => {
 
   it('should render the public navigation links once per navigation surface', async () => {
     const fixture = TestBed.createComponent(App);
+    flushSettings();
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
 
@@ -57,13 +83,26 @@ describe('App', () => {
 
   it('should expose a direct accessible admin login link', async () => {
     const fixture = TestBed.createComponent(App);
+    flushSettings();
     await fixture.whenStable();
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
     const adminLink = compiled.querySelector<HTMLAnchorElement>('.admin-gate-link');
 
-    expect(adminLink?.textContent).toContain('Acces admin');
+    expect(adminLink?.textContent).toContain('Accès admin');
     expect(adminLink?.getAttribute('href')).toBe('/admin/login');
+  });
+
+  it('should render the public maintenance banner', async () => {
+    const fixture = TestBed.createComponent(App);
+    flushSettings('MAINTENANCE');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('.maintenance-banner')?.textContent).toContain(
+      'Maintenance courte en cours.',
+    );
   });
 });

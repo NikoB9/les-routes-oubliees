@@ -86,7 +86,7 @@ class MediaService {
 			return AdminMediaResponse.from(asset);
 		}
 		catch (IOException ex) {
-			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Le media ne peut pas etre stocke.", ex);
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Le média ne peut pas être stocké.", ex);
 		}
 		catch (RuntimeException ex) {
 			deleteQuietly(target);
@@ -114,7 +114,7 @@ class MediaService {
 		}
 		mediaAssets.delete(asset);
 		deleteQuietly(resolveStoragePath(asset.relativePath()));
-		audit.record(actorEmail, "MEDIA_DELETED", "MEDIA", id.toString(), "Media supprime");
+		audit.record(actorEmail, "MEDIA_DELETED", "MEDIA", id.toString(), "Média supprimé");
 	}
 
 	private boolean isReferenced(MediaAsset asset) {
@@ -163,7 +163,7 @@ class MediaService {
 			return file.getBytes();
 		}
 		catch (IOException ex) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le fichier ne peut pas etre lu.", ex);
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le fichier ne peut pas être lu.", ex);
 		}
 	}
 

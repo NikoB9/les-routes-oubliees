@@ -1,23 +1,23 @@
 <section class="notebook-page" aria-labelledby="notebook-title">
   <header class="page-intro">
-    <h1 id="notebook-title">Bloc-notes des quetes</h1>
+    <h1 id="notebook-title">Bloc-notes des quêtes</h1>
     <p>Nouvelles, indices et épreuves des quêtes dévoilées à la Compagnie — celle du moment comme les précédentes.</p>
   </header>
 
   @if (loading()) {
-    <p class="state-message" role="status">Chargement du carnet.</p>
+    <app-loading-indicator label="Chargement du carnet." />
   } @else if (loadError()) {
     <p class="state-message error" role="alert">
       Impossible de charger le carnet pour le moment.
     </p>
   } @else if (!hasQuests()) {
     <p class="state-message">
-      Les pages du carnet demeurent encore scellees. Elles se devoileront lorsque la
-      Compagnie aura franchi ses premieres epreuves.
+      Les pages du carnet demeurent encore scellées. Elles se dévoileront lorsque la
+      Compagnie aura franchi ses premières épreuves.
     </p>
   } @else {
     <div class="notebook-layout">
-      <nav class="quest-tabs" aria-label="Pages revelees">
+      <nav class="quest-tabs" aria-label="Pages révélées">
         <app-tab-bar>
           <ul>
             @for (quest of quests(); track quest.id) {

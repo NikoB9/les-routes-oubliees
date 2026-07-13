@@ -218,19 +218,21 @@ La page Carte révèle progressivement la destination recherchée.
 
 ### 7.2 Ressources
 
-Les images de carte sont versionnées dans le dépôt public, dans un répertoire dédié tel que :
+Les images de carte initiales peuvent être versionnées dans le dépôt public, dans un répertoire dédié tel que :
 
 ```text
 frontend/public/assets/maps/
 ```
 
-Les cartes peuvent donc être consultées dans l’historique du dépôt. Ce risque de divulgation est accepté.
+Les cartes versionnées peuvent donc être consultées dans l’historique du dépôt. Ce risque de divulgation est accepté pour ces assets.
+
+Les nouveaux fonds de carte administrables peuvent aussi provenir de la médiathèque, via une URL interne `/media/{id}`.
 
 La base de données conserve :
 
 * le nom de la vision ;
 * sa description ;
-* son chemin d’asset ;
+* son chemin d’asset versionné ou son URL média interne ;
 * son texte alternatif ;
 * son ordre ;
 * son statut ;
@@ -349,6 +351,7 @@ L’éditeur permet une saisie Markdown enrichie :
 * citations ;
 * liens ;
 * images issues de la médiathèque ;
+* titre visible et taille contrôlée pour les images du carnet ;
 * prévisualisation.
 
 ### 9.2 Sécurité
@@ -361,6 +364,7 @@ Le système doit :
 * refuser les scripts ;
 * refuser les gestionnaires d’événements inline ;
 * refuser les protocoles d’URL dangereux ;
+* limiter les tailles d’images Markdown aux valeurs prévues par l’application ;
 * empêcher toute exécution de code ;
 * tester des charges XSS connues.
 
@@ -470,7 +474,7 @@ Sont administrables :
 * illustrations des quêtes ;
 * autres images narratives.
 
-Les cartes géographiques sont gérées comme assets versionnés dans le dépôt.
+Les cartes géographiques initiales sont gérées comme assets versionnés dans le dépôt. Les nouveaux fonds administrables peuvent aussi être ajoutés depuis la médiathèque.
 
 ### 11.2 Stockage
 

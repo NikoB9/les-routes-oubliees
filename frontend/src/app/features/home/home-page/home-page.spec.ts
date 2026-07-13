@@ -18,7 +18,7 @@ const fullHomeResponse: PublicHomeResponse = {
   },
   company: {
     id: '20000000-0000-0000-0000-000000000001',
-    name: 'Compagnie des Routes Oubliees',
+    name: 'Compagnie des Routes Oubliées',
     emblemPath: null,
     imageAlt: null,
     shortDescription: 'Une compagnie prete a repartir.',
@@ -68,10 +68,10 @@ describe('HomePage', () => {
 
     expect(text(fixture)).toContain('Rassemblement');
     const importanceIcon = compiled.querySelector('.importance-icon');
-    expect(importanceIcon?.getAttribute('aria-label')).toBe('Quete imminente');
+    expect(importanceIcon?.getAttribute('aria-label')).toBe('Quête imminente');
     expect(importanceIcon?.querySelector('svg')).not.toBeNull();
     expect(text(fixture)).toContain('Sac pret');
-    expect(text(fixture)).toContain('Compagnie des Routes Oubliees');
+    expect(text(fixture)).toContain('Compagnie des Routes Oubliées');
     expect(text(fixture)).toContain('Aline des Brumes');
     expect(text(fixture)).toContain('Forces');
     expect(text(fixture)).toContain('Faiblesses');
@@ -122,7 +122,7 @@ describe('HomePage', () => {
 
     const compiled = fixture.nativeElement as HTMLElement;
 
-    expect(text(fixture)).toContain('Echeance atteinte');
+    expect(text(fixture)).toContain('Échéance atteinte');
     expect(text(fixture)).toContain('Le depart a eu lieu');
     expect(compiled.querySelector('time')?.getAttribute('datetime')).toBe('2026-07-11T08:00:00Z');
     expect(compiled.querySelector('[aria-live]')).toBeNull();

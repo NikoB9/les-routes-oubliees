@@ -11,7 +11,8 @@ import org.springframework.web.util.HtmlUtils;
 @Component
 class MarkdownRenderer {
 
-	private static final Pattern IMAGE = Pattern.compile("!\\[([^\\]]{0,280})]\\(([^\\s()]+(?:\\([^\\s()]*\\)[^\\s()]*)*)\\)");
+	private static final Pattern IMAGE = Pattern.compile(
+		"!\\[([^\\]]{0,280})]\\(([^\\s()\"]+(?:\\([^\\s()]*\\)[^\\s()]*)*)(?:\\s+&quot;((?:(?!&quot;).){0,240})&quot;)?\\)(?:\\{size=(small|medium|large|full)\\})?");
 	private static final Pattern LINK = Pattern.compile("\\[([^\\]]{1,160})]\\(([^\\s()]+(?:\\([^\\s()]*\\)[^\\s()]*)*)\\)");
 	private static final Pattern CODE = Pattern.compile("`([^`]{1,160})`");
 	private static final Pattern STRONG = Pattern.compile("\\*\\*([^*]+)\\*\\*");
@@ -94,7 +95,12 @@ class MarkdownRenderer {
 		if (lines.isEmpty()) {
 			return;
 		}
-		html.append("<p>").append(inline(String.join(" ", lines))).append("</p>");
+		var rendered = inline(String.join(" ", lines));
+		if (rendered.startsWith("<figure class=\"markdown-image ") && rendered.endsWith("</figure>")) {
+			html.append(rendered);
+		} else {
+			html.append("<p>").append(rendered).append("</p>");
+		}
 		lines.clear();
 	}
 
@@ -133,13 +139,29 @@ class MarkdownRenderer {
 		while (matcher.find()) {
 			var alt = matcher.group(1);
 			var src = matcher.group(2);
+			var title = matcher.group(3);
+			var size = matcher.group(4) == null ? "full" : matcher.group(4);
 			var replacement = isSafeImageUrl(src)
-				? "<img src=\"" + src + "\" alt=\"" + alt + "\">"
+				? imageHtml(src, alt, title, size)
 				: alt;
 			matcher.appendReplacement(rendered, Matcher.quoteReplacement(replacement));
 		}
 		matcher.appendTail(rendered);
 		return rendered.toString();
+	}
+
+	private String imageHtml(String src, String alt, String title, String size) {
+		var html = new StringBuilder("<figure class=\"markdown-image markdown-image--")
+			.append(size)
+			.append("\"><img src=\"")
+			.append(src)
+			.append("\" alt=\"")
+			.append(alt)
+			.append("\">");
+		if (title != null && !title.isBlank()) {
+			html.append("<figcaption>").append(title).append("</figcaption>");
+		}
+		return html.append("</figure>").toString();
 	}
 
 	private String safeLinks(String escaped) {

@@ -13,11 +13,13 @@ import {
 import { DesktopNavigationComponent } from './layout/desktop-navigation/desktop-navigation';
 import { PublicHeaderComponent } from './layout/header/public-header';
 import { MobileNavigationComponent } from './layout/mobile-navigation/mobile-navigation';
+import { LoadingIndicatorComponent } from './shared/components/loading-indicator/loading-indicator';
 
 @Component({
   selector: 'app-root',
   imports: [
     DesktopNavigationComponent,
+    LoadingIndicatorComponent,
     MobileNavigationComponent,
     PublicHeaderComponent,
     RouterOutlet,

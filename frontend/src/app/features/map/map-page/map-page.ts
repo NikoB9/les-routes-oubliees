@@ -2,13 +2,14 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
+import { LoadingIndicatorComponent } from '../../../shared/components/loading-indicator/loading-indicator';
 import { parseSafeMarkdown } from '../../../shared/utilities/safe-markdown';
 import { MapApiService } from '../map-api.service';
 import { PublicMapResponse } from '../map-api.models';
 
 @Component({
   selector: 'app-map-page',
-  imports: [RouterLink],
+  imports: [LoadingIndicatorComponent, RouterLink],
   templateUrl: './map-page.html',
   styleUrl: './map-page.css',
 })

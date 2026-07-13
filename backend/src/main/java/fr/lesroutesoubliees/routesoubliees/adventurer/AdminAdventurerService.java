@@ -41,7 +41,7 @@ public class AdminAdventurerService {
 			request.visible(),
 			repository.maxDisplayOrder() + 1);
 		repository.save(adventurer);
-		audit.record(actorEmail, "ADVENTURER_CREATED", "ADVENTURER", adventurer.id().toString(), "Aventurier cree");
+		audit.record(actorEmail, "ADVENTURER_CREATED", "ADVENTURER", adventurer.id().toString(), "Aventurier créé");
 		return toResponse(adventurer);
 	}
 
@@ -58,7 +58,7 @@ public class AdminAdventurerService {
 			request.weaknesses().trim(),
 			request.visible(),
 			adventurer.displayOrder());
-		audit.record(actorEmail, "ADVENTURER_UPDATED", "ADVENTURER", adventurer.id().toString(), "Aventurier modifie");
+		audit.record(actorEmail, "ADVENTURER_UPDATED", "ADVENTURER", adventurer.id().toString(), "Aventurier modifié");
 		return toResponse(adventurer);
 	}
 
@@ -87,7 +87,7 @@ public class AdminAdventurerService {
 	public void deleteAdventurer(UUID id, String actorEmail) {
 		var adventurer = findAdventurer(id);
 		repository.delete(adventurer);
-		audit.record(actorEmail, "ADVENTURER_DELETED", "ADVENTURER", id.toString(), "Aventurier supprime");
+		audit.record(actorEmail, "ADVENTURER_DELETED", "ADVENTURER", id.toString(), "Aventurier supprimé");
 	}
 
 	private Adventurer findAdventurer(UUID id) {

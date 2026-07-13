@@ -5,7 +5,7 @@
   </header>
 
   @if (loading()) {
-    <p class="state-message" role="status">Chargement de la carte.</p>
+    <app-loading-indicator label="Chargement de la carte." />
   } @else if (loadError()) {
     <p class="state-message error" role="alert">
       Impossible de charger la carte pour le moment.

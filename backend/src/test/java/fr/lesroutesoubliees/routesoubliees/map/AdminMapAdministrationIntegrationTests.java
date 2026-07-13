@@ -61,7 +61,7 @@ class AdminMapAdministrationIntegrationTests {
 					  "name": "Carte finale admin",
 					  "descriptionMarkdown": "Vision finale preparee en administration.",
 					  "assetPath": "/assets/maps/map-final.png",
-					  "imageAlt": "Carte finale de demonstration.",
+					  "imageAlt": "Carte finale de démonstration.",
 					  "displayOrder": 42,
 					  "status": "PUBLISHED"
 					}
@@ -107,13 +107,34 @@ class AdminMapAdministrationIntegrationTests {
 					{
 					  "name": "Chemin interdit",
 					  "descriptionMarkdown": "Test.",
-					  "assetPath": "/uploads/map.svg",
+					  "assetPath": "https://example.invalid/map.png",
 					  "imageAlt": "Asset interdit.",
 					  "displayOrder": 43,
 					  "status": "PUBLISHED"
 					}
 					"""))
 			.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void acceptsMediaLibraryImageAsMapBackground() throws Exception {
+		mvc.perform(post("/api/admin/map-views")
+				.with(user("admin@example.invalid"))
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "name": "Carte médiathèque",
+					  "descriptionMarkdown": "Vision issue d'un media uploade.",
+					  "assetPath": "/media/70000000-0000-0000-0000-000000000001",
+					  "imageAlt": "Carte importée depuis la médiathèque.",
+					  "displayOrder": 44,
+					  "status": "PUBLISHED"
+					}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.assetPath").value("/media/70000000-0000-0000-0000-000000000001"))
+			.andExpect(jsonPath("$.imageAlt").value("Carte importée depuis la médiathèque."));
 	}
 
 	@Test

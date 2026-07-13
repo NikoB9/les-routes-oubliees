@@ -39,9 +39,9 @@ import tools.jackson.databind.ObjectMapper;
 import fr.lesroutesoubliees.routesoubliees.TestcontainersConfiguration;
 
 // Ce test valide un comportement qui repose sur des ecritures COMMITEES lues via
-// une requete JDBC brute (MediaService.isReferenced). @Transactional casserait cette
+// une requête JDBC brute (MediaService.isReferenced). @Transactional casserait cette
 // verification (l'update JPA n'est pas flushe pour le JDBC brut) ; on isole donc la
-// classe en recreant le contexte/la base apres son execution.
+// classe en recréant le contexte/la base après son exécution.
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
 @SpringBootTest
