@@ -3,13 +3,17 @@ package fr.lesroutesoubliees.routesoubliees.group;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import fr.lesroutesoubliees.routesoubliees.shared.markdown.MarkdownRenderer;
+
 @Service
 public class PublicCompanyService {
 
 	private final CompanyProfileRepository repository;
+	private final MarkdownRenderer markdownRenderer;
 
-	PublicCompanyService(CompanyProfileRepository repository) {
+	PublicCompanyService(CompanyProfileRepository repository, MarkdownRenderer markdownRenderer) {
 		this.repository = repository;
+		this.markdownRenderer = markdownRenderer;
 	}
 
 	@Transactional(readOnly = true)
@@ -26,6 +30,6 @@ public class PublicCompanyService {
 			company.emblemPath(),
 			company.imageAlt(),
 			company.shortDescription(),
-			company.longDescriptionMarkdown());
+			markdownRenderer.render(company.longDescriptionMarkdown()));
 	}
 }

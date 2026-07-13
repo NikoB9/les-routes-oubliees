@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { defer, of } from 'rxjs';
 
 import { AdminAuthService } from '../../../core/auth/admin-auth.service';
 import { NotebookApiService } from '../../notebook/notebook-api.service';
@@ -13,8 +13,19 @@ interface DateConversionHarness {
   toLocalDateTimeInput(value: string | null, timezone: string): string | null;
 }
 
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 describe('AdminShell', () => {
+  let sectionParam = 'home';
+
   beforeEach(async () => {
+    sectionParam = 'home';
+    globalThis.ResizeObserver = ResizeObserverStub as typeof ResizeObserver;
+
     await TestBed.configureTestingModule({
       imports: [AdminShell],
       providers: [
@@ -22,7 +33,7 @@ describe('AdminShell', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            paramMap: of(convertToParamMap({ section: 'home' })),
+            paramMap: defer(() => of(convertToParamMap({ section: sectionParam }))),
           },
         },
         {
@@ -36,6 +47,7 @@ describe('AdminShell', () => {
           provide: AdminApiService,
           useValue: {
             listHomeMessages: () => of([]),
+            listMedia: () => of([]),
             getSiteSettings: () =>
               of({
                 id: '60000000-0000-0000-0000-000000000001',
@@ -54,11 +66,38 @@ describe('AdminShell', () => {
         },
         {
           provide: NotebookApiService,
-          useValue: {},
+          useValue: {
+            listAdminQuests: () =>
+              of([
+                {
+                  id: '50000000-0000-0000-0000-000000000001',
+                  code: 'QUEST_1',
+                  title: 'Quete 1',
+                  summary: 'Resume public',
+                  importantEventsMarkdown: '',
+                  importantEventsHtml: '',
+                  discoveredCluesMarkdown: '',
+                  discoveredCluesHtml: '',
+                  completedTrialsMarkdown: '',
+                  completedTrialsHtml: '',
+                  extraContentMarkdown: '',
+                  extraContentHtml: '',
+                  adminDraftMarkdown: '',
+                  adminDraftHtml: '',
+                  status: 'DRAFT',
+                  visibleToPlayers: false,
+                  displayOrder: 1,
+                  createdAt: '2026-07-13T10:00:00Z',
+                  updatedAt: '2026-07-13T10:00:00Z',
+                },
+              ]),
+          },
         },
         {
           provide: MediaApiService,
-          useValue: {},
+          useValue: {
+            listAdminMedia: () => of([]),
+          },
         },
       ],
     }).compileComponents();
@@ -77,5 +116,19 @@ describe('AdminShell', () => {
     expect(shell.toLocalDateTimeInput('2026-07-12T18:00:00Z', 'Europe/Paris')).toBe(
       '2026-07-12T20:00',
     );
+  });
+
+  it('shows Markdown tools on quest Markdown fields but not on the public summary', () => {
+    sectionParam = 'notebook';
+    const fixture = TestBed.createComponent(AdminShell);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const summary = compiled.querySelector('textarea[name="summary"]');
+    const summaryLabel = summary?.closest('label');
+
+    expect(compiled.querySelectorAll('app-markdown-toolbar').length).toBeGreaterThanOrEqual(5);
+    expect(summaryLabel?.textContent).toContain('Résumé public');
+    expect(summaryLabel?.querySelector('app-markdown-toolbar')).toBeNull();
   });
 });

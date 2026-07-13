@@ -7,16 +7,23 @@ import org.springframework.transaction.annotation.Transactional;
 
 import fr.lesroutesoubliees.routesoubliees.shared.EditorialStatus;
 import fr.lesroutesoubliees.routesoubliees.shared.config.SiteProperties;
+import fr.lesroutesoubliees.routesoubliees.shared.markdown.MarkdownRenderer;
 
 @Service
 public class PublicHomeMessageService {
 
 	private final HomeMessageRepository repository;
 	private final SiteProperties siteProperties;
+	private final MarkdownRenderer markdownRenderer;
 
-	PublicHomeMessageService(HomeMessageRepository repository, SiteProperties siteProperties) {
+	PublicHomeMessageService(
+		HomeMessageRepository repository,
+		SiteProperties siteProperties,
+		MarkdownRenderer markdownRenderer
+	) {
 		this.repository = repository;
 		this.siteProperties = siteProperties;
+		this.markdownRenderer = markdownRenderer;
 	}
 
 	@Transactional(readOnly = true)
@@ -31,7 +38,7 @@ public class PublicHomeMessageService {
 		return new PublicHomeMessageResponse(
 			message.id(),
 			message.title(),
-			message.contentMarkdown(),
+			markdownRenderer.render(message.contentMarkdown()),
 			message.importance().name(),
 			message.countdownEnabled(),
 			message.endsAt(),

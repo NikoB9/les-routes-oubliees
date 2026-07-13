@@ -35,23 +35,11 @@
 
       <section class="map-description" aria-labelledby="map-description-title">
         <h2 id="map-description-title">Description</h2>
-        <div class="markdown-content">
-          @for (block of descriptionBlocks(); track $index) {
-            @if (block.kind === 'heading') {
-              <h3>{{ block.text }}</h3>
-            } @else if (block.kind === 'list') {
-              <ul>
-                @for (item of block.items; track item) {
-                  <li>{{ item }}</li>
-                }
-              </ul>
-            } @else {
-              <p>{{ block.text }}</p>
-            }
-          } @empty {
-            <p>Aucune description détaillée n'est encore publiée pour cette carte.</p>
-          }
-        </div>
+        @if (currentVision.descriptionHtml) {
+          <div class="markdown-content" [innerHTML]="currentVision.descriptionHtml"></div>
+        } @else {
+          <p>Aucune description détaillée n'est encore publiée pour cette carte.</p>
+        }
       </section>
 
       <section class="marker-list" aria-labelledby="marker-list-title">

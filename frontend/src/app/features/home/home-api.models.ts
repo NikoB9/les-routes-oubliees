@@ -7,7 +7,7 @@ export interface PublicHomeResponse {
 export interface PublicHomeMessage {
   id: string;
   title: string;
-  contentMarkdown: string;
+  contentHtml: string;
   importance: HomeMessageImportance;
   countdownEnabled: boolean;
   endsAt: string | null;
@@ -28,7 +28,7 @@ export interface PublicCompany {
   emblemPath: string | null;
   imageAlt: string | null;
   shortDescription: string;
-  longDescriptionMarkdown: string;
+  longDescriptionHtml: string;
 }
 
 export interface PublicAdventurer {

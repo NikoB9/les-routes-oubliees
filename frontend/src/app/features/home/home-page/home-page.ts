@@ -1,7 +1,6 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import { parseSafeMarkdown } from '../../../shared/utilities/safe-markdown';
 import { LoadingIndicatorComponent } from '../../../shared/components/loading-indicator/loading-indicator';
 import { HomeMessageImportance, PublicHomeResponse } from '../home-api.models';
 import { HomeApiService } from '../home-api.service';
@@ -29,12 +28,6 @@ export class HomePage {
   protected readonly activeMessage = computed(() => this.home()?.message ?? null);
   protected readonly company = computed(() => this.home()?.company ?? null);
   protected readonly adventurers = computed(() => this.home()?.adventurers ?? []);
-  protected readonly messageBlocks = computed(() =>
-    parseSafeMarkdown(this.activeMessage()?.contentMarkdown),
-  );
-  protected readonly companyBlocks = computed(() =>
-    parseSafeMarkdown(this.company()?.longDescriptionMarkdown),
-  );
   protected readonly countdown = computed<CountdownView | null>(() => {
     const message = this.activeMessage();
 

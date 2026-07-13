@@ -1,0 +1,21 @@
+.markdown-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.markdown-toolbar button {
+  min-height: 2.35rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #8f7650;
+  background: #fff8e8;
+  color: #211914;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.markdown-toolbar button:focus-visible {
+  outline: 3px solid #7a261d;
+  outline-offset: 2px;
+}

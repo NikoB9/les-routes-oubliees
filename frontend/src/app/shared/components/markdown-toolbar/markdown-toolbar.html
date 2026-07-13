@@ -1,0 +1,9 @@
+<div class="markdown-toolbar" role="toolbar" aria-label="Outils Markdown">
+  <button type="button" (click)="emit('## ', '', 'Titre')">Titre</button>
+  <button type="button" (click)="emit('**', '**', 'texte')">Gras</button>
+  <button type="button" (click)="emit('*', '*', 'texte')">Italique</button>
+  <button type="button" (click)="emit('- ', '', 'Element')">Liste</button>
+  <button type="button" (click)="emit('> ', '', 'Citation')">Citation</button>
+  <button type="button" (click)="linkRequested.emit()">Lien</button>
+  <button type="button" (click)="imageRequested.emit($event)">Image</button>
+</div>

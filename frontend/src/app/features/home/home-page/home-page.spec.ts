@@ -9,7 +9,7 @@ const fullHomeResponse: PublicHomeResponse = {
   message: {
     id: '10000000-0000-0000-0000-000000000001',
     title: 'Rassemblement',
-    contentMarkdown: 'La Compagnie se rassemble.\n\n- Sac pret\n- Carte relue',
+    contentHtml: '<p>La Compagnie se <strong>rassemble</strong>.</p><ul><li>Sac pret</li><li>Carte relue</li></ul>',
     importance: 'QUEST_IMMINENT',
     countdownEnabled: false,
     endsAt: null,
@@ -22,7 +22,7 @@ const fullHomeResponse: PublicHomeResponse = {
     emblemPath: null,
     imageAlt: null,
     shortDescription: 'Une compagnie prete a repartir.',
-    longDescriptionMarkdown: 'Elle avance avec prudence.',
+    longDescriptionHtml: '<p>Elle avance avec <strong>prudence</strong>.</p>',
   },
   adventurers: [
     {
@@ -71,6 +71,12 @@ describe('HomePage', () => {
     expect(importanceIcon?.getAttribute('aria-label')).toBe('Quête imminente');
     expect(importanceIcon?.querySelector('svg')).not.toBeNull();
     expect(text(fixture)).toContain('Sac pret');
+    expect(compiled.querySelector('.parchment .markdown-content strong')?.textContent).toBe(
+      'rassemble',
+    );
+    expect(compiled.querySelector('.company-section .markdown-content strong')?.textContent).toBe(
+      'prudence',
+    );
     expect(text(fixture)).toContain('Compagnie des Routes Oubliées');
     expect(text(fixture)).toContain('Aline des Brumes');
     expect(text(fixture)).toContain('Forces');

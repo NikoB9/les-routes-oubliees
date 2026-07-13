@@ -8,6 +8,6 @@ public record PublicCompanyResponse(
 	String emblemPath,
 	String imageAlt,
 	String shortDescription,
-	String longDescriptionMarkdown
+	String longDescriptionHtml
 ) {
 }

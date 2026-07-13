@@ -69,23 +69,11 @@
           </h2>
         </div>
 
-        <div class="markdown-content">
-          @for (block of messageBlocks(); track $index) {
-            @if (block.kind === 'heading') {
-              <h3>{{ block.text }}</h3>
-            } @else if (block.kind === 'list') {
-              <ul>
-                @for (item of block.items; track item) {
-                  <li>{{ item }}</li>
-                }
-              </ul>
-            } @else {
-              <p>{{ block.text }}</p>
-            }
-          } @empty {
-            <p>Le parchemin actif ne contient pas encore de texte public.</p>
-          }
-        </div>
+        @if (message.contentHtml) {
+          <div class="markdown-content" [innerHTML]="message.contentHtml"></div>
+        } @else {
+          <p>Le parchemin actif ne contient pas encore de texte public.</p>
+        }
 
         @if (message.countdownEnabled && message.endsAt) {
           <div class="countdown-panel" aria-labelledby="countdown-title">
@@ -123,21 +111,7 @@
         <div>
           <h2 id="company-title">{{ companyView.name }}</h2>
           <p class="lead">{{ companyView.shortDescription }}</p>
-          <div class="markdown-content">
-            @for (block of companyBlocks(); track $index) {
-              @if (block.kind === 'heading') {
-                <h3>{{ block.text }}</h3>
-              } @else if (block.kind === 'list') {
-                <ul>
-                  @for (item of block.items; track item) {
-                    <li>{{ item }}</li>
-                  }
-                </ul>
-              } @else {
-                <p>{{ block.text }}</p>
-              }
-            }
-          </div>
+          <div class="markdown-content" [innerHTML]="companyView.longDescriptionHtml"></div>
         </div>
       </section>
     } @else {

@@ -6,16 +6,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import fr.lesroutesoubliees.routesoubliees.shared.EditorialStatus;
+import fr.lesroutesoubliees.routesoubliees.shared.markdown.MarkdownRenderer;
 
 @Service
 public class PublicMapService {
 
 	private final MapVisionRepository repository;
 	private final MapMarkerRepository markerRepository;
+	private final MarkdownRenderer markdownRenderer;
 
-	PublicMapService(MapVisionRepository repository, MapMarkerRepository markerRepository) {
+	PublicMapService(
+		MapVisionRepository repository,
+		MapMarkerRepository markerRepository,
+		MarkdownRenderer markdownRenderer
+	) {
 		this.repository = repository;
 		this.markerRepository = markerRepository;
+		this.markdownRenderer = markdownRenderer;
 	}
 
 	@Transactional(readOnly = true)
@@ -35,7 +42,7 @@ public class PublicMapService {
 		return new PublicMapVisionResponse(
 			vision.id(),
 			vision.name(),
-			vision.descriptionMarkdown(),
+			markdownRenderer.render(vision.descriptionMarkdown()),
 			vision.assetPath(),
 			vision.imageAlt(),
 			vision.displayOrder());

@@ -1,5 +1,6 @@
 package fr.lesroutesoubliees.routesoubliees.home;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -55,7 +56,7 @@ class AdminHomeAdministrationIntegrationTests {
 				.content("""
 					{
 					  "title": "Parchemin admin",
-					  "contentMarkdown": "Message publié depuis l'administration.",
+					  "contentMarkdown": "Message **publie** depuis l'administration.\\n\\n- Premier signe\\n- Deuxieme signe\\n\\nVoir [le carnet](/notebook/QUEST_1).",
 					  "importance": "SUCCESS",
 					  "status": "PUBLISHED",
 					  "countdownEnabled": false,
@@ -79,7 +80,10 @@ class AdminHomeAdministrationIntegrationTests {
 
 		mvc.perform(get("/api/public/home"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.message.title").value("Parchemin admin"));
+			.andExpect(jsonPath("$.message.title").value("Parchemin admin"))
+			.andExpect(jsonPath("$.message.contentHtml").value(containsString("<strong>publie</strong>")))
+			.andExpect(jsonPath("$.message.contentHtml").value(containsString("<ul><li>Premier signe</li><li>Deuxieme signe</li></ul>")))
+			.andExpect(jsonPath("$.message.contentHtml").value(containsString("<a href=\"/notebook/QUEST_1\">le carnet</a>")));
 	}
 
 	@Test
@@ -94,7 +98,7 @@ class AdminHomeAdministrationIntegrationTests {
 					  "emblemPath": null,
 					  "imageAlt": null,
 					  "shortDescription": "Description courte admin.",
-					  "longDescriptionMarkdown": "Description longue admin."
+					  "longDescriptionMarkdown": "Description **longue** admin.\\n\\n- Serment\\n- Boussole"
 					}
 					"""))
 			.andExpect(status().isOk())
@@ -126,6 +130,8 @@ class AdminHomeAdministrationIntegrationTests {
 
 		mvc.perform(get("/api/public/home"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.company.name").value("Compagnie admin"));
+			.andExpect(jsonPath("$.company.name").value("Compagnie admin"))
+			.andExpect(jsonPath("$.company.longDescriptionHtml").value(containsString("<strong>longue</strong>")))
+			.andExpect(jsonPath("$.company.longDescriptionHtml").value(containsString("<ul><li>Serment</li><li>Boussole</li></ul>")));
 	}
 }
