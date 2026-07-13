@@ -266,6 +266,8 @@
 }
 
 .quest-form :where(input, textarea, select, button):focus-visible,
+.markdown-toolbar button:focus-visible,
+.markdown-media-picker button:focus-visible,
 .content-form :where(input, textarea, select, button):focus-visible,
 .admin-list button:focus-visible,
 .media-form :where(input, button):focus-visible,
@@ -299,6 +301,46 @@
   padding: 1rem;
   border: 1px solid #d1ad68;
   background: #fffaf0;
+}
+
+.markdown-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.markdown-toolbar button,
+.markdown-media-picker button {
+  min-height: 2.35rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #8f7650;
+  background: #fff8e8;
+  color: #211914;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.markdown-media-picker {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.8rem;
+  border: 1px solid #d1ad68;
+  background: #fff8e8;
+}
+
+.markdown-media-picker h4 {
+  margin: 0;
+  color: #211914;
+}
+
+.markdown-media-picker ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .quest-preview {

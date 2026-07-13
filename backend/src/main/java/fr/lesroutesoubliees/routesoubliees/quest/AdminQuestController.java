@@ -48,6 +48,11 @@ class AdminQuestController {
 		return quests.updateQuest(code, request, identity.email(authentication));
 	}
 
+	@PostMapping("/preview")
+	AdminQuestPreviewResponse preview(@Valid @RequestBody AdminQuestUpdateRequest request) {
+		return quests.preview(request);
+	}
+
 	@PostMapping("/{code}/publish")
 	AdminQuestResponse publishQuest(
 		@PathVariable String code,
