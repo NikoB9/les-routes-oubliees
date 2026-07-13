@@ -49,7 +49,7 @@ public class AdminCompanyService {
 			request.longDescriptionMarkdown().trim(),
 			true);
 		repository.save(company);
-		audit.record(actorEmail, "COMPANY_UPDATED", "COMPANY", company.id().toString(), "Compagnie modifiee");
+		audit.record(actorEmail, "COMPANY_UPDATED", "COMPANY", company.id().toString(), "Compagnie modifiée");
 		return toResponse(company);
 	}
 

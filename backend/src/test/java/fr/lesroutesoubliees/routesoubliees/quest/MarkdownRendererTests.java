@@ -52,10 +52,26 @@ class MarkdownRendererTests {
 			![script](javascript:alert(1))
 			""");
 
-		assertThat(html).contains("<img src=\"/media/11111111-1111-1111-1111-111111111111\" alt=\"portrait\">");
-		assertThat(html).contains("<img src=\"/assets/maps/map-hidden.png\" alt=\"carte\">");
+		assertThat(html).contains("<figure class=\"markdown-image markdown-image--full\"><img src=\"/media/11111111-1111-1111-1111-111111111111\" alt=\"portrait\"></figure>");
+		assertThat(html).contains("<figure class=\"markdown-image markdown-image--full\"><img src=\"/assets/maps/map-hidden.png\" alt=\"carte\"></figure>");
 		assertThat(html).doesNotContain("<img src=\"/assets/icons/piege.svg\"");
 		assertThat(html).doesNotContain("javascript:");
 		assertThat(html).contains("svg", "script");
+	}
+
+	@Test
+	void rendersSafeMediaImageWithCaptionAndSize() {
+		var html = renderer.render("![Portrait d'Elyra](/media/11111111-1111-1111-1111-111111111111 \"L'indice retrouve\"){size=medium}");
+
+		assertThat(html).contains(
+			"<figure class=\"markdown-image markdown-image--medium\"><img src=\"/media/11111111-1111-1111-1111-111111111111\" alt=\"Portrait d&#39;Elyra\"><figcaption>L&#39;indice retrouve</figcaption></figure>");
+	}
+
+	@Test
+	void ignoresUnknownImageSizes() {
+		var html = renderer.render("![portrait](/media/11111111-1111-1111-1111-111111111111 \"Titre\"){size=giant}");
+
+		assertThat(html).doesNotContain("markdown-image--giant");
+		assertThat(html).contains("{size=giant}");
 	}
 }

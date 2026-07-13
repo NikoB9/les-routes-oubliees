@@ -55,7 +55,7 @@ class AdminHomeAdministrationIntegrationTests {
 				.content("""
 					{
 					  "title": "Parchemin admin",
-					  "contentMarkdown": "Message publie depuis l'administration.",
+					  "contentMarkdown": "Message publié depuis l'administration.",
 					  "importance": "SUCCESS",
 					  "status": "PUBLISHED",
 					  "countdownEnabled": false,

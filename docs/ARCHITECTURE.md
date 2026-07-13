@@ -385,15 +385,15 @@ Les règles « une seule carte active » et « un seul message actif » doivent 
 
 ### 8.1 Cartes
 
-Les cartes sont stockées dans :
+Les cartes initiales peuvent être stockées dans :
 
 ```text
 frontend/public/assets/maps/
 ```
 
-La base référence un chemin d’asset connu.
+La base référence un chemin d’asset connu ou une URL média interne `/media/{id}`.
 
-Ne jamais accepter un chemin arbitraire depuis l’administration.
+Ne jamais accepter un chemin arbitraire depuis l’administration. Les chemins acceptés pour un fond de carte sont limités aux assets `/assets/maps/` en PNG, JPEG ou WebP et aux médias uploadés exposés via `/media/{id}`.
 
 ### 8.2 Médias uploadés
 
@@ -464,6 +464,7 @@ Règles :
 * HTML brut désactivé dans le parseur Markdown ;
 * sanitation côté backend avec allowlist stricte d’éléments, attributs et protocoles ;
 * mêmes règles pour la prévisualisation admin et le rendu public ;
+* les images Markdown peuvent recevoir un titre visible et une taille uniquement via une syntaxe contrôlée par le backend ;
 * tests dédiés aux charges XSS, aux URL dangereuses et aux attributs d’événements ;
 * aucun HTML non fiable ne doit être injecté par le frontend.
 

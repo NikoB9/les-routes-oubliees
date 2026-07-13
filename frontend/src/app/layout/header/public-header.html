@@ -1,19 +1,21 @@
 <header class="site-header">
-  <a class="brand" routerLink="/" aria-label="Accueil - Les Routes Oubliees">
+  <a class="brand" routerLink="/" [attr.aria-label]="'Accueil - ' + settings().siteName">
     <img
       class="brand-mark"
-      src="/assets/brand/logo-compagnie-des-routes-oubliees.png?v=12fa08d"
+      [src]="settings().logoPath || fallbackLogo"
       alt=""
       aria-hidden="true"
     />
     <span class="brand-copy">
-      <span class="brand-title">Les Routes Oubliées</span>
-      <span class="brand-subtitle">Compagnie d'Arkhavel</span>
+      <span class="brand-title">{{ settings().siteName }}</span>
+      @if (settings().subtitle) {
+        <span class="brand-subtitle">{{ settings().subtitle }}</span>
+      }
     </span>
   </a>
 
-  <a class="admin-gate-link" routerLink="/admin/login" title="Acces admin">
-    <span class="sr-only">Acces admin</span>
+  <a class="admin-gate-link" routerLink="/admin/login" title="Accès admin">
+    <span class="sr-only">Accès admin</span>
     <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
       <path
         d="M12 3l7 3v5c0 4.6-2.8 8.7-7 10-4.2-1.3-7-5.4-7-10V6l7-3z"
@@ -32,3 +34,9 @@
     </svg>
   </a>
 </header>
+
+@if (settings().status === 'MAINTENANCE') {
+  <p class="maintenance-banner" role="status">
+    {{ settings().maintenanceMessage || 'Le site est temporairement en maintenance.' }}
+  </p>
+}

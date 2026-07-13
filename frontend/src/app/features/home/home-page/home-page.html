@@ -5,7 +5,7 @@
   </header>
 
   @if (loading()) {
-    <p class="state-message" role="status">Chargement de l'accueil.</p>
+    <app-loading-indicator label="Chargement de l'accueil." />
   } @else if (loadError()) {
     <p class="state-message error" role="alert">
       Impossible de charger l'accueil pour le moment.

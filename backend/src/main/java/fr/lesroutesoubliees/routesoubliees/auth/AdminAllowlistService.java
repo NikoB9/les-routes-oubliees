@@ -74,7 +74,7 @@ public class AdminAllowlistService {
 		var email = normalizeEmail(request.email())
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email administrateur invalide."));
 		if (repository.existsByEmail(email)) {
-			throw new ResponseStatusException(HttpStatus.CONFLICT, "Cet email administrateur existe deja.");
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Cet email administrateur existe déjà.");
 		}
 		var allowedEmail = repository.save(new AdminAllowedEmail(email, normalizeLabel(request.label())));
 		audit.record(actorEmail, "ADMIN_ALLOWED_EMAIL_CREATED", "ADMIN_ALLOWED_EMAIL", allowedEmail.id().toString(),
@@ -87,11 +87,11 @@ public class AdminAllowlistService {
 		repository.lockAll();
 		var allowedEmail = findAllowedEmail(id);
 		if (allowedEmail.active() && !request.active() && repository.countByActiveTrue() <= 1) {
-			throw new ResponseStatusException(HttpStatus.CONFLICT, "Le dernier administrateur actif ne peut pas etre desactive.");
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Le dernier administrateur actif ne peut pas être désactivé.");
 		}
 		allowedEmail.update(normalizeLabel(request.label()), request.active());
 		audit.record(actorEmail, "ADMIN_ALLOWED_EMAIL_UPDATED", "ADMIN_ALLOWED_EMAIL", allowedEmail.id().toString(),
-			"Email administrateur mis a jour");
+			"Email administrateur mis à jour");
 		return AdminAllowedEmailResponse.from(allowedEmail);
 	}
 
@@ -100,11 +100,11 @@ public class AdminAllowlistService {
 		repository.lockAll();
 		var allowedEmail = findAllowedEmail(id);
 		if (allowedEmail.active() && repository.countByActiveTrue() <= 1) {
-			throw new ResponseStatusException(HttpStatus.CONFLICT, "Le dernier administrateur actif ne peut pas etre supprime.");
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Le dernier administrateur actif ne peut pas être supprimé.");
 		}
 		repository.delete(allowedEmail);
 		audit.record(actorEmail, "ADMIN_ALLOWED_EMAIL_DELETED", "ADMIN_ALLOWED_EMAIL", id.toString(),
-			"Email administrateur supprime");
+			"Email administrateur supprimé");
 	}
 
 	private AdminAllowedEmail findAllowedEmail(UUID id) {

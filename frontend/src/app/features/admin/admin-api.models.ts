@@ -19,6 +19,32 @@ export interface AdminDashboard {
   latestAuditLogs: AdminAuditLog[];
 }
 
+export type SiteStatus = 'ONLINE' | 'MAINTENANCE';
+
+export interface AdminSiteSettings {
+  id: string;
+  siteName: string;
+  subtitle: string | null;
+  logoPath: string | null;
+  timezone: string;
+  status: SiteStatus;
+  maintenanceMessage: string | null;
+  accessibilityInformationMarkdown: string;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminSiteSettingsUpdate {
+  siteName: string;
+  subtitle: string | null;
+  logoPath: string | null;
+  timezone: string;
+  status: SiteStatus;
+  maintenanceMessage: string | null;
+  accessibilityInformationMarkdown: string;
+}
+
 export interface AdminAllowedEmail {
   id: string;
   email: string;

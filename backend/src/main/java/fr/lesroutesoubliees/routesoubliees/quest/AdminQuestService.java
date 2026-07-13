@@ -48,7 +48,7 @@ public class AdminQuestService {
 			request.adminDraftMarkdown().trim(),
 			request.status(),
 			request.visibleToPlayers());
-		audit.record(actorEmail, "QUEST_UPDATED", "QUEST", quest.code(), "Quete mise a jour");
+		audit.record(actorEmail, "QUEST_UPDATED", "QUEST", quest.code(), "Quête mise à jour");
 		return toResponse(quest);
 	}
 
@@ -66,7 +66,7 @@ public class AdminQuestService {
 	public AdminQuestResponse publishQuest(String code, boolean visibleToPlayers, String actorEmail) {
 		var quest = findQuest(code);
 		quest.publish(visibleToPlayers);
-		audit.record(actorEmail, "QUEST_PUBLISHED", "QUEST", quest.code(), "Quete publiee");
+		audit.record(actorEmail, "QUEST_PUBLISHED", "QUEST", quest.code(), "Quête publiée");
 		return toResponse(quest);
 	}
 
@@ -74,7 +74,7 @@ public class AdminQuestService {
 	public AdminQuestResponse hideQuest(String code, String actorEmail) {
 		var quest = findQuest(code);
 		quest.hide();
-		audit.record(actorEmail, "QUEST_HIDDEN", "QUEST", quest.code(), "Quete masquee");
+		audit.record(actorEmail, "QUEST_HIDDEN", "QUEST", quest.code(), "Quête masquée");
 		return toResponse(quest);
 	}
 
@@ -82,7 +82,7 @@ public class AdminQuestService {
 	public AdminQuestResponse archiveQuest(String code, String actorEmail) {
 		var quest = findQuest(code);
 		quest.archive();
-		audit.record(actorEmail, "QUEST_ARCHIVED", "QUEST", quest.code(), "Quete archivee");
+		audit.record(actorEmail, "QUEST_ARCHIVED", "QUEST", quest.code(), "Quête archivée");
 		return toResponse(quest);
 	}
 

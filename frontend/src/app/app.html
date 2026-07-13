@@ -10,7 +10,7 @@
 
   <main id="main-content" tabindex="-1">
     @if (isNavigating()) {
-      <p class="route-status" role="status">Chargement de la page.</p>
+      <app-loading-indicator label="Chargement de la page." />
     }
     <router-outlet />
   </main>

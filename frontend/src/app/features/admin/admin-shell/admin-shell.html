@@ -1,23 +1,24 @@
 <section class="page-intro" aria-labelledby="admin-title">
   <h1 id="admin-title">Tableau de bord</h1>
   @if (error()) {
-    <p class="alert" role="alert">La session administrateur ne peut pas etre verifiee.</p>
+    <p class="alert" role="alert">La session administrateur ne peut pas être vérifiée.</p>
   } @else if (session(); as adminSession) {
     <p>Session ouverte pour {{ adminSession.email }}.</p>
-    <button type="button" class="logout-button" (click)="logout()">Se deconnecter</button>
+    <button type="button" class="logout-button" (click)="logout()">Se déconnecter</button>
     <nav class="admin-navigation" aria-label="Navigation administration">
-      <a routerLink="/admin/dashboard" [class.active]="section() === 'dashboard'">Dashboard</a>
-      <a routerLink="/admin/notebook" [class.active]="section() === 'notebook'">Quetes</a>
-      <a routerLink="/admin/media" [class.active]="section() === 'media'">Medias</a>
+      <a routerLink="/admin/dashboard" [class.active]="section() === 'dashboard'">Tableau de bord</a>
+      <a routerLink="/admin/notebook" [class.active]="section() === 'notebook'">Quêtes</a>
+      <a routerLink="/admin/media" [class.active]="section() === 'media'">Médias</a>
       <a routerLink="/admin/administrators" [class.active]="section() === 'administrators'">Administrateurs</a>
       <a routerLink="/admin/audit" [class.active]="section() === 'audit'">Audit</a>
       <a routerLink="/admin/home" [class.active]="section() === 'home'">Accueil</a>
       <a routerLink="/admin/group" [class.active]="section() === 'group'">Compagnie</a>
       <a routerLink="/admin/adventurers" [class.active]="section() === 'adventurers'">Aventuriers</a>
       <a routerLink="/admin/map" [class.active]="section() === 'map'">Carte</a>
+      <a routerLink="/admin/settings" [class.active]="section() === 'settings'">Paramètres</a>
     </nav>
   } @else {
-    <p>Verification de la session administrateur.</p>
+    <p>Vérification de la session administrateur.</p>
   }
 </section>
 
@@ -26,11 +27,11 @@
   @case ('dashboard') {
   <section class="admin-panel" aria-labelledby="admin-dashboard-title">
     <div class="panel-heading">
-      <h2 id="admin-dashboard-title">Synthese</h2>
+      <h2 id="admin-dashboard-title">Synthèse</h2>
     </div>
 
     @if (dashboardError()) {
-      <p class="alert" role="alert">Impossible de charger la synthese d'administration.</p>
+      <p class="alert" role="alert">Impossible de charger la synthèse d'administration.</p>
     } @else if (dashboard(); as summary) {
       <dl class="dashboard-grid">
         <div>
@@ -46,7 +47,7 @@
           <dd>{{ summary.activeCompanyName || 'Aucune' }}</dd>
         </div>
         <div>
-          <dt>Quetes visibles</dt>
+          <dt>Quêtes visibles</dt>
           <dd>{{ summary.visibleQuestCount }}</dd>
         </div>
         <div>
@@ -54,7 +55,7 @@
           <dd>{{ summary.visibleAdventurerCount }}</dd>
         </div>
         <div>
-          <dt>Medias</dt>
+          <dt>Médias</dt>
           <dd>{{ summary.mediaCount }}</dd>
         </div>
         <div>
@@ -63,7 +64,7 @@
         </div>
       </dl>
     } @else {
-      <p>Chargement de la synthese.</p>
+      <app-loading-indicator label="Chargement de la synthèse." />
     }
   </section>
   }
@@ -74,10 +75,10 @@
     </div>
 
     @if (homeMessageError()) {
-      <p class="alert" role="alert">Impossible de traiter les parchemins. Verifiez les champs obligatoires.</p>
+      <p class="alert" role="alert">Impossible de traiter les parchemins. Vérifiez les champs obligatoires.</p>
     }
     @if (homeMessageSaved()) {
-      <p class="status" role="status">Parchemin mis a jour.</p>
+      <p class="status" role="status">Parchemin mis à jour.</p>
     }
 
     <div class="content-admin-layout">
@@ -156,14 +157,13 @@
               name="homeCountdownEnabled"
               (ngModelChange)="updateHomeMessageField('countdownEnabled', $event)"
             />
-            Activer le compte a rebours
+            Activer le compte à rebours
           </label>
 
           <label>
-            Date de fin ISO
+            Date de fin ({{ countdownTimezone() }})
             <input
-              type="text"
-              placeholder="2026-07-12T20:00:00Z"
+              type="datetime-local"
               [ngModel]="form.endsAt || ''"
               name="homeEndsAt"
               (ngModelChange)="updateHomeMessageField('endsAt', $event || null)"
@@ -171,7 +171,7 @@
           </label>
 
           <label>
-            Message apres expiration
+            Message après expiration
             <input
               type="text"
               maxlength="280"
@@ -206,12 +206,12 @@
       <p class="alert" role="alert">Impossible de traiter la Compagnie.</p>
     }
     @if (companySaved()) {
-      <p class="status" role="status">Compagnie mise a jour.</p>
+      <p class="status" role="status">Compagnie mise à jour.</p>
     }
 
     @if (companyForm(); as form) {
       <form class="content-form" (ngSubmit)="saveCompany()" aria-labelledby="company-form-title">
-        <h3 id="company-form-title">Presentation de la Compagnie</h3>
+        <h3 id="company-form-title">Présentation de la Compagnie</h3>
 
         <label>
           Nom
@@ -253,7 +253,7 @@
       <p class="alert" role="alert">Impossible de traiter les aventuriers.</p>
     }
     @if (adventurerSaved()) {
-      <p class="status" role="status">Aventuriers mis a jour.</p>
+      <p class="status" role="status">Aventuriers mis à jour.</p>
     }
 
     <div class="content-admin-layout">
@@ -262,7 +262,7 @@
           <li>
             <button type="button" (click)="selectAdventurer(adventurer)">
               <span>{{ adventurer.displayOrder }}. {{ adventurer.name }}</span>
-              <small>{{ adventurer.title }} - {{ adventurer.visible ? 'visible' : 'masque' }}</small>
+              <small>{{ adventurer.title }} - {{ adventurer.visible ? 'visible' : 'masqué' }}</small>
             </button>
             <div class="button-row">
               <button type="button" (click)="moveAdventurer(adventurer, -1)">Monter</button>
@@ -275,7 +275,7 @@
       @if (adventurerForm(); as form) {
         <form class="content-form" (ngSubmit)="saveAdventurer()" aria-labelledby="adventurer-form-title">
           <h3 id="adventurer-form-title">
-            {{ selectedAdventurer() ? 'Modifier l aventurier' : 'Nouvel aventurier' }}
+            {{ selectedAdventurer() ? "Modifier l'aventurier" : 'Nouvel aventurier' }}
           </h3>
 
           <label>Nom <input type="text" required maxlength="160" [ngModel]="form.name" name="adventurerName" (ngModelChange)="updateAdventurerField('name', $event)" /></label>
@@ -311,11 +311,11 @@
 
     @if (mapError()) {
       <p id="map-error-summary" #mapErrorSummary class="alert" role="alert" tabindex="-1">
-        Impossible de traiter la carte. Verifiez les champs, le statut publie avant activation et le chemin /assets/maps/.
+        Impossible de traiter la carte. Vérifiez les champs, le statut publié avant activation et le fond choisi dans les assets ou la médiathèque.
       </p>
     }
     @if (mapSaved()) {
-      <p class="status" role="status">Carte mise a jour.</p>
+      <p class="status" role="status">Carte mise à jour.</p>
     }
 
     <div class="map-admin-layout">
@@ -329,7 +329,7 @@
                 <small>{{ vision.status }} - {{ vision.active ? 'active' : 'inactive' }}</small>
               </button>
               <div class="button-row">
-                <button type="button" (click)="previewMapVision(vision)">Previsualiser</button>
+                <button type="button" (click)="previewMapVision(vision)">Prévisualiser</button>
                 <button type="button" [disabled]="vision.status !== 'PUBLISHED'" (click)="activateMapVision(vision)">
                   Activer
                 </button>
@@ -356,8 +356,32 @@
 
             <label>
               Chemin du fond
-              <input type="text" required maxlength="255" [ngModel]="form.assetPath" name="mapVisionAsset" (ngModelChange)="updateMapVisionField('assetPath', $event)" />
+              <input
+                type="text"
+                required
+                maxlength="255"
+                [attr.aria-describedby]="'map-asset-help'"
+                [ngModel]="form.assetPath"
+                name="mapVisionAsset"
+                (ngModelChange)="updateMapVisionField('assetPath', $event)"
+              />
+              <small id="map-asset-help">Chemin accepte : /assets/maps/... ou /media/uuid.</small>
             </label>
+
+            @if (media().length > 0) {
+              <section class="markdown-media-picker" aria-labelledby="map-media-title">
+                <h4 id="map-media-title">Images de la médiathèque</h4>
+                <ul>
+                  @for (item of media(); track item.id) {
+                    <li>
+                      <button type="button" (click)="selectMapBackground(item)">
+                        Utiliser {{ item.originalFilename }}
+                      </button>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
 
             <label>
               Texte alternatif
@@ -394,13 +418,13 @@
       </section>
 
       <section aria-labelledby="map-markers-title">
-        <h3 id="map-markers-title">Reperes</h3>
-        <ul class="admin-list" aria-label="Reperes de carte disponibles">
+        <h3 id="map-markers-title">Repères</h3>
+        <ul class="admin-list" aria-label="Repères de carte disponibles">
           @for (marker of mapMarkers(); track marker.id) {
             <li>
               <button type="button" (click)="selectMapMarker(marker)">
                 <span>{{ marker.displayOrder }}. {{ marker.title }}</span>
-                <small>{{ marker.questCode }} - {{ marker.active ? 'visible sur carte' : 'masque' }}</small>
+                <small>{{ marker.questCode }} - {{ marker.active ? 'visible sur carte' : 'masqué' }}</small>
               </button>
             </li>
           }
@@ -409,11 +433,11 @@
         @if (mapMarkerForm(); as markerForm) {
           <form class="content-form" (ngSubmit)="saveMapMarker()" aria-labelledby="map-marker-form-title">
             <h3 id="map-marker-form-title">
-              {{ selectedMapMarker() ? 'Modifier le repere' : 'Nouveau repere' }}
+              {{ selectedMapMarker() ? 'Modifier le repère' : 'Nouveau repère' }}
             </h3>
 
             <label>
-              Quete associee
+              Quête associée
               <select [ngModel]="markerForm.questCode" name="mapMarkerQuest" (ngModelChange)="updateMapMarkerField('questCode', $event)">
                 @for (questCode of questCodes; track questCode) {
                   <option [value]="questCode">{{ questCode }}</option>
@@ -445,11 +469,11 @@
 
             <label class="checkbox-field">
               <input type="checkbox" [ngModel]="markerForm.active" name="mapMarkerActive" (ngModelChange)="updateMapMarkerField('active', $event)" />
-              Afficher ce repere
+              Afficher ce repère
             </label>
 
             <div class="button-row">
-              <button type="submit">Enregistrer le repere</button>
+              <button type="submit">Enregistrer le repère</button>
               <button type="button" (click)="selectMapMarker(null)">Nouveau</button>
               @if (selectedMapMarker(); as marker) {
                 <button type="button" class="danger" (click)="deleteMapMarker(marker)">Supprimer</button>
@@ -463,7 +487,7 @@
     @if (mapPreview(); as preview) {
       <section class="map-preview" aria-labelledby="map-preview-title">
         <h3 id="map-preview-title">Previsualisation admin</h3>
-        <p>Cette previsualisation ne publie rien automatiquement.</p>
+        <p>Cette prévisualisation ne publie rien automatiquement.</p>
 
         <div class="map-preview-frame">
           <img [src]="preview.vision.assetPath" [alt]="preview.vision.imageAlt" />
@@ -489,20 +513,20 @@
   @case ('notebook') {
   <section class="admin-panel" aria-labelledby="admin-notebook-title">
     <div class="panel-heading">
-      <h2 id="admin-notebook-title">Gestion des quetes</h2>
+      <h2 id="admin-notebook-title">Gestion des quêtes</h2>
     </div>
 
     @if (questError()) {
       <p id="quest-error-summary" #questErrorSummary class="alert" role="alert" tabindex="-1">
-        Impossible de traiter le carnet pour le moment. Verifiez les champs obligatoires et reessayez.
+        Impossible de traiter le carnet pour le moment. Vérifiez les champs obligatoires et réessayez.
       </p>
     }
     @if (questSaved()) {
-      <p class="status" role="status">Quete enregistree.</p>
+      <p class="status" role="status">Quête enregistrée.</p>
     }
 
     <div class="quest-admin-layout">
-      <nav class="quest-tabs" aria-label="Quetes administrables">
+      <nav class="quest-tabs" aria-label="Quêtes administrables">
         <app-tab-bar>
           <ul>
             @for (quest of quests(); track quest.id) {
@@ -514,7 +538,7 @@
                   (click)="selectQuest(quest.code)"
                 >
                   <span>{{ quest.title }}</span>
-                  <small>{{ quest.status }} - {{ quest.visibleToPlayers ? 'visible' : 'masquee' }}</small>
+                  <small>{{ quest.status }} - {{ quest.visibleToPlayers ? 'visible' : 'masquée' }}</small>
                 </button>
               </li>
             }
@@ -557,14 +581,15 @@
             </label>
 
             <label>
-              Evenements importants
-              <span class="markdown-toolbar" aria-label="Outils Markdown pour les evenements importants">
+              Événements importants
+              <span class="markdown-toolbar" aria-label="Outils Markdown pour les événements importants">
                 <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '## ', '', 'Titre')">Titre</button>
                 <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '**', '**', 'texte')">Gras</button>
                 <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '*', '*', 'texte')">Italique</button>
                 <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '- ', '', 'Element')">Liste</button>
                 <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '> ', '', 'Citation')">Citation</button>
                 <button type="button" (click)="insertLink('importantEventsMarkdown')">Lien</button>
+                <button type="button" (click)="openImageDialog('importantEventsMarkdown', $event)">Image</button>
               </span>
               <textarea
                 [ngModel]="form.importantEventsMarkdown"
@@ -576,14 +601,15 @@
             </label>
 
             <label>
-              Indices decouverts
-              <span class="markdown-toolbar" aria-label="Outils Markdown pour les indices decouverts">
+              Indices découverts
+              <span class="markdown-toolbar" aria-label="Outils Markdown pour les indices découverts">
                 <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '## ', '', 'Titre')">Titre</button>
                 <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '**', '**', 'texte')">Gras</button>
                 <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '*', '*', 'texte')">Italique</button>
                 <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '- ', '', 'Element')">Liste</button>
                 <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '> ', '', 'Citation')">Citation</button>
                 <button type="button" (click)="insertLink('discoveredCluesMarkdown')">Lien</button>
+                <button type="button" (click)="openImageDialog('discoveredCluesMarkdown', $event)">Image</button>
               </span>
               <textarea
                 [ngModel]="form.discoveredCluesMarkdown"
@@ -595,14 +621,15 @@
             </label>
 
             <label>
-              Epreuves realisees
-              <span class="markdown-toolbar" aria-label="Outils Markdown pour les epreuves realisees">
+              Épreuves réalisées
+              <span class="markdown-toolbar" aria-label="Outils Markdown pour les épreuves réalisées">
                 <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '## ', '', 'Titre')">Titre</button>
                 <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '**', '**', 'texte')">Gras</button>
                 <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '*', '*', 'texte')">Italique</button>
                 <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '- ', '', 'Element')">Liste</button>
                 <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '> ', '', 'Citation')">Citation</button>
                 <button type="button" (click)="insertLink('completedTrialsMarkdown')">Lien</button>
+                <button type="button" (click)="openImageDialog('completedTrialsMarkdown', $event)">Image</button>
               </span>
               <textarea
                 [ngModel]="form.completedTrialsMarkdown"
@@ -614,14 +641,15 @@
             </label>
 
             <label>
-              Notes complementaires publiables
-              <span class="markdown-toolbar" aria-label="Outils Markdown pour les notes complementaires">
+              Notes complémentaires publiables
+              <span class="markdown-toolbar" aria-label="Outils Markdown pour les notes complémentaires">
                 <button type="button" (click)="insertMarkdown('extraContentMarkdown', '## ', '', 'Titre')">Titre</button>
                 <button type="button" (click)="insertMarkdown('extraContentMarkdown', '**', '**', 'texte')">Gras</button>
                 <button type="button" (click)="insertMarkdown('extraContentMarkdown', '*', '*', 'texte')">Italique</button>
                 <button type="button" (click)="insertMarkdown('extraContentMarkdown', '- ', '', 'Element')">Liste</button>
                 <button type="button" (click)="insertMarkdown('extraContentMarkdown', '> ', '', 'Citation')">Citation</button>
                 <button type="button" (click)="insertLink('extraContentMarkdown')">Lien</button>
+                <button type="button" (click)="openImageDialog('extraContentMarkdown', $event)">Image</button>
               </span>
               <textarea
                 [ngModel]="form.extraContentMarkdown"
@@ -641,6 +669,7 @@
                 <button type="button" (click)="insertMarkdown('adminDraftMarkdown', '- ', '', 'Element')">Liste</button>
                 <button type="button" (click)="insertMarkdown('adminDraftMarkdown', '> ', '', 'Citation')">Citation</button>
                 <button type="button" (click)="insertLink('adminDraftMarkdown')">Lien</button>
+                <button type="button" (click)="openImageDialog('adminDraftMarkdown', $event)">Image</button>
               </span>
               <textarea
                 [ngModel]="form.adminDraftMarkdown"
@@ -650,21 +679,6 @@
                 (ngModelChange)="updateField('adminDraftMarkdown', $event)"
               ></textarea>
             </label>
-
-            @if (media().length > 0) {
-              <section class="markdown-media-picker" aria-labelledby="markdown-media-title">
-                <h4 id="markdown-media-title">Images de la mediatheque</h4>
-                <ul>
-                  @for (item of media(); track item.id) {
-                    <li>
-                      <button type="button" (click)="insertMedia(item)">
-                        Inserer {{ item.originalFilename }}
-                      </button>
-                    </li>
-                  }
-                </ul>
-              </section>
-            }
 
             <div class="form-row">
               <label>
@@ -693,12 +707,89 @@
 
             <div class="button-row">
               <button type="submit">Enregistrer</button>
-              <button type="button" (click)="previewQuest()">Previsualiser</button>
+              <button type="button" (click)="previewQuest()">Prévisualiser</button>
               <button type="button" (click)="publishQuest()">Publier et afficher</button>
               <button type="button" (click)="hideQuest()">Masquer</button>
               <button type="button" class="danger" (click)="archiveQuest()">Archiver</button>
             </div>
           </form>
+
+          @if (imageDialogOpen()) {
+            <div class="modal-backdrop">
+              <section
+                class="media-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="media-dialog-title"
+                (keydown)="handleImageDialogKeydown($event)"
+              >
+                <div class="modal-heading">
+                  <h3 id="media-dialog-title">Insérer une image</h3>
+                  <button type="button" class="icon-button" aria-label="Fermer la sélection d'image" (click)="closeImageDialog()">x</button>
+                </div>
+
+                <label>
+                  Rechercher
+                  <input
+                    #imageSearchInput
+                    type="search"
+                    [ngModel]="imageSearch()"
+                    [ngModelOptions]="{ standalone: true }"
+                    (ngModelChange)="updateImageSearch($event)"
+                  />
+                </label>
+
+                <ul class="media-dialog-list" aria-label="Images disponibles">
+                  @for (item of filteredMedia(); track item.id) {
+                    <li>
+                      <button
+                        type="button"
+                        [class.selected]="selectedImage()?.id === item.id"
+                        (click)="selectImage(item)"
+                      >
+                        <img [src]="item.url" [alt]="item.altText" />
+                        <span>{{ item.originalFilename }}</span>
+                        <small>{{ item.altText }}</small>
+                      </button>
+                    </li>
+                  } @empty {
+                    <li class="empty-media">Aucune image ne correspond a la recherche.</li>
+                  }
+                </ul>
+
+                <label>
+                  Titre affiche
+                  <input
+                    type="text"
+                    maxlength="160"
+                    [ngModel]="imageTitle()"
+                    [ngModelOptions]="{ standalone: true }"
+                    (ngModelChange)="updateImageTitle($event)"
+                  />
+                </label>
+
+                <label>
+                  Taille
+                  <select
+                    [ngModel]="imageSize()"
+                    [ngModelOptions]="{ standalone: true }"
+                    (ngModelChange)="updateImageSize($event)"
+                  >
+                    @for (size of imageSizes; track size.value) {
+                      <option [value]="size.value">{{ size.label }}</option>
+                    }
+                  </select>
+                </label>
+
+                <div class="button-row">
+                  <button type="button" [disabled]="!selectedImage() || !imageTitle().trim()" (click)="insertSelectedImage()">
+                    Insérer l'image
+                  </button>
+                  <button type="button" class="secondary" (click)="closeImageDialog()">Annuler</button>
+                </div>
+              </section>
+            </div>
+          }
 
           <section class="quest-preview" aria-labelledby="quest-preview-title">
             <h3 id="quest-preview-title">Previsualisation admin</h3>
@@ -708,16 +799,16 @@
               <h4>{{ quest.title }}</h4>
               <p>{{ quest.summary }}</p>
 
-              <h5>Evenements importants</h5>
+              <h5>Événements importants</h5>
               <div class="markdown-content" [innerHTML]="questPreview()?.importantEventsHtml || quest.importantEventsHtml"></div>
 
-              <h5>Indices decouverts</h5>
+              <h5>Indices découverts</h5>
               <div class="markdown-content" [innerHTML]="questPreview()?.discoveredCluesHtml || quest.discoveredCluesHtml"></div>
 
-              <h5>Epreuves realisees</h5>
+              <h5>Épreuves réalisées</h5>
               <div class="markdown-content" [innerHTML]="questPreview()?.completedTrialsHtml || quest.completedTrialsHtml"></div>
 
-              <h5>Notes complementaires</h5>
+              <h5>Notes complémentaires</h5>
               <div class="markdown-content" [innerHTML]="questPreview()?.extraContentHtml || quest.extraContentHtml"></div>
 
               <h5>Brouillon administrateur</h5>
@@ -727,7 +818,7 @@
           </div>
         }
       } @else {
-        <p>Aucune quete disponible dans l'administration.</p>
+        <p>Aucune quête disponible dans l'administration.</p>
       }
     </div>
   </section>
@@ -735,16 +826,16 @@
   @case ('media') {
   <section class="admin-panel" aria-labelledby="admin-media-title">
     <div class="panel-heading">
-      <h2 id="admin-media-title">Mediatheque</h2>
+      <h2 id="admin-media-title">Médiathèque</h2>
     </div>
 
     @if (mediaError()) {
       <p id="media-error-summary" #mediaErrorSummary class="alert" role="alert" tabindex="-1">
-        Impossible de traiter les medias pour le moment. Le fichier et le texte alternatif sont obligatoires.
+        Impossible de traiter les médias pour le moment. Le fichier et le texte alternatif sont obligatoires.
       </p>
     }
     @if (mediaSaved()) {
-      <p class="status" role="status">Mediatheque mise a jour.</p>
+      <p class="status" role="status">Médiathèque mise à jour.</p>
     }
 
     <form class="media-form" (ngSubmit)="uploadMedia()" aria-labelledby="media-upload-title">
@@ -781,7 +872,7 @@
     </form>
 
     @if (media().length > 0) {
-      <ul class="media-grid" aria-label="Medias disponibles">
+      <ul class="media-grid" aria-label="Médias disponibles">
         @for (item of media(); track item.id) {
           <li>
             <img [src]="item.url" [alt]="item.altText" />
@@ -790,7 +881,7 @@
               <p>{{ item.mimeType }} - {{ item.width }} x {{ item.height }} - {{ item.sizeBytes }} octets</p>
               <p><code>{{ item.url }}</code></p>
               <button type="button" class="danger" (click)="deleteMedia(item)">
-                Supprimer ce media
+                Supprimer ce média
               </button>
             </div>
           </li>
@@ -804,16 +895,16 @@
   @case ('administrators') {
   <section class="admin-panel" aria-labelledby="admin-allowed-title">
     <div class="panel-heading">
-      <h2 id="admin-allowed-title">Administrateurs autorises</h2>
+      <h2 id="admin-allowed-title">Administrateurs autorisés</h2>
     </div>
 
     @if (allowedEmailError()) {
       <p id="allowed-email-error-summary" #allowedEmailErrorSummary class="alert" role="alert" tabindex="-1">
-        Impossible de traiter les administrateurs autorises. Verifiez l'email et l'invariant du dernier administrateur actif.
+        Impossible de traiter les administrateurs autorisés. Vérifiez l'email et l'invariant du dernier administrateur actif.
       </p>
     }
     @if (allowedEmailSaved()) {
-      <p class="status" role="status">Liste des administrateurs mise a jour.</p>
+      <p class="status" role="status">Liste des administrateurs mise à jour.</p>
     }
 
     <form class="allowed-form" (ngSubmit)="createAllowedEmail()" aria-labelledby="allowed-create-title">
@@ -848,7 +939,7 @@
     </form>
 
     @if (allowedEmails().length > 0) {
-      <ul class="allowed-list" aria-label="Emails administrateurs autorises">
+      <ul class="allowed-list" aria-label="Emails administrateurs autorisés">
         @for (allowedEmail of allowedEmails(); track allowedEmail.id) {
           <li>
             <div>
@@ -878,7 +969,7 @@
         }
       </ul>
     } @else {
-      <p>Aucun administrateur autorise.</p>
+      <p>Aucun administrateur autorisé.</p>
     }
   </section>
   }
@@ -903,6 +994,137 @@
       </ol>
     } @else {
       <p>Aucune action auditee pour le moment.</p>
+    }
+  </section>
+  }
+  @case ('settings') {
+  <section class="admin-panel" aria-labelledby="admin-settings-title">
+    <div class="panel-heading">
+      <h2 id="admin-settings-title">Paramètres du site</h2>
+    </div>
+
+    @if (settingsError()) {
+      <p id="settings-error-summary" #settingsErrorSummary class="alert" role="alert" tabindex="-1">
+        Impossible de traiter les paramètres. Vérifiez les champs obligatoires, le fuseau horaire, le chemin du logo et le message de maintenance.
+      </p>
+    }
+    @if (settingsSaved()) {
+      <p class="status" role="status">Paramètres du site mis à jour.</p>
+    }
+
+    @if (settingsForm(); as form) {
+      <form class="content-form" (ngSubmit)="saveSettings()" aria-labelledby="settings-form-title">
+        <h3 id="settings-form-title">Identite et disponibilite</h3>
+
+        <label>
+          Nom du site
+          <input
+            type="text"
+            required
+            maxlength="120"
+            [attr.aria-invalid]="settingsError() ? 'true' : null"
+            [attr.aria-describedby]="settingsError() ? 'settings-error-summary' : null"
+            [ngModel]="form.siteName"
+            name="settingsSiteName"
+            (ngModelChange)="updateSettingsField('siteName', $event)"
+          />
+        </label>
+
+        <label>
+          Sous-titre
+          <input
+            type="text"
+            maxlength="180"
+            [ngModel]="form.subtitle || ''"
+            name="settingsSubtitle"
+            (ngModelChange)="updateSettingsField('subtitle', $event || null)"
+          />
+        </label>
+
+        <label>
+          Chemin du logo
+          <input
+            type="text"
+            maxlength="255"
+            placeholder="/assets/brand/logo.png"
+            [attr.aria-invalid]="settingsError() ? 'true' : null"
+            [attr.aria-describedby]="settingsError() ? 'settings-error-summary logo-help' : 'logo-help'"
+            [ngModel]="form.logoPath || ''"
+            name="settingsLogoPath"
+            (ngModelChange)="updateSettingsField('logoPath', $event || null)"
+          />
+          <small id="logo-help">Chemin public attendu : /assets/... ou /media/uuid.</small>
+        </label>
+
+        <div class="form-row">
+          <label>
+            Fuseau horaire
+            <input
+              type="text"
+              required
+              maxlength="80"
+              [attr.aria-invalid]="settingsError() ? 'true' : null"
+              [attr.aria-describedby]="settingsError() ? 'settings-error-summary' : null"
+              [ngModel]="form.timezone"
+              name="settingsTimezone"
+              (ngModelChange)="updateSettingsField('timezone', $event)"
+            />
+          </label>
+
+          <label>
+            Etat du site
+            <select
+              [ngModel]="form.status"
+              name="settingsStatus"
+              (ngModelChange)="updateSiteStatus($event)"
+            >
+              @for (status of siteStatuses; track status) {
+                <option [value]="status">{{ status }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        <label>
+          Message de maintenance
+          <textarea
+            rows="3"
+            maxlength="500"
+            [required]="form.status === 'MAINTENANCE'"
+            [attr.aria-invalid]="settingsError() ? 'true' : null"
+            [attr.aria-describedby]="settingsError() ? 'settings-error-summary' : null"
+            [ngModel]="form.maintenanceMessage || ''"
+            name="settingsMaintenanceMessage"
+            (ngModelChange)="updateSettingsField('maintenanceMessage', $event || null)"
+          ></textarea>
+        </label>
+
+        <label>
+          Informations d'accessibilité
+          <textarea
+            rows="7"
+            required
+            maxlength="4000"
+            [attr.aria-invalid]="settingsError() ? 'true' : null"
+            [attr.aria-describedby]="settingsError() ? 'settings-error-summary' : null"
+            [ngModel]="form.accessibilityInformationMarkdown"
+            name="settingsAccessibility"
+            (ngModelChange)="updateSettingsField('accessibilityInformationMarkdown', $event)"
+          ></textarea>
+        </label>
+
+        <div class="button-row">
+          <button type="submit">Enregistrer les paramètres</button>
+        </div>
+
+        @if (settings(); as currentSettings) {
+          <p class="form-meta">
+            Derniere modification : {{ currentSettings.updatedAt }} par {{ currentSettings.updatedBy || 'acteur inconnu' }}.
+          </p>
+        }
+      </form>
+    } @else {
+      <app-loading-indicator label="Chargement des paramètres." />
     }
   </section>
   }

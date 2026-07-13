@@ -2,6 +2,7 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { parseSafeMarkdown } from '../../../shared/utilities/safe-markdown';
+import { LoadingIndicatorComponent } from '../../../shared/components/loading-indicator/loading-indicator';
 import { HomeMessageImportance, PublicHomeResponse } from '../home-api.models';
 import { HomeApiService } from '../home-api.service';
 
@@ -12,6 +13,7 @@ interface CountdownView {
 
 @Component({
   selector: 'app-home-page',
+  imports: [LoadingIndicatorComponent],
   templateUrl: './home-page.html',
   styleUrl: './home-page.css',
 })
@@ -45,7 +47,7 @@ export class HomePage {
     if (Number.isNaN(remainingMs) || remainingMs <= 0) {
       return {
         expired: true,
-        label: 'Echeance atteinte',
+        label: 'Échéance atteinte',
       };
     }
 
@@ -58,9 +60,9 @@ export class HomePage {
   protected readonly importanceLabel: Record<HomeMessageImportance, string> = {
     INFORMATION: 'Information',
     WARNING: 'Avertissement',
-    QUEST_IMMINENT: 'Quete imminente',
-    SUCCESS: 'Reussite',
-    MYSTERY: 'Mystere',
+    QUEST_IMMINENT: 'Quête imminente',
+    SUCCESS: 'Réussite',
+    MYSTERY: 'Mystère',
   };
 
   constructor() {

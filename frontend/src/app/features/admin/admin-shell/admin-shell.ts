@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -30,15 +30,21 @@ import {
   AdminMapPreview,
   AdminMapVision,
   AdminMapVisionUpsert,
+  AdminSiteSettings,
+  AdminSiteSettingsUpdate,
   EditorialStatus,
   HomeMessageImportance,
+  SiteStatus,
 } from '../admin-api.models';
 import { AdminApiService } from '../admin-api.service';
 import { TabBarComponent } from '../../../shared/components/tab-bar/tab-bar';
+import { LoadingIndicatorComponent } from '../../../shared/components/loading-indicator/loading-indicator';
+
+type MarkdownImageSize = 'small' | 'medium' | 'large' | 'full';
 
 @Component({
   selector: 'app-admin-shell',
-  imports: [FormsModule, RouterLink, TabBarComponent],
+  imports: [FormsModule, LoadingIndicatorComponent, RouterLink, TabBarComponent],
   templateUrl: './admin-shell.html',
   styleUrl: './admin-shell.css',
 })
@@ -54,6 +60,9 @@ export class AdminShell {
   private readonly mapErrorSummary = viewChild<ElementRef<HTMLElement>>('mapErrorSummary');
   private readonly mediaErrorSummary = viewChild<ElementRef<HTMLElement>>('mediaErrorSummary');
   private readonly allowedEmailErrorSummary = viewChild<ElementRef<HTMLElement>>('allowedEmailErrorSummary');
+  private readonly settingsErrorSummary = viewChild<ElementRef<HTMLElement>>('settingsErrorSummary');
+  private readonly imageSearchInput = viewChild<ElementRef<HTMLInputElement>>('imageSearchInput');
+  private imageDialogTrigger: HTMLElement | null = null;
 
   protected readonly session = signal<AdminSession | null>(null);
   protected readonly section = signal<string>('dashboard');
@@ -65,6 +74,26 @@ export class AdminShell {
   protected readonly editor = signal<AdminQuestUpdate | null>(null);
   protected readonly questPreview = signal<AdminQuestPreview | null>(null);
   protected readonly activeMarkdownField = signal<keyof AdminQuestUpdate>('importantEventsMarkdown');
+  protected readonly imageDialogOpen = signal(false);
+  protected readonly imageSearch = signal('');
+  protected readonly selectedImage = signal<AdminMedia | null>(null);
+  protected readonly imageTitle = signal('');
+  protected readonly imageSize = signal<MarkdownImageSize>('medium');
+  protected readonly imageSizes: { value: MarkdownImageSize; label: string }[] = [
+    { value: 'small', label: 'Petit' },
+    { value: 'medium', label: 'Moyen' },
+    { value: 'large', label: 'Grand' },
+    { value: 'full', label: 'Pleine largeur' },
+  ];
+  protected readonly filteredMedia = computed(() => {
+    const query = this.imageSearch().trim().toLocaleLowerCase('fr-FR');
+    if (!query) {
+      return this.media();
+    }
+    return this.media().filter((item) =>
+      `${item.originalFilename} ${item.altText}`.toLocaleLowerCase('fr-FR').includes(query),
+    );
+  });
   protected readonly statuses: QuestStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
   protected readonly media = signal<AdminMedia[]>([]);
   protected readonly mediaError = signal(false);
@@ -112,6 +141,12 @@ export class AdminShell {
   protected readonly allowedEmailForm = signal({ email: '', label: '' });
   protected readonly auditLogs = signal<AdminAuditLog[]>([]);
   protected readonly auditError = signal(false);
+  protected readonly settings = signal<AdminSiteSettings | null>(null);
+  protected readonly settingsForm = signal<AdminSiteSettingsUpdate>(this.emptySettingsForm());
+  protected readonly settingsError = signal(false);
+  protected readonly settingsSaved = signal(false);
+  protected readonly siteStatuses: SiteStatus[] = ['ONLINE', 'MAINTENANCE'];
+  protected readonly countdownTimezone = computed(() => this.settings()?.timezone || 'Europe/Paris');
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -137,6 +172,7 @@ export class AdminShell {
         break;
       case 'home':
         this.loadHomeMessages();
+        this.loadSettings();
         break;
       case 'group':
         this.loadCompany();
@@ -146,6 +182,7 @@ export class AdminShell {
         break;
       case 'map':
         this.loadAdminMap();
+        this.loadMedia();
         break;
       case 'notebook':
         this.loadQuests();
@@ -159,6 +196,9 @@ export class AdminShell {
         break;
       case 'audit':
         this.loadAuditLogs();
+        break;
+      case 'settings':
+        this.loadSettings();
         break;
       default:
         break;
@@ -408,6 +448,16 @@ export class AdminShell {
     });
   }
 
+  protected selectMapBackground(media: AdminMedia) {
+    this.mapVisionForm.update((form) => ({
+      ...form,
+      assetPath: media.url,
+      imageAlt: media.altText,
+    }));
+    this.mapSaved.set(false);
+    this.mapError.set(false);
+  }
+
   protected selectMapMarker(marker: AdminMapMarker | null) {
     this.selectedMapMarker.set(marker);
     this.mapSaved.set(false);
@@ -495,8 +545,63 @@ export class AdminShell {
     this.insertMarkdown(field, '[', '](/notebook/QUEST_1)', 'libelle du lien');
   }
 
-  protected insertMedia(media: AdminMedia) {
-    this.insertMarkdown(this.activeMarkdownField(), '![', `](${media.url})`, media.altText);
+  protected openImageDialog(field: keyof AdminQuestUpdate, event: Event) {
+    this.focusMarkdownField(field);
+    this.imageDialogTrigger = event.currentTarget as HTMLElement;
+    this.imageSearch.set('');
+    this.selectedImage.set(null);
+    this.imageTitle.set('');
+    this.imageSize.set('medium');
+    this.imageDialogOpen.set(true);
+    window.setTimeout(() => this.imageSearchInput()?.nativeElement.focus());
+  }
+
+  protected closeImageDialog() {
+    this.imageDialogOpen.set(false);
+    this.imageDialogTrigger?.focus();
+    this.imageDialogTrigger = null;
+  }
+
+  protected handleImageDialogKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeImageDialog();
+    }
+  }
+
+  protected updateImageSearch(value: string) {
+    this.imageSearch.set(value);
+  }
+
+  protected selectImage(media: AdminMedia) {
+    this.selectedImage.set(media);
+    this.imageTitle.set(media.altText);
+  }
+
+  protected updateImageTitle(value: string) {
+    this.imageTitle.set(value);
+  }
+
+  protected updateImageSize(value: string) {
+    if (this.imageSizes.some((size) => size.value === value)) {
+      this.imageSize.set(value as MarkdownImageSize);
+    }
+  }
+
+  protected insertSelectedImage() {
+    const media = this.selectedImage();
+    if (!media) {
+      return;
+    }
+    const alt = this.markdownImageText(media.altText || this.imageTitle() || media.originalFilename);
+    const title = this.markdownImageTitle(this.imageTitle() || media.altText || media.originalFilename);
+    this.insertMarkdown(
+      this.activeMarkdownField(),
+      '',
+      '',
+      `![${alt}](${media.url} "${title}"){size=${this.imageSize()}}`,
+    );
+    this.closeImageDialog();
   }
 
   protected updateStatus(value: string) {
@@ -693,6 +798,34 @@ export class AdminShell {
     });
   }
 
+  protected updateSettingsField<K extends keyof AdminSiteSettingsUpdate>(
+    field: K,
+    value: AdminSiteSettingsUpdate[K],
+  ) {
+    this.settingsForm.update((form) => ({ ...form, [field]: value }));
+    this.settingsSaved.set(false);
+    this.settingsError.set(false);
+  }
+
+  protected updateSiteStatus(value: string) {
+    if (this.siteStatuses.includes(value as SiteStatus)) {
+      this.updateSettingsField('status', value as SiteStatus);
+    }
+  }
+
+  protected saveSettings() {
+    this.adminApi.updateSiteSettings(this.normalizedSettingsPayload()).subscribe({
+      next: (settings) => {
+        this.settings.set(settings);
+        this.settingsForm.set(this.toSettingsForm(settings));
+        this.settingsSaved.set(true);
+        this.settingsError.set(false);
+        this.loadAuditLogs();
+      },
+      error: () => this.showSettingsError(),
+    });
+  }
+
   private loadQuests() {
     this.notebookApi.listAdminQuests().subscribe({
       next: (quests) => {
@@ -785,6 +918,17 @@ export class AdminShell {
     });
   }
 
+  private loadSettings() {
+    this.adminApi.getSiteSettings().subscribe({
+      next: (settings) => {
+        this.settings.set(settings);
+        this.settingsForm.set(this.toSettingsForm(settings));
+        this.settingsError.set(false);
+      },
+      error: () => this.showSettingsError(),
+    });
+  }
+
   private loadMedia() {
     this.mediaApi.listAdminMedia().subscribe({
       next: (media) => this.media.set(media),
@@ -857,7 +1001,7 @@ export class AdminShell {
       importance: message.importance,
       status: message.status,
       countdownEnabled: message.countdownEnabled,
-      endsAt: message.endsAt,
+      endsAt: this.toLocalDateTimeInput(message.endsAt, this.countdownTimezone()),
       expiredMessage: message.expiredMessage,
     };
   }
@@ -868,7 +1012,7 @@ export class AdminShell {
       ...form,
       title: form.title.trim(),
       contentMarkdown: form.contentMarkdown.trim(),
-      endsAt: form.countdownEnabled ? form.endsAt : null,
+      endsAt: form.countdownEnabled ? this.toOffsetDateTime(form.endsAt, this.countdownTimezone()) : null,
       expiredMessage: this.trimToNull(form.expiredMessage),
     };
   }
@@ -1052,6 +1196,124 @@ export class AdminShell {
     return value.trim();
   }
 
+  private markdownImageText(value: string) {
+    return value.replace(/[\r\n]+/g, ' ').replace(/]/g, ')').trim();
+  }
+
+  private markdownImageTitle(value: string) {
+    return this.markdownImageText(value).replace(/"/g, "'");
+  }
+
+  private toLocalDateTimeInput(value: string | null, timezone: string): string | null {
+    if (!value) {
+      return null;
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+    const parts = this.dateTimeParts(date, timezone);
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+  }
+
+  private toOffsetDateTime(value: string | null, timezone: string): string | null {
+    if (!value) {
+      return null;
+    }
+    const match = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2})$/.exec(value);
+    if (!match?.groups) {
+      return value;
+    }
+    const localUtc = Date.UTC(
+      Number(match.groups['year']),
+      Number(match.groups['month']) - 1,
+      Number(match.groups['day']),
+      Number(match.groups['hour']),
+      Number(match.groups['minute']),
+    );
+    const firstOffset = this.timezoneOffsetMinutes(new Date(localUtc), timezone);
+    const actualInstant = new Date(localUtc - firstOffset * 60_000);
+    const offset = this.timezoneOffsetMinutes(actualInstant, timezone);
+    return `${value}:00${this.formatOffset(offset)}`;
+  }
+
+  private timezoneOffsetMinutes(date: Date, timezone: string): number {
+    const parts = this.dateTimeParts(date, timezone);
+    const zonedUtc = Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      Number(parts.hour),
+      Number(parts.minute),
+      Number(parts.second),
+    );
+    return Math.round((zonedUtc - date.getTime()) / 60_000);
+  }
+
+  private dateTimeParts(date: Date, timezone: string): Record<'year' | 'month' | 'day' | 'hour' | 'minute' | 'second', string> {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    });
+    return Object.fromEntries(
+      formatter
+        .formatToParts(date)
+        .filter((part) => part.type !== 'literal')
+        .map((part) => [part.type, part.value]),
+    ) as Record<'year' | 'month' | 'day' | 'hour' | 'minute' | 'second', string>;
+  }
+
+  private formatOffset(offsetMinutes: number): string {
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const absolute = Math.abs(offsetMinutes);
+    const hours = Math.floor(absolute / 60);
+    const minutes = absolute % 60;
+    return `${sign}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  }
+
+  private emptySettingsForm(): AdminSiteSettingsUpdate {
+    return {
+      siteName: '',
+      subtitle: null,
+      logoPath: null,
+      timezone: 'Europe/Paris',
+      status: 'ONLINE',
+      maintenanceMessage: null,
+      accessibilityInformationMarkdown: '',
+    };
+  }
+
+  private toSettingsForm(settings: AdminSiteSettings): AdminSiteSettingsUpdate {
+    return {
+      siteName: settings.siteName,
+      subtitle: settings.subtitle,
+      logoPath: settings.logoPath,
+      timezone: settings.timezone,
+      status: settings.status,
+      maintenanceMessage: settings.maintenanceMessage,
+      accessibilityInformationMarkdown: settings.accessibilityInformationMarkdown,
+    };
+  }
+
+  private normalizedSettingsPayload(): AdminSiteSettingsUpdate {
+    const form = this.settingsForm();
+    return {
+      siteName: form.siteName.trim(),
+      subtitle: this.trimToNull(form.subtitle),
+      logoPath: this.trimToNull(form.logoPath),
+      timezone: form.timezone.trim(),
+      status: form.status,
+      maintenanceMessage: form.status === 'MAINTENANCE' ? this.trimToNull(form.maintenanceMessage) : null,
+      accessibilityInformationMarkdown: form.accessibilityInformationMarkdown.trim(),
+    };
+  }
+
   private updateAllowedEmail(
     allowedEmail: AdminAllowedEmail,
     payload: AdminAllowedEmailUpdate,
@@ -1088,6 +1350,11 @@ export class AdminShell {
   private showAllowedEmailError() {
     this.allowedEmailError.set(true);
     this.focusSummary(this.allowedEmailErrorSummary());
+  }
+
+  private showSettingsError() {
+    this.settingsError.set(true);
+    this.focusSummary(this.settingsErrorSummary());
   }
 
   private focusSummary(summary: ElementRef<HTMLElement> | undefined) {

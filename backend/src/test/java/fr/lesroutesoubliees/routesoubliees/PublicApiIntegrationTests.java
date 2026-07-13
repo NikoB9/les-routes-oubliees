@@ -34,9 +34,9 @@ class PublicApiIntegrationTests {
 	void exposesOnlyPublicHomeContent() throws Exception {
 		mvc.perform(get("/api/public/home"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.message.title").value("Message de demonstration"))
+			.andExpect(jsonPath("$.message.title").value("Message de démonstration"))
 			.andExpect(jsonPath("$.message.displayTimezone").value("Europe/Paris"))
-			.andExpect(jsonPath("$.company.name").value("Compagnie de demonstration"))
+			.andExpect(jsonPath("$.company.name").value("Compagnie de démonstration"))
 			.andExpect(jsonPath("$.adventurers", hasSize(2)))
 			.andExpect(jsonPath("$.adventurers[0].name").value("Aline des Brumes"))
 			.andExpect(jsonPath("$.adventurers[1].name").value("Malo Fer-de-Clef"));
@@ -46,7 +46,7 @@ class PublicApiIntegrationTests {
 	void exposesOnlyActivePublishedMapVision() throws Exception {
 		mvc.perform(get("/api/public/map"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.vision.name").value("Carte voilee"))
+			.andExpect(jsonPath("$.vision.name").value("Carte voilée"))
 			.andExpect(jsonPath("$.vision.assetPath").value("/assets/maps/map-hidden.png"))
 			.andExpect(jsonPath("$.markers", hasSize(2)))
 			.andExpect(jsonPath("$.markers[0].title").value("Premier appel"))
@@ -79,7 +79,7 @@ class PublicApiIntegrationTests {
 	void rejectsDraftHiddenAndArchivedQuestDetails() throws Exception {
 		mvc.perform(get("/api/public/quests/QUEST_1"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.title").value("Premiere quete de demonstration"))
+			.andExpect(jsonPath("$.title").value("Première quête de démonstration"))
 			.andExpect(jsonPath("$.importantEventsHtml").exists())
 			.andExpect(jsonPath("$.adminDraftMarkdown").doesNotExist())
 			.andExpect(jsonPath("$.adminDraftHtml").doesNotExist());

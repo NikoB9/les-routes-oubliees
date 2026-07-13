@@ -69,8 +69,8 @@ class AdminQuestIntegrationTests {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{
-					  "title": "Troisieme quete brouillon",
-					  "summary": "Cette entree reste en brouillon.",
+					  "title": "Troisième quête brouillon",
+					  "summary": "Cette entrée reste en brouillon.",
 					  "importantEventsMarkdown": "<script>alert(1)</script>",
 					  "discoveredCluesMarkdown": "[piege](javascript:alert(1))",
 					  "completedTrialsMarkdown": "- Rien encore",
@@ -110,7 +110,7 @@ class AdminQuestIntegrationTests {
 					}
 					"""))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.importantEventsHtml").value("<p><img src=\"/media/11111111-1111-1111-1111-111111111111\" alt=\"preuve\"></p>"))
+			.andExpect(jsonPath("$.importantEventsHtml").value("<figure class=\"markdown-image markdown-image--full\"><img src=\"/media/11111111-1111-1111-1111-111111111111\" alt=\"preuve\"></figure>"))
 			.andExpect(jsonPath("$.discoveredCluesHtml").value("<p>piege</p>"))
 			.andExpect(jsonPath("$.completedTrialsHtml").value("<blockquote><p>Citation</p></blockquote>"))
 			.andExpect(jsonPath("$.extraContentHtml").value("<p></p>"))
@@ -118,7 +118,7 @@ class AdminQuestIntegrationTests {
 
 		mvc.perform(get("/api/admin/quest-tabs/QUEST_3").with(user("admin@example.invalid")))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.title").value("Troisieme quete brouillon"));
+			.andExpect(jsonPath("$.title").value("Troisième quête brouillon"));
 	}
 
 	@Test
