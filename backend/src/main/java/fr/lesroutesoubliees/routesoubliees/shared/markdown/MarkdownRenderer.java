@@ -1,4 +1,4 @@
-package fr.lesroutesoubliees.routesoubliees.quest;
+package fr.lesroutesoubliees.routesoubliees.shared.markdown;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
 
 @Component
-class MarkdownRenderer {
+public class MarkdownRenderer {
 
 	private static final Pattern IMAGE = Pattern.compile(
 		"!\\[([^\\]]{0,280})]\\(([^\\s()\"]+(?:\\([^\\s()]*\\)[^\\s()]*)*)(?:\\s+&quot;((?:(?!&quot;).){0,240})&quot;)?\\)(?:\\{size=(small|medium|large|full)\\})?");
@@ -21,7 +21,7 @@ class MarkdownRenderer {
 	private static final Pattern MEDIA_IMAGE = Pattern.compile("^/media/[0-9a-fA-F-]{36}$");
 	private static final Pattern VERSIONED_IMAGE = Pattern.compile("^/assets/[A-Za-z0-9/_-]+\\.(png|jpg|jpeg|webp)$", Pattern.CASE_INSENSITIVE);
 
-	String render(String markdown) {
+	public String render(String markdown) {
 		if (markdown == null || markdown.isBlank()) {
 			return "";
 		}

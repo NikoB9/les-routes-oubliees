@@ -111,16 +111,23 @@
             />
           </label>
 
-          <label>
-            Contenu Markdown
+          <div class="field-group">
+            <label for="homeContent">Contenu Markdown</label>
+            <app-markdown-toolbar
+              (markdownCommand)="applyMarkdownCommand('homeMessage', 'contentMarkdown', $event)"
+              (linkRequested)="insertLink('homeMessage', 'contentMarkdown')"
+              (imageRequested)="openImageDialog('homeMessage', 'contentMarkdown', $event)"
+            />
             <textarea
               required
               rows="6"
               [ngModel]="form.contentMarkdown"
               name="homeContent"
+              id="homeContent"
+              (focus)="focusMarkdownField('homeMessage', 'contentMarkdown')"
               (ngModelChange)="updateHomeMessageField('contentMarkdown', $event)"
             ></textarea>
-          </label>
+          </div>
 
           <div class="form-row">
             <label>
@@ -233,10 +240,15 @@
           <textarea required maxlength="500" rows="3" [ngModel]="form.shortDescription" name="companyShortDescription" (ngModelChange)="updateCompanyField('shortDescription', $event)"></textarea>
         </label>
 
-        <label>
-          Description longue Markdown
-          <textarea required rows="6" [ngModel]="form.longDescriptionMarkdown" name="companyLongDescription" (ngModelChange)="updateCompanyField('longDescriptionMarkdown', $event)"></textarea>
-        </label>
+        <div class="field-group">
+          <label for="companyLongDescription">Description longue Markdown</label>
+          <app-markdown-toolbar
+            (markdownCommand)="applyMarkdownCommand('company', 'longDescriptionMarkdown', $event)"
+            (linkRequested)="insertLink('company', 'longDescriptionMarkdown')"
+            (imageRequested)="openImageDialog('company', 'longDescriptionMarkdown', $event)"
+          />
+          <textarea required rows="6" [ngModel]="form.longDescriptionMarkdown" name="companyLongDescription" id="companyLongDescription" (focus)="focusMarkdownField('company', 'longDescriptionMarkdown')" (ngModelChange)="updateCompanyField('longDescriptionMarkdown', $event)"></textarea>
+        </div>
 
         <button type="submit">Enregistrer la Compagnie</button>
       </form>
@@ -349,10 +361,15 @@
               <input type="text" required maxlength="160" [ngModel]="form.name" name="mapVisionName" (ngModelChange)="updateMapVisionField('name', $event)" />
             </label>
 
-            <label>
-              Description Markdown
-              <textarea required rows="5" [ngModel]="form.descriptionMarkdown" name="mapVisionDescription" (ngModelChange)="updateMapVisionField('descriptionMarkdown', $event)"></textarea>
-            </label>
+            <div class="field-group">
+              <label for="mapVisionDescription">Description Markdown</label>
+              <app-markdown-toolbar
+                (markdownCommand)="applyMarkdownCommand('mapVision', 'descriptionMarkdown', $event)"
+                (linkRequested)="insertLink('mapVision', 'descriptionMarkdown')"
+                (imageRequested)="openImageDialog('mapVision', 'descriptionMarkdown', $event)"
+              />
+              <textarea required rows="5" [ngModel]="form.descriptionMarkdown" name="mapVisionDescription" id="mapVisionDescription" (focus)="focusMarkdownField('mapVision', 'descriptionMarkdown')" (ngModelChange)="updateMapVisionField('descriptionMarkdown', $event)"></textarea>
+            </div>
 
             <label>
               Chemin du fond
@@ -567,7 +584,7 @@
             </label>
 
             <label>
-              Resume public
+              Résumé public
               <textarea
                 [ngModel]="form.summary"
                 name="summary"
@@ -580,105 +597,90 @@
               ></textarea>
             </label>
 
-            <label>
-              Événements importants
-              <span class="markdown-toolbar" aria-label="Outils Markdown pour les événements importants">
-                <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '## ', '', 'Titre')">Titre</button>
-                <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '**', '**', 'texte')">Gras</button>
-                <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '*', '*', 'texte')">Italique</button>
-                <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '- ', '', 'Element')">Liste</button>
-                <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '> ', '', 'Citation')">Citation</button>
-                <button type="button" (click)="insertLink('importantEventsMarkdown')">Lien</button>
-                <button type="button" (click)="openImageDialog('importantEventsMarkdown', $event)">Image</button>
-              </span>
+            <div class="field-group">
+              <label for="importantEventsMarkdown">Événements importants</label>
+              <app-markdown-toolbar
+                (markdownCommand)="applyMarkdownCommand('quest', 'importantEventsMarkdown', $event)"
+                (linkRequested)="insertLink('quest', 'importantEventsMarkdown')"
+                (imageRequested)="openImageDialog('quest', 'importantEventsMarkdown', $event)"
+              />
               <textarea
                 [ngModel]="form.importantEventsMarkdown"
                 name="importantEventsMarkdown"
+                id="importantEventsMarkdown"
                 rows="5"
-                (focus)="focusMarkdownField('importantEventsMarkdown')"
+                (focus)="focusMarkdownField('quest', 'importantEventsMarkdown')"
                 (ngModelChange)="updateField('importantEventsMarkdown', $event)"
               ></textarea>
-            </label>
+            </div>
 
-            <label>
-              Indices découverts
-              <span class="markdown-toolbar" aria-label="Outils Markdown pour les indices découverts">
-                <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '## ', '', 'Titre')">Titre</button>
-                <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '**', '**', 'texte')">Gras</button>
-                <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '*', '*', 'texte')">Italique</button>
-                <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '- ', '', 'Element')">Liste</button>
-                <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '> ', '', 'Citation')">Citation</button>
-                <button type="button" (click)="insertLink('discoveredCluesMarkdown')">Lien</button>
-                <button type="button" (click)="openImageDialog('discoveredCluesMarkdown', $event)">Image</button>
-              </span>
+            <div class="field-group">
+              <label for="discoveredCluesMarkdown">Indices découverts</label>
+              <app-markdown-toolbar
+                (markdownCommand)="applyMarkdownCommand('quest', 'discoveredCluesMarkdown', $event)"
+                (linkRequested)="insertLink('quest', 'discoveredCluesMarkdown')"
+                (imageRequested)="openImageDialog('quest', 'discoveredCluesMarkdown', $event)"
+              />
               <textarea
                 [ngModel]="form.discoveredCluesMarkdown"
                 name="discoveredCluesMarkdown"
+                id="discoveredCluesMarkdown"
                 rows="5"
-                (focus)="focusMarkdownField('discoveredCluesMarkdown')"
+                (focus)="focusMarkdownField('quest', 'discoveredCluesMarkdown')"
                 (ngModelChange)="updateField('discoveredCluesMarkdown', $event)"
               ></textarea>
-            </label>
+            </div>
 
-            <label>
-              Épreuves réalisées
-              <span class="markdown-toolbar" aria-label="Outils Markdown pour les épreuves réalisées">
-                <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '## ', '', 'Titre')">Titre</button>
-                <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '**', '**', 'texte')">Gras</button>
-                <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '*', '*', 'texte')">Italique</button>
-                <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '- ', '', 'Element')">Liste</button>
-                <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '> ', '', 'Citation')">Citation</button>
-                <button type="button" (click)="insertLink('completedTrialsMarkdown')">Lien</button>
-                <button type="button" (click)="openImageDialog('completedTrialsMarkdown', $event)">Image</button>
-              </span>
+            <div class="field-group">
+              <label for="completedTrialsMarkdown">Épreuves réalisées</label>
+              <app-markdown-toolbar
+                (markdownCommand)="applyMarkdownCommand('quest', 'completedTrialsMarkdown', $event)"
+                (linkRequested)="insertLink('quest', 'completedTrialsMarkdown')"
+                (imageRequested)="openImageDialog('quest', 'completedTrialsMarkdown', $event)"
+              />
               <textarea
                 [ngModel]="form.completedTrialsMarkdown"
                 name="completedTrialsMarkdown"
+                id="completedTrialsMarkdown"
                 rows="5"
-                (focus)="focusMarkdownField('completedTrialsMarkdown')"
+                (focus)="focusMarkdownField('quest', 'completedTrialsMarkdown')"
                 (ngModelChange)="updateField('completedTrialsMarkdown', $event)"
               ></textarea>
-            </label>
+            </div>
 
-            <label>
-              Notes complémentaires publiables
-              <span class="markdown-toolbar" aria-label="Outils Markdown pour les notes complémentaires">
-                <button type="button" (click)="insertMarkdown('extraContentMarkdown', '## ', '', 'Titre')">Titre</button>
-                <button type="button" (click)="insertMarkdown('extraContentMarkdown', '**', '**', 'texte')">Gras</button>
-                <button type="button" (click)="insertMarkdown('extraContentMarkdown', '*', '*', 'texte')">Italique</button>
-                <button type="button" (click)="insertMarkdown('extraContentMarkdown', '- ', '', 'Element')">Liste</button>
-                <button type="button" (click)="insertMarkdown('extraContentMarkdown', '> ', '', 'Citation')">Citation</button>
-                <button type="button" (click)="insertLink('extraContentMarkdown')">Lien</button>
-                <button type="button" (click)="openImageDialog('extraContentMarkdown', $event)">Image</button>
-              </span>
+            <div class="field-group">
+              <label for="extraContentMarkdown">Notes complémentaires publiables</label>
+              <app-markdown-toolbar
+                (markdownCommand)="applyMarkdownCommand('quest', 'extraContentMarkdown', $event)"
+                (linkRequested)="insertLink('quest', 'extraContentMarkdown')"
+                (imageRequested)="openImageDialog('quest', 'extraContentMarkdown', $event)"
+              />
               <textarea
                 [ngModel]="form.extraContentMarkdown"
                 name="extraContentMarkdown"
+                id="extraContentMarkdown"
                 rows="5"
-                (focus)="focusMarkdownField('extraContentMarkdown')"
+                (focus)="focusMarkdownField('quest', 'extraContentMarkdown')"
                 (ngModelChange)="updateField('extraContentMarkdown', $event)"
               ></textarea>
-            </label>
+            </div>
 
-            <label>
-              Brouillon administrateur
-              <span class="markdown-toolbar" aria-label="Outils Markdown pour le brouillon administrateur">
-                <button type="button" (click)="insertMarkdown('adminDraftMarkdown', '## ', '', 'Titre')">Titre</button>
-                <button type="button" (click)="insertMarkdown('adminDraftMarkdown', '**', '**', 'texte')">Gras</button>
-                <button type="button" (click)="insertMarkdown('adminDraftMarkdown', '*', '*', 'texte')">Italique</button>
-                <button type="button" (click)="insertMarkdown('adminDraftMarkdown', '- ', '', 'Element')">Liste</button>
-                <button type="button" (click)="insertMarkdown('adminDraftMarkdown', '> ', '', 'Citation')">Citation</button>
-                <button type="button" (click)="insertLink('adminDraftMarkdown')">Lien</button>
-                <button type="button" (click)="openImageDialog('adminDraftMarkdown', $event)">Image</button>
-              </span>
+            <div class="field-group">
+              <label for="adminDraftMarkdown">Brouillon administrateur</label>
+              <app-markdown-toolbar
+                (markdownCommand)="applyMarkdownCommand('quest', 'adminDraftMarkdown', $event)"
+                (linkRequested)="insertLink('quest', 'adminDraftMarkdown')"
+                (imageRequested)="openImageDialog('quest', 'adminDraftMarkdown', $event)"
+              />
               <textarea
                 [ngModel]="form.adminDraftMarkdown"
                 name="adminDraftMarkdown"
+                id="adminDraftMarkdown"
                 rows="5"
-                (focus)="focusMarkdownField('adminDraftMarkdown')"
+                (focus)="focusMarkdownField('quest', 'adminDraftMarkdown')"
                 (ngModelChange)="updateField('adminDraftMarkdown', $event)"
               ></textarea>
-            </label>
+            </div>
 
             <div class="form-row">
               <label>
@@ -1099,8 +1101,13 @@
           ></textarea>
         </label>
 
-        <label>
-          Informations d'accessibilité
+        <div class="field-group">
+          <label for="settingsAccessibility">Informations d'accessibilité</label>
+          <app-markdown-toolbar
+            (markdownCommand)="applyMarkdownCommand('settings', 'accessibilityInformationMarkdown', $event)"
+            (linkRequested)="insertLink('settings', 'accessibilityInformationMarkdown')"
+            (imageRequested)="openImageDialog('settings', 'accessibilityInformationMarkdown', $event)"
+          />
           <textarea
             rows="7"
             required
@@ -1109,9 +1116,11 @@
             [attr.aria-describedby]="settingsError() ? 'settings-error-summary' : null"
             [ngModel]="form.accessibilityInformationMarkdown"
             name="settingsAccessibility"
+            id="settingsAccessibility"
+            (focus)="focusMarkdownField('settings', 'accessibilityInformationMarkdown')"
             (ngModelChange)="updateSettingsField('accessibilityInformationMarkdown', $event)"
           ></textarea>
-        </label>
+        </div>
 
         <div class="button-row">
           <button type="submit">Enregistrer les paramètres</button>

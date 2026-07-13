@@ -6,7 +6,7 @@ export interface PublicMapResponse {
 export interface PublicMapVision {
   id: string;
   name: string;
-  descriptionMarkdown: string;
+  descriptionHtml: string;
   assetPath: string;
   imageAlt: string;
   displayOrder: number;

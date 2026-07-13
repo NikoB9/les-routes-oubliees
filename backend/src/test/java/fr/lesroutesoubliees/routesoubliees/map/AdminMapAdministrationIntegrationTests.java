@@ -2,6 +2,7 @@ package fr.lesroutesoubliees.routesoubliees.map;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -59,7 +60,7 @@ class AdminMapAdministrationIntegrationTests {
 				.content("""
 					{
 					  "name": "Carte finale admin",
-					  "descriptionMarkdown": "Vision finale preparee en administration.",
+					  "descriptionMarkdown": "Vision finale **preparee** en administration.\\n\\n- Val revele\\n- Route ouverte\\n\\n![carte](/assets/maps/map-final.png)",
 					  "assetPath": "/assets/maps/map-final.png",
 					  "imageAlt": "Carte finale de démonstration.",
 					  "displayOrder": 42,
@@ -89,7 +90,10 @@ class AdminMapAdministrationIntegrationTests {
 
 		mvc.perform(get("/api/public/map"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.vision.name").value("Carte finale admin"));
+			.andExpect(jsonPath("$.vision.name").value("Carte finale admin"))
+			.andExpect(jsonPath("$.vision.descriptionHtml").value(containsString("<strong>preparee</strong>")))
+			.andExpect(jsonPath("$.vision.descriptionHtml").value(containsString("<ul><li>Val revele</li><li>Route ouverte</li></ul>")))
+			.andExpect(jsonPath("$.vision.descriptionHtml").value(containsString("<img src=\"/assets/maps/map-final.png\" alt=\"carte\">")));
 	}
 
 	@Test

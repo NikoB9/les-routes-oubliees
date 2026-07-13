@@ -6,7 +6,7 @@ import java.util.UUID;
 public record PublicHomeMessageResponse(
 	UUID id,
 	String title,
-	String contentMarkdown,
+	String contentHtml,
 	String importance,
 	boolean countdownEnabled,
 	OffsetDateTime endsAt,

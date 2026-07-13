@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
+import fr.lesroutesoubliees.routesoubliees.shared.markdown.MarkdownRenderer;
+
 class MarkdownRendererTests {
 
 	private final MarkdownRenderer renderer = new MarkdownRenderer();

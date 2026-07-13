@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import fr.lesroutesoubliees.routesoubliees.shared.EditorialStatus;
+import fr.lesroutesoubliees.routesoubliees.shared.markdown.MarkdownRenderer;
 
 @Service
 public class PublicQuestService {
@@ -50,13 +51,9 @@ public class PublicQuestService {
 			quest.code(),
 			quest.title(),
 			quest.summary(),
-			quest.importantEventsMarkdown(),
 			markdownRenderer.render(quest.importantEventsMarkdown()),
-			quest.discoveredCluesMarkdown(),
 			markdownRenderer.render(quest.discoveredCluesMarkdown()),
-			quest.completedTrialsMarkdown(),
 			markdownRenderer.render(quest.completedTrialsMarkdown()),
-			quest.extraContentMarkdown(),
 			markdownRenderer.render(quest.extraContentMarkdown()),
 			quest.displayOrder());
 	}

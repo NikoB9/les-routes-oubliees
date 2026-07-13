@@ -9,17 +9,17 @@ export interface PublicQuestSummary {
 }
 
 export interface PublicQuestDetail extends PublicQuestSummary {
-  importantEventsMarkdown: string;
   importantEventsHtml: string;
-  discoveredCluesMarkdown: string;
   discoveredCluesHtml: string;
-  completedTrialsMarkdown: string;
   completedTrialsHtml: string;
-  extraContentMarkdown: string;
   extraContentHtml: string;
 }
 
 export interface AdminQuest extends PublicQuestDetail {
+  importantEventsMarkdown: string;
+  discoveredCluesMarkdown: string;
+  completedTrialsMarkdown: string;
+  extraContentMarkdown: string;
   adminDraftMarkdown: string;
   adminDraftHtml: string;
   status: QuestStatus;

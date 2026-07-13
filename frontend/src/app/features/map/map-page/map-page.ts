@@ -3,7 +3,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
 import { LoadingIndicatorComponent } from '../../../shared/components/loading-indicator/loading-indicator';
-import { parseSafeMarkdown } from '../../../shared/utilities/safe-markdown';
 import { MapApiService } from '../map-api.service';
 import { PublicMapResponse } from '../map-api.models';
 
@@ -22,9 +21,6 @@ export class MapPage {
   protected readonly loadError = signal(false);
   protected readonly vision = computed(() => this.map()?.vision ?? null);
   protected readonly markers = computed(() => this.map()?.markers ?? []);
-  protected readonly descriptionBlocks = computed(() =>
-    parseSafeMarkdown(this.vision()?.descriptionMarkdown),
-  );
 
   constructor() {
     this.api

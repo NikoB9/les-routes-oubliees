@@ -10,7 +10,7 @@ const mapResponse: PublicMapResponse = {
   vision: {
     id: '40000000-0000-0000-0000-000000000001',
     name: 'Carte voilee',
-    descriptionMarkdown: 'La destination reste dissimulée.\n\n- Premier repère visible',
+    descriptionHtml: '<p>La destination reste <strong>dissimulee</strong>.</p><ul><li>Premier repere visible</li></ul>',
     assetPath: '/assets/maps/map-hidden.png',
     imageAlt: 'Carte de démonstration presque entièrement dissimulée.',
     displayOrder: 1,
@@ -65,7 +65,10 @@ describe('MapPage', () => {
     expect((marker as HTMLElement).style.left).toBe('31.5%');
     expect((marker as HTMLElement).style.top).toBe('70%');
     expect(listLink?.getAttribute('href')).toBe('/notebook/QUEST_1');
-    expect(text(compiled)).toContain('Premier repère visible');
+    expect(text(compiled)).toContain('Premier repere visible');
+    expect(compiled.querySelector('.map-description .markdown-content strong')?.textContent).toBe(
+      'dissimulee',
+    );
   });
 
   it('renders an error state when the map API fails', () => {

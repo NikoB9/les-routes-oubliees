@@ -177,11 +177,16 @@
   margin: 0;
 }
 
-.content-form label {
+.content-form label,
+.content-form .field-group {
   display: grid;
   gap: 0.35rem;
   color: #3a2d21;
   font-weight: 800;
+}
+
+.field-group textarea {
+  font-weight: 400;
 }
 
 .content-form input,
@@ -276,7 +281,6 @@
 }
 
 .quest-form :where(input, textarea, select, button):focus-visible,
-.markdown-toolbar button:focus-visible,
 .markdown-media-picker button:focus-visible,
 .media-dialog :where(input, select, button):focus-visible,
 .content-form :where(input, textarea, select, button):focus-visible,
@@ -314,13 +318,6 @@
   background: #fffaf0;
 }
 
-.markdown-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.markdown-toolbar button,
 .markdown-media-picker button {
   min-height: 2.35rem;
   padding: 0.45rem 0.65rem;
@@ -524,11 +521,16 @@
   font-size: 0.95rem;
 }
 
-.quest-form label {
+.quest-form label,
+.quest-form .field-group {
   display: grid;
   gap: 0.35rem;
   color: #3a2d21;
   font-weight: 800;
+}
+
+.quest-form .field-group textarea {
+  font-weight: 400;
 }
 
 .quest-form input,

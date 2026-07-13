@@ -39,12 +39,32 @@ import {
 import { AdminApiService } from '../admin-api.service';
 import { TabBarComponent } from '../../../shared/components/tab-bar/tab-bar';
 import { LoadingIndicatorComponent } from '../../../shared/components/loading-indicator/loading-indicator';
+import {
+  MarkdownCommand,
+  MarkdownToolbarComponent,
+} from '../../../shared/components/markdown-toolbar/markdown-toolbar';
 
 type MarkdownImageSize = 'small' | 'medium' | 'large' | 'full';
+type MarkdownTarget = 'homeMessage' | 'company' | 'mapVision' | 'quest' | 'settings';
+type MarkdownField =
+  | 'contentMarkdown'
+  | 'longDescriptionMarkdown'
+  | 'descriptionMarkdown'
+  | 'importantEventsMarkdown'
+  | 'discoveredCluesMarkdown'
+  | 'completedTrialsMarkdown'
+  | 'extraContentMarkdown'
+  | 'adminDraftMarkdown'
+  | 'accessibilityInformationMarkdown';
+
+interface ActiveMarkdownField {
+  target: MarkdownTarget;
+  field: MarkdownField;
+}
 
 @Component({
   selector: 'app-admin-shell',
-  imports: [FormsModule, LoadingIndicatorComponent, RouterLink, TabBarComponent],
+  imports: [FormsModule, LoadingIndicatorComponent, MarkdownToolbarComponent, RouterLink, TabBarComponent],
   templateUrl: './admin-shell.html',
   styleUrl: './admin-shell.css',
 })
@@ -73,7 +93,10 @@ export class AdminShell {
   protected readonly selectedQuest = signal<AdminQuest | null>(null);
   protected readonly editor = signal<AdminQuestUpdate | null>(null);
   protected readonly questPreview = signal<AdminQuestPreview | null>(null);
-  protected readonly activeMarkdownField = signal<keyof AdminQuestUpdate>('importantEventsMarkdown');
+  protected readonly activeMarkdownField = signal<ActiveMarkdownField>({
+    target: 'quest',
+    field: 'importantEventsMarkdown',
+  });
   protected readonly imageDialogOpen = signal(false);
   protected readonly imageSearch = signal('');
   protected readonly selectedImage = signal<AdminMedia | null>(null);
@@ -526,27 +549,42 @@ export class AdminShell {
     this.questError.set(false);
   }
 
-  protected focusMarkdownField(field: keyof AdminQuestUpdate) {
-    this.activeMarkdownField.set(field);
+  protected focusMarkdownField(target: MarkdownTarget, field: MarkdownField) {
+    if (this.markdownValue(target, field) !== null) {
+      this.activeMarkdownField.set({ target, field });
+    }
   }
 
-  protected insertMarkdown(field: keyof AdminQuestUpdate, before: string, after: string, placeholder: string) {
-    const current = this.editor();
-    if (!current || typeof current[field] !== 'string') {
+  protected insertMarkdown(
+    target: MarkdownTarget,
+    field: MarkdownField,
+    before: string,
+    after: string,
+    placeholder: string,
+  ) {
+    const value = this.markdownValue(target, field);
+    if (value === null) {
       return;
     }
-    const value = current[field] as string;
     const separator = value && !value.endsWith('\n') ? '\n' : '';
-    this.updateField(field, `${value}${separator}${before}${placeholder}${after}` as AdminQuestUpdate[keyof AdminQuestUpdate]);
-    this.activeMarkdownField.set(field);
+    this.setMarkdownValue(target, field, `${value}${separator}${before}${placeholder}${after}`);
+    this.activeMarkdownField.set({ target, field });
   }
 
-  protected insertLink(field: keyof AdminQuestUpdate) {
-    this.insertMarkdown(field, '[', '](/notebook/QUEST_1)', 'libelle du lien');
+  protected applyMarkdownCommand(
+    target: MarkdownTarget,
+    field: MarkdownField,
+    command: MarkdownCommand,
+  ) {
+    this.insertMarkdown(target, field, command.before, command.after, command.placeholder);
   }
 
-  protected openImageDialog(field: keyof AdminQuestUpdate, event: Event) {
-    this.focusMarkdownField(field);
+  protected insertLink(target: MarkdownTarget, field: MarkdownField) {
+    this.insertMarkdown(target, field, '[', '](/notebook/QUEST_1)', 'libelle du lien');
+  }
+
+  protected openImageDialog(target: MarkdownTarget, field: MarkdownField, event: Event) {
+    this.focusMarkdownField(target, field);
     this.imageDialogTrigger = event.currentTarget as HTMLElement;
     this.imageSearch.set('');
     this.selectedImage.set(null);
@@ -566,6 +604,36 @@ export class AdminShell {
     if (event.key === 'Escape') {
       event.preventDefault();
       this.closeImageDialog();
+      return;
+    }
+
+    if (event.key !== 'Tab') {
+      return;
+    }
+
+    const dialog = event.currentTarget as HTMLElement;
+    const focusable = Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((element) => element.offsetParent !== null);
+
+    if (focusable.length === 0) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
     }
   }
 
@@ -595,13 +663,92 @@ export class AdminShell {
     }
     const alt = this.markdownImageText(media.altText || this.imageTitle() || media.originalFilename);
     const title = this.markdownImageTitle(this.imageTitle() || media.altText || media.originalFilename);
+    const activeField = this.activeMarkdownField();
     this.insertMarkdown(
-      this.activeMarkdownField(),
+      activeField.target,
+      activeField.field,
       '',
       '',
       `![${alt}](${media.url} "${title}"){size=${this.imageSize()}}`,
     );
     this.closeImageDialog();
+  }
+
+  private markdownValue(target: MarkdownTarget, field: MarkdownField): string | null {
+    switch (target) {
+      case 'homeMessage':
+        return field === 'contentMarkdown' ? this.homeMessageForm().contentMarkdown : null;
+      case 'company':
+        return field === 'longDescriptionMarkdown' ? this.companyForm().longDescriptionMarkdown : null;
+      case 'mapVision':
+        return field === 'descriptionMarkdown' ? this.mapVisionForm().descriptionMarkdown : null;
+      case 'settings':
+        return field === 'accessibilityInformationMarkdown'
+          ? this.settingsForm().accessibilityInformationMarkdown
+          : null;
+      case 'quest': {
+        const editor = this.editor();
+        if (!editor) {
+          return null;
+        }
+        switch (field) {
+          case 'importantEventsMarkdown':
+            return editor.importantEventsMarkdown;
+          case 'discoveredCluesMarkdown':
+            return editor.discoveredCluesMarkdown;
+          case 'completedTrialsMarkdown':
+            return editor.completedTrialsMarkdown;
+          case 'extraContentMarkdown':
+            return editor.extraContentMarkdown;
+          case 'adminDraftMarkdown':
+            return editor.adminDraftMarkdown;
+          default:
+            return null;
+        }
+      }
+      default:
+        return null;
+    }
+  }
+
+  private setMarkdownValue(target: MarkdownTarget, field: MarkdownField, value: string) {
+    switch (target) {
+      case 'homeMessage':
+        if (field === 'contentMarkdown') {
+          this.updateHomeMessageField('contentMarkdown', value);
+        }
+        break;
+      case 'company':
+        if (field === 'longDescriptionMarkdown') {
+          this.updateCompanyField('longDescriptionMarkdown', value);
+        }
+        break;
+      case 'mapVision':
+        if (field === 'descriptionMarkdown') {
+          this.updateMapVisionField('descriptionMarkdown', value);
+        }
+        break;
+      case 'settings':
+        if (field === 'accessibilityInformationMarkdown') {
+          this.updateSettingsField('accessibilityInformationMarkdown', value);
+        }
+        break;
+      case 'quest':
+        switch (field) {
+          case 'importantEventsMarkdown':
+          case 'discoveredCluesMarkdown':
+          case 'completedTrialsMarkdown':
+          case 'extraContentMarkdown':
+          case 'adminDraftMarkdown':
+            this.updateField(field, value);
+            break;
+          default:
+            break;
+        }
+        break;
+      default:
+        break;
+    }
   }
 
   protected updateStatus(value: string) {

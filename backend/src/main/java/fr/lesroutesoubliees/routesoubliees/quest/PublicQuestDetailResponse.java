@@ -7,13 +7,9 @@ public record PublicQuestDetailResponse(
 	String code,
 	String title,
 	String summary,
-	String importantEventsMarkdown,
 	String importantEventsHtml,
-	String discoveredCluesMarkdown,
 	String discoveredCluesHtml,
-	String completedTrialsMarkdown,
 	String completedTrialsHtml,
-	String extraContentMarkdown,
 	String extraContentHtml,
 	int displayOrder
 ) {
