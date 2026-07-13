@@ -17,6 +17,7 @@ Rendre l'application publique installable comme PWA et permettre la consultation
 
 - Ne jamais inclure de contenu admin, brouillon ou masque dans le snapshot.
 - Ne pas mettre en cache les routes admin ni les operations d'ecriture.
+- Les GET `/api/public/**` strictement publics peuvent etre caches par le service worker avec une strategie freshness pour garantir les pages en mode avion.
 - Ne pas mettre en cache automatiquement `/media/**` tant que l'acces public aux medias n'est pas filtre par contenu publie.
 - Garder le backend comme source canonique du contenu public et du HTML nettoye.
 - Sur iOS, l'installation PWA ne peut pas etre declenchee par une popup native.

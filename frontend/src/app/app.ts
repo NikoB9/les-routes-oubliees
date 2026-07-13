@@ -40,12 +40,21 @@ export class App {
   private readonly document = inject(DOCUMENT);
   private readonly publicContentCache = inject(PublicContentCacheService);
   private readonly onlineListener = () => this.refreshPublicCache();
+  private readonly visibilityListener = () => {
+    if (this.document.visibilityState === 'visible') {
+      this.refreshPublicCache();
+    }
+  };
 
   constructor() {
     this.refreshPublicCache();
 
     window.addEventListener('online', this.onlineListener);
+    this.document.addEventListener('visibilitychange', this.visibilityListener);
     this.destroyRef.onDestroy(() => window.removeEventListener('online', this.onlineListener));
+    this.destroyRef.onDestroy(() =>
+      this.document.removeEventListener('visibilitychange', this.visibilityListener),
+    );
 
     this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
       if (event instanceof NavigationStart) {
@@ -60,6 +69,7 @@ export class App {
       ) {
         this.isNavigating.set(false);
         if (event instanceof NavigationEnd) {
+          this.refreshPublicCache();
           queueMicrotask(() => this.document.getElementById('main-content')?.focus());
         }
       }

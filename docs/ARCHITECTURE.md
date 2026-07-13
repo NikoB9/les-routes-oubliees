@@ -153,6 +153,7 @@ Principes :
 
 * le service worker cache le shell public et les assets versionnes ;
 * les medias uploades `/media/**` ne sont pas caches par le service worker tant que l'acces public n'est pas filtre par contenu publie ;
+* les API publiques GET peuvent etre mises en cache avec une strategie freshness courte pour permettre le mode avion ;
 * les API admin, OAuth2, login et operations d'ecriture ne sont pas mises en cache ;
 * le dernier snapshot public est stocke dans IndexedDB ;
 * la mise a jour du snapshot passe par une empreinte publique fournie par le backend ;

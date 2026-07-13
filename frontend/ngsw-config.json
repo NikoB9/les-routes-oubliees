@@ -37,5 +37,27 @@
         ]
       }
     }
+  ],
+  "dataGroups": [
+    {
+      "name": "public-api",
+      "urls": [
+        "/api/public/settings",
+        "/api/public/home",
+        "/api/public/map",
+        "/api/public/notebook",
+        "/api/public/notebook/**",
+        "/api/public/quests",
+        "/api/public/quests/**",
+        "/api/public/content-version",
+        "/api/public/offline-snapshot"
+      ],
+      "cacheConfig": {
+        "strategy": "freshness",
+        "maxSize": 40,
+        "maxAge": "24h",
+        "timeout": "5s"
+      }
+    }
   ]
 }
