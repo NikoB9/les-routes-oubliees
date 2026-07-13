@@ -39,3 +39,11 @@ export interface AdminQuestUpdate {
   status: QuestStatus;
   visibleToPlayers: boolean;
 }
+
+export interface AdminQuestPreview {
+  importantEventsHtml: string;
+  discoveredCluesHtml: string;
+  completedTrialsHtml: string;
+  extraContentHtml: string;
+  adminDraftHtml: string;
+}

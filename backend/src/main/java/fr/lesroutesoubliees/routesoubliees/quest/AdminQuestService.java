@@ -52,6 +52,16 @@ public class AdminQuestService {
 		return toResponse(quest);
 	}
 
+	@Transactional(readOnly = true)
+	public AdminQuestPreviewResponse preview(AdminQuestUpdateRequest request) {
+		return new AdminQuestPreviewResponse(
+			markdownRenderer.render(request.importantEventsMarkdown()),
+			markdownRenderer.render(request.discoveredCluesMarkdown()),
+			markdownRenderer.render(request.completedTrialsMarkdown()),
+			markdownRenderer.render(request.extraContentMarkdown()),
+			markdownRenderer.render(request.adminDraftMarkdown()));
+	}
+
 	@Transactional
 	public AdminQuestResponse publishQuest(String code, boolean visibleToPlayers, String actorEmail) {
 		var quest = findQuest(code);

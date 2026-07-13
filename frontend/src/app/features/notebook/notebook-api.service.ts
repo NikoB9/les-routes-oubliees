@@ -1,7 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { AdminQuest, AdminQuestUpdate, PublicQuestDetail, PublicQuestSummary } from './notebook-api.models';
+import {
+  AdminQuest,
+  AdminQuestPreview,
+  AdminQuestUpdate,
+  PublicQuestDetail,
+  PublicQuestSummary,
+} from './notebook-api.models';
 
 @Injectable({ providedIn: 'root' })
 export class NotebookApiService {
@@ -25,6 +31,10 @@ export class NotebookApiService {
 
   updateAdminQuest(code: string, payload: AdminQuestUpdate) {
     return this.http.put<AdminQuest>(`/api/admin/quest-tabs/${encodeURIComponent(code)}`, payload);
+  }
+
+  previewAdminQuest(payload: AdminQuestUpdate) {
+    return this.http.post<AdminQuestPreview>('/api/admin/quest-tabs/preview', payload);
   }
 
   publishAdminQuest(code: string, visibleToPlayers = true) {

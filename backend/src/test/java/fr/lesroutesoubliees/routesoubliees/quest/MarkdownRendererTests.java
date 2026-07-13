@@ -21,7 +21,7 @@ class MarkdownRendererTests {
 		var html = renderer.render("""
 			## Titre
 
-			Un **indice** *important*.
+			Un **indice** *important* avec `code`.
 
 			- Premier point
 			- Second point
@@ -30,6 +30,7 @@ class MarkdownRendererTests {
 		assertThat(html).contains("<h3>Titre</h3>");
 		assertThat(html).contains("<strong>indice</strong>");
 		assertThat(html).contains("<em>important</em>");
+		assertThat(html).contains("<code>code</code>");
 		assertThat(html).contains("<ul><li>Premier point</li><li>Second point</li></ul>");
 	}
 
@@ -40,5 +41,21 @@ class MarkdownRendererTests {
 		assertThat(html).doesNotContain("javascript:");
 		assertThat(html).contains("indice");
 		assertThat(html).contains("<a href=\"/notebook/QUEST_1\">archive</a>");
+	}
+
+	@Test
+	void rendersOnlyRepositoryMediaImages() {
+		var html = renderer.render("""
+			![portrait](/media/11111111-1111-1111-1111-111111111111)
+			![carte](/assets/maps/map-hidden.png)
+			![svg](/assets/icons/piege.svg)
+			![script](javascript:alert(1))
+			""");
+
+		assertThat(html).contains("<img src=\"/media/11111111-1111-1111-1111-111111111111\" alt=\"portrait\">");
+		assertThat(html).contains("<img src=\"/assets/maps/map-hidden.png\" alt=\"carte\">");
+		assertThat(html).doesNotContain("<img src=\"/assets/icons/piege.svg\"");
+		assertThat(html).doesNotContain("javascript:");
+		assertThat(html).contains("svg", "script");
 	}
 }

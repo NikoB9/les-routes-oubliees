@@ -558,53 +558,113 @@
 
             <label>
               Evenements importants
+              <span class="markdown-toolbar" aria-label="Outils Markdown pour les evenements importants">
+                <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '## ', '', 'Titre')">Titre</button>
+                <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '**', '**', 'texte')">Gras</button>
+                <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '*', '*', 'texte')">Italique</button>
+                <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '- ', '', 'Element')">Liste</button>
+                <button type="button" (click)="insertMarkdown('importantEventsMarkdown', '> ', '', 'Citation')">Citation</button>
+                <button type="button" (click)="insertLink('importantEventsMarkdown')">Lien</button>
+              </span>
               <textarea
                 [ngModel]="form.importantEventsMarkdown"
                 name="importantEventsMarkdown"
                 rows="5"
+                (focus)="focusMarkdownField('importantEventsMarkdown')"
                 (ngModelChange)="updateField('importantEventsMarkdown', $event)"
               ></textarea>
             </label>
 
             <label>
               Indices decouverts
+              <span class="markdown-toolbar" aria-label="Outils Markdown pour les indices decouverts">
+                <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '## ', '', 'Titre')">Titre</button>
+                <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '**', '**', 'texte')">Gras</button>
+                <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '*', '*', 'texte')">Italique</button>
+                <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '- ', '', 'Element')">Liste</button>
+                <button type="button" (click)="insertMarkdown('discoveredCluesMarkdown', '> ', '', 'Citation')">Citation</button>
+                <button type="button" (click)="insertLink('discoveredCluesMarkdown')">Lien</button>
+              </span>
               <textarea
                 [ngModel]="form.discoveredCluesMarkdown"
                 name="discoveredCluesMarkdown"
                 rows="5"
+                (focus)="focusMarkdownField('discoveredCluesMarkdown')"
                 (ngModelChange)="updateField('discoveredCluesMarkdown', $event)"
               ></textarea>
             </label>
 
             <label>
               Epreuves realisees
+              <span class="markdown-toolbar" aria-label="Outils Markdown pour les epreuves realisees">
+                <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '## ', '', 'Titre')">Titre</button>
+                <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '**', '**', 'texte')">Gras</button>
+                <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '*', '*', 'texte')">Italique</button>
+                <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '- ', '', 'Element')">Liste</button>
+                <button type="button" (click)="insertMarkdown('completedTrialsMarkdown', '> ', '', 'Citation')">Citation</button>
+                <button type="button" (click)="insertLink('completedTrialsMarkdown')">Lien</button>
+              </span>
               <textarea
                 [ngModel]="form.completedTrialsMarkdown"
                 name="completedTrialsMarkdown"
                 rows="5"
+                (focus)="focusMarkdownField('completedTrialsMarkdown')"
                 (ngModelChange)="updateField('completedTrialsMarkdown', $event)"
               ></textarea>
             </label>
 
             <label>
               Notes complementaires publiables
+              <span class="markdown-toolbar" aria-label="Outils Markdown pour les notes complementaires">
+                <button type="button" (click)="insertMarkdown('extraContentMarkdown', '## ', '', 'Titre')">Titre</button>
+                <button type="button" (click)="insertMarkdown('extraContentMarkdown', '**', '**', 'texte')">Gras</button>
+                <button type="button" (click)="insertMarkdown('extraContentMarkdown', '*', '*', 'texte')">Italique</button>
+                <button type="button" (click)="insertMarkdown('extraContentMarkdown', '- ', '', 'Element')">Liste</button>
+                <button type="button" (click)="insertMarkdown('extraContentMarkdown', '> ', '', 'Citation')">Citation</button>
+                <button type="button" (click)="insertLink('extraContentMarkdown')">Lien</button>
+              </span>
               <textarea
                 [ngModel]="form.extraContentMarkdown"
                 name="extraContentMarkdown"
                 rows="5"
+                (focus)="focusMarkdownField('extraContentMarkdown')"
                 (ngModelChange)="updateField('extraContentMarkdown', $event)"
               ></textarea>
             </label>
 
             <label>
               Brouillon administrateur
+              <span class="markdown-toolbar" aria-label="Outils Markdown pour le brouillon administrateur">
+                <button type="button" (click)="insertMarkdown('adminDraftMarkdown', '## ', '', 'Titre')">Titre</button>
+                <button type="button" (click)="insertMarkdown('adminDraftMarkdown', '**', '**', 'texte')">Gras</button>
+                <button type="button" (click)="insertMarkdown('adminDraftMarkdown', '*', '*', 'texte')">Italique</button>
+                <button type="button" (click)="insertMarkdown('adminDraftMarkdown', '- ', '', 'Element')">Liste</button>
+                <button type="button" (click)="insertMarkdown('adminDraftMarkdown', '> ', '', 'Citation')">Citation</button>
+                <button type="button" (click)="insertLink('adminDraftMarkdown')">Lien</button>
+              </span>
               <textarea
                 [ngModel]="form.adminDraftMarkdown"
                 name="adminDraftMarkdown"
                 rows="5"
+                (focus)="focusMarkdownField('adminDraftMarkdown')"
                 (ngModelChange)="updateField('adminDraftMarkdown', $event)"
               ></textarea>
             </label>
+
+            @if (media().length > 0) {
+              <section class="markdown-media-picker" aria-labelledby="markdown-media-title">
+                <h4 id="markdown-media-title">Images de la mediatheque</h4>
+                <ul>
+                  @for (item of media(); track item.id) {
+                    <li>
+                      <button type="button" (click)="insertMedia(item)">
+                        Inserer {{ item.originalFilename }}
+                      </button>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
 
             <div class="form-row">
               <label>
@@ -633,6 +693,7 @@
 
             <div class="button-row">
               <button type="submit">Enregistrer</button>
+              <button type="button" (click)="previewQuest()">Previsualiser</button>
               <button type="button" (click)="publishQuest()">Publier et afficher</button>
               <button type="button" (click)="hideQuest()">Masquer</button>
               <button type="button" class="danger" (click)="archiveQuest()">Archiver</button>
@@ -648,19 +709,19 @@
               <p>{{ quest.summary }}</p>
 
               <h5>Evenements importants</h5>
-              <div class="markdown-content" [innerHTML]="quest.importantEventsHtml"></div>
+              <div class="markdown-content" [innerHTML]="questPreview()?.importantEventsHtml || quest.importantEventsHtml"></div>
 
               <h5>Indices decouverts</h5>
-              <div class="markdown-content" [innerHTML]="quest.discoveredCluesHtml"></div>
+              <div class="markdown-content" [innerHTML]="questPreview()?.discoveredCluesHtml || quest.discoveredCluesHtml"></div>
 
               <h5>Epreuves realisees</h5>
-              <div class="markdown-content" [innerHTML]="quest.completedTrialsHtml"></div>
+              <div class="markdown-content" [innerHTML]="questPreview()?.completedTrialsHtml || quest.completedTrialsHtml"></div>
 
               <h5>Notes complementaires</h5>
-              <div class="markdown-content" [innerHTML]="quest.extraContentHtml"></div>
+              <div class="markdown-content" [innerHTML]="questPreview()?.extraContentHtml || quest.extraContentHtml"></div>
 
               <h5>Brouillon administrateur</h5>
-              <div class="markdown-content" [innerHTML]="quest.adminDraftHtml"></div>
+              <div class="markdown-content" [innerHTML]="questPreview()?.adminDraftHtml || quest.adminDraftHtml"></div>
             </article>
           </section>
           </div>

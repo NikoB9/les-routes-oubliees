@@ -91,6 +91,37 @@ class AdminQuestIntegrationTests {
 	}
 
 	@Test
+	void previewsMarkdownWithoutPersistingQuest() throws Exception {
+		mvc.perform(post("/api/admin/quest-tabs/preview")
+				.with(user("admin@example.invalid"))
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "title": "Preview",
+					  "summary": "Preview.",
+					  "importantEventsMarkdown": "![preuve](/media/11111111-1111-1111-1111-111111111111)",
+					  "discoveredCluesMarkdown": "[piege](javascript:alert(1))",
+					  "completedTrialsMarkdown": "> Citation",
+					  "extraContentMarkdown": "<img src=x onerror=alert(1)>",
+					  "adminDraftMarkdown": "**Secret**",
+					  "status": "DRAFT",
+					  "visibleToPlayers": false
+					}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.importantEventsHtml").value("<p><img src=\"/media/11111111-1111-1111-1111-111111111111\" alt=\"preuve\"></p>"))
+			.andExpect(jsonPath("$.discoveredCluesHtml").value("<p>piege</p>"))
+			.andExpect(jsonPath("$.completedTrialsHtml").value("<blockquote><p>Citation</p></blockquote>"))
+			.andExpect(jsonPath("$.extraContentHtml").value("<p></p>"))
+			.andExpect(jsonPath("$.adminDraftHtml").value("<p><strong>Secret</strong></p>"));
+
+		mvc.perform(get("/api/admin/quest-tabs/QUEST_3").with(user("admin@example.invalid")))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.title").value("Troisieme quete brouillon"));
+	}
+
+	@Test
 	void canPublishThenHideAQuest() throws Exception {
 		mvc.perform(post("/api/admin/quest-tabs/QUEST_3/publish")
 				.with(user("admin@example.invalid"))

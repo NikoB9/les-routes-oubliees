@@ -7,6 +7,7 @@ import { AdminAuthService } from '../../../core/auth/admin-auth.service';
 import { AdminSession } from '../../../core/auth/admin-session';
 import {
   AdminQuest,
+  AdminQuestPreview,
   AdminQuestUpdate,
   QuestStatus,
 } from '../../notebook/notebook-api.models';
@@ -62,6 +63,8 @@ export class AdminShell {
   protected readonly quests = signal<AdminQuest[]>([]);
   protected readonly selectedQuest = signal<AdminQuest | null>(null);
   protected readonly editor = signal<AdminQuestUpdate | null>(null);
+  protected readonly questPreview = signal<AdminQuestPreview | null>(null);
+  protected readonly activeMarkdownField = signal<keyof AdminQuestUpdate>('importantEventsMarkdown');
   protected readonly statuses: QuestStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
   protected readonly media = signal<AdminMedia[]>([]);
   protected readonly mediaError = signal(false);
@@ -146,6 +149,7 @@ export class AdminShell {
         break;
       case 'notebook':
         this.loadQuests();
+        this.loadMedia();
         break;
       case 'media':
         this.loadMedia();
@@ -467,6 +471,32 @@ export class AdminShell {
       return;
     }
     this.editor.set({ ...current, [field]: value });
+    this.questPreview.set(null);
+    this.questSaved.set(false);
+    this.questError.set(false);
+  }
+
+  protected focusMarkdownField(field: keyof AdminQuestUpdate) {
+    this.activeMarkdownField.set(field);
+  }
+
+  protected insertMarkdown(field: keyof AdminQuestUpdate, before: string, after: string, placeholder: string) {
+    const current = this.editor();
+    if (!current || typeof current[field] !== 'string') {
+      return;
+    }
+    const value = current[field] as string;
+    const separator = value && !value.endsWith('\n') ? '\n' : '';
+    this.updateField(field, `${value}${separator}${before}${placeholder}${after}` as AdminQuestUpdate[keyof AdminQuestUpdate]);
+    this.activeMarkdownField.set(field);
+  }
+
+  protected insertLink(field: keyof AdminQuestUpdate) {
+    this.insertMarkdown(field, '[', '](/notebook/QUEST_1)', 'libelle du lien');
+  }
+
+  protected insertMedia(media: AdminMedia) {
+    this.insertMarkdown(this.activeMarkdownField(), '![', `](${media.url})`, media.altText);
   }
 
   protected updateStatus(value: string) {
@@ -482,13 +512,27 @@ export class AdminShell {
       return;
     }
 
-    this.notebookApi.updateAdminQuest(quest.code, payload).subscribe({
+    this.notebookApi.updateAdminQuest(quest.code, this.normalizedQuestPayload(payload)).subscribe({
       next: (updated) => {
         this.replaceQuest(updated);
         this.setSelectedQuest(updated);
         this.questSaved.set(true);
         this.loadDashboard();
         this.loadAuditLogs();
+      },
+      error: () => this.showQuestError(),
+    });
+  }
+
+  protected previewQuest() {
+    const payload = this.editor();
+    if (!payload) {
+      return;
+    }
+    this.notebookApi.previewAdminQuest(this.normalizedQuestPayload(payload)).subscribe({
+      next: (preview) => {
+        this.questPreview.set(preview);
+        this.questError.set(false);
       },
       error: () => this.showQuestError(),
     });
@@ -750,6 +794,7 @@ export class AdminShell {
 
   private setSelectedQuest(quest: AdminQuest) {
     this.selectedQuest.set(quest);
+    this.questPreview.set(null);
     this.editor.set({
       title: quest.title,
       summary: quest.summary,
@@ -761,6 +806,20 @@ export class AdminShell {
       status: quest.status,
       visibleToPlayers: quest.visibleToPlayers,
     });
+  }
+
+  private normalizedQuestPayload(payload: AdminQuestUpdate): AdminQuestUpdate {
+    return {
+      title: payload.title.trim(),
+      summary: payload.summary.trim(),
+      importantEventsMarkdown: payload.importantEventsMarkdown.trim(),
+      discoveredCluesMarkdown: payload.discoveredCluesMarkdown.trim(),
+      completedTrialsMarkdown: payload.completedTrialsMarkdown.trim(),
+      extraContentMarkdown: payload.extraContentMarkdown.trim(),
+      adminDraftMarkdown: payload.adminDraftMarkdown.trim(),
+      status: payload.status,
+      visibleToPlayers: payload.visibleToPlayers,
+    };
   }
 
   private replaceQuest(updated: AdminQuest) {

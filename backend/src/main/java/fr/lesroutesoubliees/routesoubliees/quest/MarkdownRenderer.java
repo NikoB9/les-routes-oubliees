@@ -11,10 +11,14 @@ import org.springframework.web.util.HtmlUtils;
 @Component
 class MarkdownRenderer {
 
+	private static final Pattern IMAGE = Pattern.compile("!\\[([^\\]]{0,280})]\\(([^\\s()]+(?:\\([^\\s()]*\\)[^\\s()]*)*)\\)");
 	private static final Pattern LINK = Pattern.compile("\\[([^\\]]{1,160})]\\(([^\\s()]+(?:\\([^\\s()]*\\)[^\\s()]*)*)\\)");
+	private static final Pattern CODE = Pattern.compile("`([^`]{1,160})`");
 	private static final Pattern STRONG = Pattern.compile("\\*\\*([^*]+)\\*\\*");
 	private static final Pattern EMPHASIS = Pattern.compile("(?<!\\*)\\*([^*]+)\\*(?!\\*)");
 	private static final Pattern RAW_HTML = Pattern.compile("<[^>]*>");
+	private static final Pattern MEDIA_IMAGE = Pattern.compile("^/media/[0-9a-fA-F-]{36}$");
+	private static final Pattern VERSIONED_IMAGE = Pattern.compile("^/assets/[A-Za-z0-9/_-]+\\.(png|jpg|jpeg|webp)$", Pattern.CASE_INSENSITIVE);
 
 	String render(String markdown) {
 		if (markdown == null || markdown.isBlank()) {
@@ -116,9 +120,26 @@ class MarkdownRenderer {
 
 	private String inline(String text) {
 		var escaped = HtmlUtils.htmlEscape(RAW_HTML.matcher(text).replaceAll(""));
+		escaped = safeImages(escaped);
 		escaped = safeLinks(escaped);
+		escaped = CODE.matcher(escaped).replaceAll("<code>$1</code>");
 		escaped = STRONG.matcher(escaped).replaceAll("<strong>$1</strong>");
 		return EMPHASIS.matcher(escaped).replaceAll("<em>$1</em>");
+	}
+
+	private String safeImages(String escaped) {
+		var matcher = IMAGE.matcher(escaped);
+		var rendered = new StringBuilder();
+		while (matcher.find()) {
+			var alt = matcher.group(1);
+			var src = matcher.group(2);
+			var replacement = isSafeImageUrl(src)
+				? "<img src=\"" + src + "\" alt=\"" + alt + "\">"
+				: alt;
+			matcher.appendReplacement(rendered, Matcher.quoteReplacement(replacement));
+		}
+		matcher.appendTail(rendered);
+		return rendered.toString();
 	}
 
 	private String safeLinks(String escaped) {
@@ -143,5 +164,9 @@ class MarkdownRenderer {
 			|| lower.startsWith("mailto:")
 			|| lower.startsWith("/")
 			|| lower.startsWith("#");
+	}
+
+	private boolean isSafeImageUrl(String src) {
+		return MEDIA_IMAGE.matcher(src).matches() || VERSIONED_IMAGE.matcher(src).matches();
 	}
 }
