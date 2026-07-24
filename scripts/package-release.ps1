@@ -125,7 +125,12 @@ else {
         -Image "node:24.15.0-bookworm" `
         -MountPath $FrontendDir `
         -Command @("sh", "-lc", ($frontendCommands -join " && ")) `
-        -ExtraDockerArguments @("-v", "/workspace/node_modules")
+        -ExtraDockerArguments @(
+            "-v",
+            "/workspace/node_modules",
+            "-v",
+            "les-routes-oubliees-npm-cache:/root/.npm"
+        )
 
     $mavenCommand = "sh ./mvnw -B package"
     if ($SkipTests) {
