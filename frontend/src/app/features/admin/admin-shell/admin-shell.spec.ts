@@ -162,9 +162,11 @@ describe('AdminShell', () => {
     expect(summaryLabel?.querySelector('app-markdown-toolbar')).toBeNull();
   });
 
-  it('shows map marker label position controls', () => {
+  it('shows map marker label position controls', async () => {
     sectionParam = 'map';
     const fixture = TestBed.createComponent(AdminShell);
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;

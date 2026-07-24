@@ -80,6 +80,7 @@ h1 {
      ~0.2071 * head (geometry of a 45deg-rotated rounded square). */
   --pin-size: 1.9rem;
   --pin-tip-overhang: calc(var(--pin-size) * 0.2071);
+  --pin-head-center-y: calc(-1 * (var(--pin-size) + var(--pin-tip-overhang) - (var(--pin-size) / 2)));
   --marker-label-offset: 16px;
 
   position: absolute;
@@ -125,13 +126,13 @@ h1 {
 }
 
 .map-marker--label-left .marker-ribbon {
-  top: 0;
+  top: var(--pin-head-center-y);
   right: var(--marker-label-offset);
   transform: translateY(-50%);
 }
 
 .map-marker--label-right .marker-ribbon {
-  top: 0;
+  top: var(--pin-head-center-y);
   left: var(--marker-label-offset);
   transform: translateY(-50%);
 }
