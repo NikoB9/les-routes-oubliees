@@ -22,9 +22,14 @@
         @for (marker of markers(); track marker.id) {
           <a
             class="map-marker"
+            [class.map-marker--label-top]="marker.labelPosition === 'TOP'"
+            [class.map-marker--label-bottom]="marker.labelPosition === 'BOTTOM'"
+            [class.map-marker--label-left]="marker.labelPosition === 'LEFT'"
+            [class.map-marker--label-right]="marker.labelPosition === 'RIGHT'"
             [routerLink]="['/notebook', marker.questCode]"
             [style.left]="marker.positionX + '%'"
             [style.top]="marker.positionY + '%'"
+            [style.--marker-label-offset]="marker.labelOffsetPx + 'px'"
             [attr.aria-label]="'Consulter ' + marker.title + ' dans le carnet'"
           >
             <span aria-hidden="true" class="marker-pin"></span>

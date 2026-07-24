@@ -22,6 +22,8 @@ const mapResponse: PublicMapResponse = {
       title: 'Premier appel',
       positionX: 31.5,
       positionY: 70,
+      labelPosition: 'LEFT',
+      labelOffsetPx: 24,
       displayOrder: 1,
       questCode: 'QUEST_1',
     },
@@ -77,6 +79,8 @@ describe('MapPage', () => {
     expect(marker?.getAttribute('aria-label')).toContain('Consulter Premier appel');
     expect((marker as HTMLElement).style.left).toBe('31.5%');
     expect((marker as HTMLElement).style.top).toBe('70%');
+    expect(marker?.classList.contains('map-marker--label-left')).toBe(true);
+    expect((marker as HTMLElement).style.getPropertyValue('--marker-label-offset')).toBe('24px');
     expect(listLink?.getAttribute('href')).toBe('/notebook/QUEST_1');
     expect(text(compiled)).toContain('Premier repere visible');
     expect(compiled.querySelector('.map-description .markdown-content strong')?.textContent).toBe(

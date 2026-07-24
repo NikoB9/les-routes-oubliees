@@ -7,6 +7,8 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -31,6 +33,13 @@ class MapMarker {
 	@Column(name = "position_y", nullable = false, precision = 6, scale = 3)
 	private BigDecimal positionY;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "label_position", nullable = false, length = 12)
+	private MapMarkerLabelPosition labelPosition;
+
+	@Column(name = "label_offset_px", nullable = false)
+	private int labelOffsetPx;
+
 	@Column(nullable = false)
 	private boolean active;
 
@@ -52,6 +61,8 @@ class MapMarker {
 		String title,
 		BigDecimal positionX,
 		BigDecimal positionY,
+		MapMarkerLabelPosition labelPosition,
+		int labelOffsetPx,
 		boolean active,
 		int displayOrder
 	) {
@@ -60,6 +71,8 @@ class MapMarker {
 		this.title = title;
 		this.positionX = positionX;
 		this.positionY = positionY;
+		this.labelPosition = labelPosition;
+		this.labelOffsetPx = labelOffsetPx;
 		this.active = active;
 		this.displayOrder = displayOrder;
 	}
@@ -84,6 +97,14 @@ class MapMarker {
 		return positionY;
 	}
 
+	MapMarkerLabelPosition labelPosition() {
+		return labelPosition;
+	}
+
+	int labelOffsetPx() {
+		return labelOffsetPx;
+	}
+
 	boolean active() {
 		return active;
 	}
@@ -105,6 +126,8 @@ class MapMarker {
 		String title,
 		BigDecimal positionX,
 		BigDecimal positionY,
+		MapMarkerLabelPosition labelPosition,
+		int labelOffsetPx,
 		boolean active,
 		int displayOrder
 	) {
@@ -112,6 +135,8 @@ class MapMarker {
 		this.title = title;
 		this.positionX = positionX;
 		this.positionY = positionY;
+		this.labelPosition = labelPosition;
+		this.labelOffsetPx = labelOffsetPx;
 		this.active = active;
 		this.displayOrder = displayOrder;
 	}

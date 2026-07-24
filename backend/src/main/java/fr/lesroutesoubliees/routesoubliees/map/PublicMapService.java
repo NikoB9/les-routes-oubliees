@@ -56,6 +56,8 @@ public class PublicMapService {
 				marker.getTitle(),
 				marker.getPositionX(),
 				marker.getPositionY(),
+				MapMarkerLabelPosition.valueOf(marker.getLabelPosition()),
+				marker.getLabelOffsetPx(),
 				marker.getDisplayOrder(),
 				marker.getQuestCode()))
 			.toList();

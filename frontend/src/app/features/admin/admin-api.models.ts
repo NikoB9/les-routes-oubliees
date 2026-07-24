@@ -65,6 +65,7 @@ export interface AdminAllowedEmailUpdate {
 }
 
 export type EditorialStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type MapMarkerLabelPosition = 'TOP' | 'BOTTOM' | 'LEFT' | 'RIGHT';
 export type HomeMessageImportance =
   | 'INFORMATION'
   | 'WARNING'
@@ -172,6 +173,8 @@ export interface AdminMapMarker {
   title: string;
   positionX: number;
   positionY: number;
+  labelPosition: MapMarkerLabelPosition;
+  labelOffsetPx: number;
   active: boolean;
   displayOrder: number;
   createdAt: string;
@@ -183,6 +186,8 @@ export interface AdminMapMarkerUpsert {
   title: string;
   positionX: number;
   positionY: number;
+  labelPosition: MapMarkerLabelPosition;
+  labelOffsetPx: number;
   active: boolean;
   displayOrder: number;
 }

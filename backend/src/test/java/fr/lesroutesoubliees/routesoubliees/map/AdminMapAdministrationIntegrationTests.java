@@ -153,12 +153,16 @@ class AdminMapAdministrationIntegrationTests {
 					  "title": "Premier appel deplace",
 					  "positionX": 12.500,
 					  "positionY": 34.000,
+					  "labelPosition": "RIGHT",
+					  "labelOffsetPx": 28,
 					  "active": false,
 					  "displayOrder": 1
 					}
 					"""))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.title").value("Premier appel deplace"))
+			.andExpect(jsonPath("$.labelPosition").value("RIGHT"))
+			.andExpect(jsonPath("$.labelOffsetPx").value(28))
 			.andExpect(jsonPath("$.active").value(false));
 
 		mvc.perform(get("/api/admin/map-markers").with(user("admin@example.invalid")))
@@ -168,5 +172,26 @@ class AdminMapAdministrationIntegrationTests {
 		mvc.perform(get("/api/public/map"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.markers[*].title").value(hasItem("Chemin secondaire")));
+	}
+
+	@Test
+	void refusesInvalidMarkerLabelOffset() throws Exception {
+		mvc.perform(put("/api/admin/map-markers/60000000-0000-0000-0000-000000000001")
+				.with(user("admin@example.invalid"))
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "questCode": "QUEST_1",
+					  "title": "Premier appel",
+					  "positionX": 12.500,
+					  "positionY": 34.000,
+					  "labelPosition": "TOP",
+					  "labelOffsetPx": 121,
+					  "active": true,
+					  "displayOrder": 1
+					}
+					"""))
+			.andExpect(status().isBadRequest());
 	}
 }

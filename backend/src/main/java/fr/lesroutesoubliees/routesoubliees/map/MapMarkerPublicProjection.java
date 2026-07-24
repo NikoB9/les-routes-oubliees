@@ -13,6 +13,10 @@ interface MapMarkerPublicProjection {
 
 	BigDecimal getPositionY();
 
+	String getLabelPosition();
+
+	int getLabelOffsetPx();
+
 	int getDisplayOrder();
 
 	String getQuestCode();
