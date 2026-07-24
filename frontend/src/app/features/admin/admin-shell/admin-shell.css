@@ -774,17 +774,74 @@
 }
 
 .map-preview-marker {
+  --pin-size: 1.45rem;
+  --pin-tip-overhang: calc(var(--pin-size) * 0.2071);
+  --marker-label-offset: 16px;
+
   position: absolute;
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
+  width: 0;
+  height: 0;
+  filter: drop-shadow(0 0.35rem 0.55rem #0006);
+}
+
+.map-preview-pin {
+  position: absolute;
+  z-index: 1;
+  top: calc(-1 * (var(--pin-size) + var(--pin-tip-overhang)));
+  left: 0;
+  width: var(--pin-size);
+  height: var(--pin-size);
   border: 2px solid #fff8e8;
-  border-radius: 50%;
+  border-radius: 50% 50% 50% 0;
+  background: #7a261d;
+  transform: translateX(-50%) rotate(-45deg);
+}
+
+.map-preview-ribbon {
+  position: absolute;
+  z-index: 2;
+  width: max-content;
+  max-width: min(10rem, 32vw);
+  padding: 0.25rem 0.75rem;
   background: #7a261d;
   color: #fff8e8;
+  font-size: 0.78rem;
   font-weight: 900;
-  transform: translate(-50%, -50%);
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    calc(100% - 0.45rem) 50%,
+    100% 100%,
+    0 100%,
+    0.45rem 50%
+  );
+}
+
+.map-preview-marker--label-top .map-preview-ribbon {
+  bottom: calc(var(--pin-size) + var(--pin-tip-overhang) + var(--marker-label-offset));
+  left: 0;
+  transform: translateX(-50%);
+}
+
+.map-preview-marker--label-bottom .map-preview-ribbon {
+  top: var(--marker-label-offset);
+  left: 0;
+  transform: translateX(-50%);
+}
+
+.map-preview-marker--label-left .map-preview-ribbon {
+  top: 0;
+  right: var(--marker-label-offset);
+  transform: translateY(-50%);
+}
+
+.map-preview-marker--label-right .map-preview-ribbon {
+  top: 0;
+  left: var(--marker-label-offset);
+  transform: translateY(-50%);
 }
 
 @media (max-width: 960px) {

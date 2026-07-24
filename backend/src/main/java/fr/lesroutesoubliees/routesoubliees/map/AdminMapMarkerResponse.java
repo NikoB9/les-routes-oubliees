@@ -10,6 +10,8 @@ record AdminMapMarkerResponse(
 	String title,
 	BigDecimal positionX,
 	BigDecimal positionY,
+	MapMarkerLabelPosition labelPosition,
+	int labelOffsetPx,
 	boolean active,
 	int displayOrder,
 	OffsetDateTime createdAt,

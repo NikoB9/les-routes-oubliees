@@ -30,6 +30,12 @@ record AdminMapMarkerUpsertRequest(
 	@DecimalMax("100.000")
 	BigDecimal positionY,
 
+	MapMarkerLabelPosition labelPosition,
+
+	@Min(0)
+	@Max(120)
+	Integer labelOffsetPx,
+
 	boolean active,
 
 	@Min(1)

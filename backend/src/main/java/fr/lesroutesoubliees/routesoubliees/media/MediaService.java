@@ -98,6 +98,9 @@ class MediaService {
 	StoredMedia publicMedia(UUID id) {
 		var asset = mediaAssets.findById(id)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Media introuvable."));
+		if (!isPubliclyReferenced(asset)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media introuvable.");
+		}
 		var path = resolveStoragePath(asset.relativePath());
 		if (!Files.isRegularFile(path)) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media introuvable.");
@@ -134,6 +137,52 @@ class MediaService {
 			   or admin_draft_markdown like ?
 			""", Integer.class, textPattern, textPattern, textPattern, textPattern, textPattern);
 		return exactReferences != null && exactReferences > 0 || markdownReferences != null && markdownReferences > 0;
+	}
+
+	private boolean isPubliclyReferenced(MediaAsset asset) {
+		var url = "/media/" + asset.id();
+		var textPattern = "%" + url + "%";
+		var publicReferences = jdbc.queryForObject("""
+			select
+			    (select count(*) from site_settings where logo_path = ?) +
+			    (select count(*) from company_profiles where active = true and emblem_path = ?) +
+			    (select count(*) from adventurers where visible = true and avatar_path = ?) +
+			    (select count(*) from map_visions where active = true and status = 'PUBLISHED' and asset_path = ?)
+			""", Integer.class, url, url, url, url);
+		var markdownReferences = jdbc.queryForObject("""
+			select
+			    (select count(*) from site_settings where accessibility_information_markdown like ?) +
+			    (select count(*) from home_messages
+			        where active = true
+			          and status = 'PUBLISHED'
+			          and content_markdown like ?) +
+			    (select count(*) from company_profiles
+			        where active = true
+			          and long_description_markdown like ?) +
+			    (select count(*) from map_visions
+			        where active = true
+			          and status = 'PUBLISHED'
+			          and description_markdown like ?) +
+			    (select count(*) from quests
+			        where status = 'PUBLISHED'
+			          and visible_to_players = true
+			          and (
+			            important_events_markdown like ?
+			            or discovered_clues_markdown like ?
+			            or completed_trials_markdown like ?
+			            or extra_content_markdown like ?
+			          ))
+			""", Integer.class,
+			textPattern,
+			textPattern,
+			textPattern,
+			textPattern,
+			textPattern,
+			textPattern,
+			textPattern,
+			textPattern);
+		return publicReferences != null && publicReferences > 0
+			|| markdownReferences != null && markdownReferences > 0;
 	}
 
 	private String normalizeAltText(String value) {

@@ -15,6 +15,8 @@ import fr.lesroutesoubliees.routesoubliees.shared.EditorialStatus;
 @Service
 class AdminMapService {
 
+	private static final MapMarkerLabelPosition DEFAULT_LABEL_POSITION = MapMarkerLabelPosition.TOP;
+	private static final int DEFAULT_LABEL_OFFSET_PX = 16;
 	private static final Pattern VERSIONED_MAP_ASSET =
 		Pattern.compile("^/assets/maps/[A-Za-z0-9][A-Za-z0-9._-]*\\.(png|jpg|jpeg|webp)$");
 	private static final Pattern MEDIA_ASSET =
@@ -109,6 +111,8 @@ class AdminMapService {
 			request.title().trim(),
 			request.positionX(),
 			request.positionY(),
+			labelPosition(request),
+			labelOffsetPx(request),
 			request.active(),
 			request.displayOrder());
 		markers.save(marker);
@@ -124,6 +128,8 @@ class AdminMapService {
 			request.title().trim(),
 			request.positionX(),
 			request.positionY(),
+			labelPosition(request),
+			labelOffsetPx(request),
 			request.active(),
 			request.displayOrder());
 		audit.record(actorEmail, "MAP_MARKER_UPDATED", "MAP_MARKER", marker.id().toString(), "Repère de carte modifié");
@@ -166,6 +172,14 @@ class AdminMapService {
 		}
 	}
 
+	private MapMarkerLabelPosition labelPosition(AdminMapMarkerUpsertRequest request) {
+		return request.labelPosition() == null ? DEFAULT_LABEL_POSITION : request.labelPosition();
+	}
+
+	private int labelOffsetPx(AdminMapMarkerUpsertRequest request) {
+		return request.labelOffsetPx() == null ? DEFAULT_LABEL_OFFSET_PX : request.labelOffsetPx();
+	}
+
 	private AdminMapVisionResponse toVisionResponse(MapVision vision) {
 		return new AdminMapVisionResponse(
 			vision.id(),
@@ -187,6 +201,8 @@ class AdminMapService {
 			marker.title(),
 			marker.positionX(),
 			marker.positionY(),
+			marker.labelPosition(),
+			marker.labelOffsetPx(),
 			marker.active(),
 			marker.displayOrder(),
 			marker.createdAt(),

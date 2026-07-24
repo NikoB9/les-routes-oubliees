@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { PublicContentCacheService } from '../../../core/offline/public-content-cache.service';
 import { PublicMapResponse } from '../map-api.models';
 import { MapPage } from './map-page';
 
@@ -21,6 +22,8 @@ const mapResponse: PublicMapResponse = {
       title: 'Premier appel',
       positionX: 31.5,
       positionY: 70,
+      labelPosition: 'LEFT',
+      labelOffsetPx: 24,
       displayOrder: 1,
       questCode: 'QUEST_1',
     },
@@ -33,7 +36,19 @@ describe('MapPage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [MapPage],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: PublicContentCacheService,
+          useValue: {
+            shouldUseOfflineFallback: () => false,
+            readMap: () => Promise.resolve(null),
+            writeMap: () => Promise.resolve(),
+          },
+        },
+      ],
     }).compileComponents();
 
     http = TestBed.inject(HttpTestingController);
@@ -64,6 +79,8 @@ describe('MapPage', () => {
     expect(marker?.getAttribute('aria-label')).toContain('Consulter Premier appel');
     expect((marker as HTMLElement).style.left).toBe('31.5%');
     expect((marker as HTMLElement).style.top).toBe('70%');
+    expect(marker?.classList.contains('map-marker--label-left')).toBe(true);
+    expect((marker as HTMLElement).style.getPropertyValue('--marker-label-offset')).toBe('24px');
     expect(listLink?.getAttribute('href')).toBe('/notebook/QUEST_1');
     expect(text(compiled)).toContain('Premier repere visible');
     expect(compiled.querySelector('.map-description .markdown-content strong')?.textContent).toBe(
@@ -71,11 +88,12 @@ describe('MapPage', () => {
     );
   });
 
-  it('renders an error state when the map API fails', () => {
+  it('renders an error state when the map API fails', async () => {
     const fixture = TestBed.createComponent(MapPage);
     fixture.detectChanges();
 
     http.expectOne('/api/public/map').flush({}, { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable();
     fixture.detectChanges();
 
     const alert = (fixture.nativeElement as HTMLElement).querySelector('[role="alert"]');

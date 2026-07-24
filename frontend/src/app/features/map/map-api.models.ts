@@ -17,6 +17,10 @@ export interface PublicMapMarker {
   title: string;
   positionX: number;
   positionY: number;
+  labelPosition: MapMarkerLabelPosition;
+  labelOffsetPx: number;
   displayOrder: number;
   questCode: string;
 }
+
+export type MapMarkerLabelPosition = 'TOP' | 'BOTTOM' | 'LEFT' | 'RIGHT';

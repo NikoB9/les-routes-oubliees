@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import { PublicContentCacheService } from '../../../core/offline/public-content-cache.service';
 import { PublicHomeResponse } from '../home-api.models';
 import { HomePage } from './home-page';
 
@@ -45,7 +46,18 @@ describe('HomePage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [HomePage],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: PublicContentCacheService,
+          useValue: {
+            shouldUseOfflineFallback: () => false,
+            readHome: () => Promise.resolve(null),
+            writeHome: () => Promise.resolve(),
+          },
+        },
+      ],
     }).compileComponents();
 
     http = TestBed.inject(HttpTestingController);
@@ -84,11 +96,12 @@ describe('HomePage', () => {
     expect(compiled.querySelector('[aria-live]')).toBeNull();
   });
 
-  it('renders an accessible error state when the API fails', () => {
+  it('renders an accessible error state when the API fails', async () => {
     const fixture = createComponent();
     fixture.detectChanges();
 
     http.expectOne('/api/public/home').flush({}, { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable();
     fixture.detectChanges();
 
     const alert = (fixture.nativeElement as HTMLElement).querySelector('[role="alert"]');

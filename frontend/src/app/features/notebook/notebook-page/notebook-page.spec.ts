@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
+import { PublicContentCacheService } from '../../../core/offline/public-content-cache.service';
 import { NotebookPage } from './notebook-page';
 
 class ResizeObserverStub {
@@ -24,6 +25,16 @@ describe('NotebookPage', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        {
+          provide: PublicContentCacheService,
+          useValue: {
+            shouldUseOfflineFallback: () => false,
+            readQuests: () => Promise.resolve(null),
+            readQuest: () => Promise.resolve(null),
+            writeQuests: () => Promise.resolve(),
+            writeQuest: () => Promise.resolve(),
+          },
+        },
         {
           provide: ActivatedRoute,
           useValue: {

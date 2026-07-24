@@ -26,6 +26,8 @@ interface MapMarkerRepository extends JpaRepository<MapMarker, UUID> {
 			    marker.title as title,
 			    marker.position_x as positionX,
 			    marker.position_y as positionY,
+			    marker.label_position as labelPosition,
+			    marker.label_offset_px as labelOffsetPx,
 			    marker.display_order as displayOrder,
 			    quest.code as questCode
 			from map_markers marker

@@ -145,7 +145,22 @@ Utiliser :
 
 Ne pas introduire une bibliothèque globale de gestion d’état tant qu’un besoin réel n’est pas démontré.
 
-### 4.4 Routage
+### 4.4 PWA et cache public
+
+Angular peut etre installe comme PWA en production.
+
+Principes :
+
+* le service worker cache le shell public et les assets versionnes ;
+* les medias uploades `/media/**` ne sont pas caches par le service worker tant que l'acces public n'est pas filtre par contenu publie ;
+* les API publiques GET peuvent etre mises en cache avec une strategie freshness courte pour permettre le mode avion ;
+* les API admin, OAuth2, login et operations d'ecriture ne sont pas mises en cache ;
+* le dernier snapshot public est stocke dans IndexedDB ;
+* la mise a jour du snapshot passe par une empreinte publique fournie par le backend ;
+* le snapshot ne contient que les donnees deja visibles via les API publiques ;
+* le frontend n'utilise jamais le cache comme source d'autorisation ou de publication.
+
+### 4.5 Routage
 
 Routes publiques :
 
@@ -230,6 +245,15 @@ Préfixes :
 ```
 
 Format JSON.
+
+Endpoints publics PWA :
+
+```text
+GET /api/public/content-version
+GET /api/public/offline-snapshot
+```
+
+Ces endpoints exposent uniquement les contenus publics publies et visibles. Ils ne doivent jamais inclure de brouillons, donnees admin, audit, emails administrateurs, secrets ou champs narratifs source non publics.
 
 Les erreurs utilisent `application/problem+json`.
 

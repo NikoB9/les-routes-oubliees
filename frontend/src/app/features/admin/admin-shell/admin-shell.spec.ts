@@ -47,7 +47,37 @@ describe('AdminShell', () => {
           provide: AdminApiService,
           useValue: {
             listHomeMessages: () => of([]),
-            listMedia: () => of([]),
+            listMapVisions: () =>
+              of([
+                {
+                  id: '40000000-0000-0000-0000-000000000001',
+                  name: 'Carte voilee',
+                  descriptionMarkdown: 'Description',
+                  assetPath: '/assets/maps/map-hidden.png',
+                  imageAlt: 'Carte voilee.',
+                  displayOrder: 1,
+                  status: 'PUBLISHED',
+                  active: true,
+                  createdAt: '2026-07-13T10:00:00Z',
+                  updatedAt: '2026-07-13T10:00:00Z',
+                },
+              ]),
+            listMapMarkers: () =>
+              of([
+                {
+                  id: '60000000-0000-0000-0000-000000000001',
+                  questCode: 'QUEST_1',
+                  title: 'Premier appel',
+                  positionX: 31.5,
+                  positionY: 70,
+                  labelPosition: 'BOTTOM',
+                  labelOffsetPx: 22,
+                  active: true,
+                  displayOrder: 1,
+                  createdAt: '2026-07-13T10:00:00Z',
+                  updatedAt: '2026-07-13T10:00:00Z',
+                },
+              ]),
             getSiteSettings: () =>
               of({
                 id: '60000000-0000-0000-0000-000000000001',
@@ -130,5 +160,26 @@ describe('AdminShell', () => {
     expect(compiled.querySelectorAll('app-markdown-toolbar').length).toBeGreaterThanOrEqual(5);
     expect(summaryLabel?.textContent).toContain('Résumé public');
     expect(summaryLabel?.querySelector('app-markdown-toolbar')).toBeNull();
+  });
+
+  it('shows map marker label position controls', () => {
+    sectionParam = 'map';
+    const fixture = TestBed.createComponent(AdminShell);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const positionSelect = compiled.querySelector<HTMLSelectElement>(
+      'select[name="mapMarkerLabelPosition"]',
+    );
+    const offsetInput = compiled.querySelector<HTMLInputElement>('input[name="mapMarkerLabelOffset"]');
+
+    expect(positionSelect?.value).toBe('BOTTOM');
+    expect(Array.from(positionSelect?.options ?? []).map((option) => option.value)).toEqual([
+      'TOP',
+      'BOTTOM',
+      'LEFT',
+      'RIGHT',
+    ]);
+    expect(offsetInput?.value).toBe('22');
   });
 });

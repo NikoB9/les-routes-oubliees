@@ -66,4 +66,8 @@ main {
   main {
     padding: 1rem 1rem 5.5rem;
   }
+
+  main.has-install-prompt {
+    padding-bottom: calc(16rem + env(safe-area-inset-bottom));
+  }
 }

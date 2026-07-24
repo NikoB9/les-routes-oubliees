@@ -30,6 +30,7 @@ import {
   AdminMapPreview,
   AdminMapVision,
   AdminMapVisionUpsert,
+  MapMarkerLabelPosition,
   AdminSiteSettings,
   AdminSiteSettingsUpdate,
   EditorialStatus,
@@ -157,6 +158,12 @@ export class AdminShell {
   protected readonly mapError = signal(false);
   protected readonly mapSaved = signal(false);
   protected readonly mapStatuses: EditorialStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+  protected readonly mapMarkerLabelPositions: { value: MapMarkerLabelPosition; label: string }[] = [
+    { value: 'TOP', label: 'Haut' },
+    { value: 'BOTTOM', label: 'Bas' },
+    { value: 'LEFT', label: 'Gauche' },
+    { value: 'RIGHT', label: 'Droite' },
+  ];
   protected readonly questCodes = ['QUEST_1', 'QUEST_2', 'QUEST_3', 'QUEST_4', 'VAL_D_AURELUNE'];
   protected readonly allowedEmails = signal<AdminAllowedEmail[]>([]);
   protected readonly allowedEmailError = signal(false);
@@ -1298,6 +1305,8 @@ export class AdminShell {
       title: '',
       positionX: 50,
       positionY: 50,
+      labelPosition: 'TOP',
+      labelOffsetPx: 16,
       active: true,
       displayOrder: this.mapMarkers().length + 1,
     };
@@ -1309,6 +1318,8 @@ export class AdminShell {
       title: marker.title,
       positionX: marker.positionX,
       positionY: marker.positionY,
+      labelPosition: marker.labelPosition,
+      labelOffsetPx: marker.labelOffsetPx,
       active: marker.active,
       displayOrder: marker.displayOrder,
     };
@@ -1321,6 +1332,8 @@ export class AdminShell {
       title: form.title.trim(),
       positionX: Number(form.positionX),
       positionY: Number(form.positionY),
+      labelPosition: form.labelPosition,
+      labelOffsetPx: Number(form.labelOffsetPx),
       active: form.active,
       displayOrder: Number(form.displayOrder),
     };

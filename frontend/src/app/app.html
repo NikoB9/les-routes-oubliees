@@ -1,3 +1,5 @@
+@let showInstallPrompt = pwaPrompt.canInstall() || pwaPrompt.showIosHelp();
+
 <a class="skip-link" href="#main-content">Aller au contenu principal</a>
 
 <app-public-header />
@@ -8,7 +10,7 @@
     <app-desktop-navigation labelledBy="primary-navigation-title" />
   </aside>
 
-  <main id="main-content" tabindex="-1">
+  <main id="main-content" tabindex="-1" [class.has-install-prompt]="showInstallPrompt">
     @if (isNavigating()) {
       <app-loading-indicator label="Chargement de la page." />
     }
@@ -17,3 +19,4 @@
 </div>
 
 <app-mobile-navigation />
+<app-pwa-install-prompt />

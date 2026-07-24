@@ -1,0 +1,63 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "navigationUrls": [
+    "/**",
+    "!/api/**",
+    "!/media/**",
+    "!/oauth2/**",
+    "!/login/**",
+    "!/admin/**",
+    "!/**/*.*"
+  ],
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/favicon-32.png",
+          "/favicon-192.png",
+          "/apple-touch-icon.png",
+          "/manifest.webmanifest",
+          "/*.css",
+          "/*.js"
+        ]
+      }
+    },
+    {
+      "name": "public-assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/assets/**",
+          "/favicon-512.png"
+        ]
+      }
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "public-api",
+      "urls": [
+        "/api/public/settings",
+        "/api/public/home",
+        "/api/public/map",
+        "/api/public/notebook",
+        "/api/public/notebook/**",
+        "/api/public/quests",
+        "/api/public/quests/**",
+        "/api/public/content-version",
+        "/api/public/offline-snapshot"
+      ],
+      "cacheConfig": {
+        "strategy": "freshness",
+        "maxSize": 40,
+        "maxAge": "24h",
+        "timeout": "5s"
+      }
+    }
+  ]
+}

@@ -8,6 +8,8 @@ public record PublicMapMarkerResponse(
 	String title,
 	BigDecimal positionX,
 	BigDecimal positionY,
+	MapMarkerLabelPosition labelPosition,
+	int labelOffsetPx,
 	int displayOrder,
 	String questCode
 ) {

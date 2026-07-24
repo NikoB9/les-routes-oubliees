@@ -479,6 +479,20 @@
               </label>
 
               <label>
+                Position du drapeau
+                <select [ngModel]="markerForm.labelPosition" name="mapMarkerLabelPosition" (ngModelChange)="updateMapMarkerField('labelPosition', $event)">
+                  @for (position of mapMarkerLabelPositions; track position.value) {
+                    <option [value]="position.value">{{ position.label }}</option>
+                  }
+                </select>
+              </label>
+
+              <label>
+                Distance du drapeau (px)
+                <input type="number" min="0" max="120" required [ngModel]="markerForm.labelOffsetPx" name="mapMarkerLabelOffset" (ngModelChange)="updateMapMarkerField('labelOffsetPx', $event)" />
+              </label>
+
+              <label>
                 Ordre
                 <input type="number" min="1" max="999" required [ngModel]="markerForm.displayOrder" name="mapMarkerOrder" (ngModelChange)="updateMapMarkerField('displayOrder', $event)" />
               </label>
@@ -509,8 +523,19 @@
         <div class="map-preview-frame">
           <img [src]="preview.vision.assetPath" [alt]="preview.vision.imageAlt" />
           @for (marker of preview.markers; track marker.id) {
-            <span class="map-preview-marker" [style.left]="marker.positionX + '%'" [style.top]="marker.positionY + '%'">
-              {{ marker.displayOrder }}
+            <span
+              class="map-preview-marker"
+              [class.map-preview-marker--label-top]="marker.labelPosition === 'TOP'"
+              [class.map-preview-marker--label-bottom]="marker.labelPosition === 'BOTTOM'"
+              [class.map-preview-marker--label-left]="marker.labelPosition === 'LEFT'"
+              [class.map-preview-marker--label-right]="marker.labelPosition === 'RIGHT'"
+              [style.left]="marker.positionX + '%'"
+              [style.top]="marker.positionY + '%'"
+              [style.--marker-label-offset]="marker.labelOffsetPx + 'px'"
+              [attr.aria-label]="marker.title"
+            >
+              <span aria-hidden="true" class="map-preview-pin"></span>
+              <span class="map-preview-ribbon">{{ marker.displayOrder }}. {{ marker.title }}</span>
             </span>
           }
         </div>
@@ -519,7 +544,7 @@
           @for (marker of preview.markers; track marker.id) {
             <li>
               <strong>{{ marker.title }}</strong>
-              <small>{{ marker.questCode }} - X {{ marker.positionX }} %, Y {{ marker.positionY }} %</small>
+              <small>{{ marker.questCode }} - X {{ marker.positionX }} %, Y {{ marker.positionY }} %, drapeau {{ marker.labelPosition }}, distance {{ marker.labelOffsetPx }} px</small>
             </li>
           }
         </ol>

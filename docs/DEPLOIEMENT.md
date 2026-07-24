@@ -128,7 +128,8 @@ Le reverse proxy :
 * ajoute ou préserve les en-têtes de proxy ;
 * limite la taille des uploads ;
 * interdit le listing de répertoires ;
-* applique des en-têtes de sécurité.
+* applique des en-têtes de sécurité ;
+* sert correctement `manifest.webmanifest`, `ngsw-worker.js` et les fichiers `ngsw*.json` générés par Angular.
 
 En-têtes de sécurité cibles :
 
@@ -142,6 +143,13 @@ X-Frame-Options ou frame-ancestors dans la CSP
 ```
 
 Les réponses admin et API sensibles ne doivent pas être mises en cache par un proxy partagé. Les médias publics peuvent avoir une politique de cache séparée lorsqu’ils sont publiés.
+
+Pour la PWA :
+
+* HTTPS est obligatoire en production ;
+* les fichiers du service worker Angular doivent être servis depuis la racine du frontend ;
+* les routes admin, OAuth2 et login ne doivent pas être servies depuis un cache applicatif hors ligne ;
+* après déploiement, vérifier l'installation PWA, le chargement hors ligne des pages publiques et la mise à jour du snapshot public après modification d'un contenu publié.
 
 Routage indicatif :
 

@@ -4,6 +4,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideRouter } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
+import { PublicContentCacheService } from './core/offline/public-content-cache.service';
+import { PwaInstallPromptService } from './core/pwa/pwa-install-prompt.service';
 
 describe('App', () => {
   let http: HttpTestingController;
@@ -11,7 +13,27 @@ describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideRouter(routes),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: PublicContentCacheService,
+          useValue: {
+            refreshIfNeeded: () => Promise.resolve(),
+            shouldUseOfflineFallback: () => false,
+            readSettings: () => Promise.resolve(null),
+            writeSettings: () => Promise.resolve(),
+          },
+        },
+        {
+          provide: PwaInstallPromptService,
+          useValue: {
+            canInstall: () => false,
+            showIosHelp: () => false,
+          },
+        },
+      ],
     }).compileComponents();
 
     http = TestBed.inject(HttpTestingController);
