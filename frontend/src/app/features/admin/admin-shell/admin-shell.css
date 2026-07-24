@@ -776,6 +776,7 @@
 .map-preview-marker {
   --pin-size: 1.45rem;
   --pin-tip-overhang: calc(var(--pin-size) * 0.2071);
+  --pin-head-center-y: calc(-1 * (var(--pin-size) + var(--pin-tip-overhang) - (var(--pin-size) / 2)));
   --marker-label-offset: 16px;
 
   position: absolute;
@@ -833,13 +834,13 @@
 }
 
 .map-preview-marker--label-left .map-preview-ribbon {
-  top: 0;
+  top: var(--pin-head-center-y);
   right: var(--marker-label-offset);
   transform: translateY(-50%);
 }
 
 .map-preview-marker--label-right .map-preview-ribbon {
-  top: 0;
+  top: var(--pin-head-center-y);
   left: var(--marker-label-offset);
   transform: translateY(-50%);
 }
