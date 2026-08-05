@@ -16,6 +16,8 @@ const SECTION_TITLES: Record<string, string> = {
   administrators: 'Administrateurs - Les Routes Oubliées',
   audit: 'Audit admin - Les Routes Oubliées',
   settings: 'Paramètres admin - Les Routes Oubliées',
+  radar: 'Radar admin - Les Routes Oubliées',
+  portal: 'Identités portail - Les Routes Oubliées',
 };
 
 const adminSectionTitle: ResolveFn<string> = (route: ActivatedRouteSnapshot) =>
@@ -24,16 +26,12 @@ const adminSectionTitle: ResolveFn<string> = (route: ActivatedRouteSnapshot) =>
 
 export const adminRoutes: Routes = [
   {
-    path: 'login',
+    path: 'forbidden',
     loadComponent: () =>
-      import('./admin-login-page/admin-login-page').then((module) => module.AdminLoginPage),
-    title: 'Connexion administration - Les Routes Oubliées',
+      import('./admin-forbidden-page/admin-forbidden-page').then((module) => module.AdminForbiddenPage),
+    title: 'Accès refusé - Les Routes Oubliées',
   },
   {
-    // Le guard n'est évalué qu'à l'entrée de l'espace admin : la navigation
-    // entre sections ne change que le paramètre `:section`, donc l'instance
-    // AdminShell est réutilisée (pas de revérification de session ni de
-    // rechargement complet à chaque clic).
     path: '',
     canActivate: [adminAuthGuard],
     children: [

@@ -4,7 +4,7 @@
   inset-block-end: 0;
   z-index: 20;
   display: none;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   padding-bottom: env(safe-area-inset-bottom);
   background: #221a14;
   border-top: 1px solid #776142;
@@ -95,8 +95,25 @@ a.active .link-icon.map::after {
   transform-origin: center;
 }
 
+.link-icon.radar::before {
+  inset: 0.1rem;
+  border: 0.16rem solid currentColor;
+  border-radius: 50%;
+}
+
+.link-icon.radar::after {
+  left: 50%;
+  top: 50%;
+  width: 0.18rem;
+  height: 0.66rem;
+  background: currentColor;
+  border-radius: 999px;
+  transform: translate(-50%, -92%) rotate(42deg);
+  transform-origin: 50% 92%;
+}
+
 .link-label {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   line-height: 1.1;
 }
 

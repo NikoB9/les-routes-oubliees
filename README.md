@@ -168,3 +168,19 @@ Le code source de ce projet est distribué sous licence MIT.
 Les cartes, illustrations, logos, textes narratifs et autres ressources créatives ne sont pas couverts par la licence MIT, sauf indication contraire. Leur reproduction, leur modification et leur redistribution nécessitent l’autorisation de leur auteur.
 
 Consulter les fichiers `LICENSE` et `ASSETS-LICENSE.md` pour plus de détails.
+## Radar d'Aurelune
+
+Le module `Radar` ajoute une route `/radar` protégée par Cloudflare Access.
+
+Configuration minimale :
+
+```text
+CF_ACCESS_ISSUER=https://example.cloudflareaccess.com
+CF_ACCESS_AUDIENCE=example-audience-tag
+CF_ACCESS_CERTS_URL=https://example.cloudflareaccess.com/cdn-cgi/access/certs
+CF_ACCESS_HOME_ASSISTANT_SUBJECT=example-home-assistant-service-token-subject
+```
+
+Le reverse proxy doit transmettre `Cf-Access-Jwt-Assertion` au backend et autoriser la géolocalisation via `Permissions-Policy`.
+
+Radar utilise Leaflet 1.9.4 et les tuiles OpenStreetMap standard dans la configuration versionnée. Les positions des participants ne sont pas persistées ; seul le dernier relevé de la balise trésor est stocké, et il reste masqué côté API lorsque l'administration désactive son affichage.

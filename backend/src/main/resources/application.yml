@@ -30,3 +30,8 @@ routes-oubliees:
   public-url: ${SITE_PUBLIC_URL:http://localhost:4200}
   timezone: ${SITE_TIMEZONE:Europe/Paris}
   admin-bootstrap-emails: ${ADMIN_BOOTSTRAP_EMAILS:admin@example.invalid}
+  cloudflare-access:
+    issuer: ${CF_ACCESS_ISSUER:https://example.cloudflareaccess.com}
+    audience: ${CF_ACCESS_AUDIENCE:example-audience-tag}
+    certs-url: ${CF_ACCESS_CERTS_URL:https://example.cloudflareaccess.com/cdn-cgi/access/certs}
+    home-assistant-subject: ${CF_ACCESS_HOME_ASSISTANT_SUBJECT:}

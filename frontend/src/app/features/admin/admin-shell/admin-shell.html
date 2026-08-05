@@ -11,6 +11,8 @@
       <a routerLink="/admin/media" [class.active]="section() === 'media'">Médias</a>
       <a routerLink="/admin/administrators" [class.active]="section() === 'administrators'">Administrateurs</a>
       <a routerLink="/admin/audit" [class.active]="section() === 'audit'">Audit</a>
+      <a routerLink="/admin/radar" [class.active]="section() === 'radar'">Radar</a>
+      <a routerLink="/admin/portal" [class.active]="section() === 'portal'">Portail</a>
       <a routerLink="/admin/home" [class.active]="section() === 'home'">Accueil</a>
       <a routerLink="/admin/group" [class.active]="section() === 'group'">Compagnie</a>
       <a routerLink="/admin/adventurers" [class.active]="section() === 'adventurers'">Aventuriers</a>
@@ -1021,6 +1023,108 @@
       </ol>
     } @else {
       <p>Aucune action auditee pour le moment.</p>
+    }
+  </section>
+  }
+  @case ('radar') {
+  <section class="admin-panel" aria-labelledby="admin-radar-title">
+    <div class="panel-heading">
+      <h2 id="admin-radar-title">Radar</h2>
+    </div>
+
+    @if (radarError()) {
+      <p class="alert" role="alert">Impossible de mettre à jour le Radar.</p>
+    }
+    @if (radarSaved()) {
+      <p class="status" role="status">Radar mis à jour.</p>
+    }
+
+    @if (radarSettings(); as radar) {
+      <div class="form-grid">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            [checked]="radar.treasureVisible"
+            (change)="updateTreasureVisibility(!radar.treasureVisible)"
+          />
+          Afficher le trésor sur le Radar
+        </label>
+      </div>
+
+      @if (radar.treasure; as treasure) {
+        <dl class="dashboard-grid">
+          <div>
+            <dt>Dernière latitude</dt>
+            <dd>{{ treasure.latitude }}</dd>
+          </div>
+          <div>
+            <dt>Dernière longitude</dt>
+            <dd>{{ treasure.longitude }}</dd>
+          </div>
+          <div>
+            <dt>Précision</dt>
+            <dd>{{ treasure.accuracyM }} m</dd>
+          </div>
+          <div>
+            <dt>Relevé</dt>
+            <dd>{{ treasure.observedAt }}</dd>
+          </div>
+        </dl>
+      } @else {
+        <p class="empty-state">Aucun relevé de trésor reçu.</p>
+      }
+    } @else {
+      <app-loading-indicator label="Chargement du Radar." />
+    }
+  </section>
+  }
+  @case ('portal') {
+  <section class="admin-panel" aria-labelledby="admin-portal-title">
+    <div class="panel-heading">
+      <h2 id="admin-portal-title">Identités du portail</h2>
+    </div>
+
+    @if (portalError()) {
+      <p class="alert" role="alert">Impossible de mettre à jour les identités.</p>
+    }
+    @if (portalSaved()) {
+      <p class="status" role="status">Attribution mise à jour.</p>
+    }
+
+    @if (portalIdentities().length) {
+      <ul class="admin-list">
+        @for (identity of portalIdentities(); track identity.id) {
+          <li>
+            <article>
+              <h3>{{ identity.normalizedEmail }}</h3>
+              <p>{{ identity.adventurerName || identity.accessMode }}</p>
+              <label>
+                Mode
+                <select #modeSelect [value]="identity.accessMode" (change)="updatePortalIdentityMode(identity, modeSelect.value)">
+                  @for (mode of portalModes; track mode) {
+                    <option [value]="mode">{{ mode }}</option>
+                  }
+                </select>
+              </label>
+              <label>
+                Aventurier
+                <select
+                  #adventurerSelect
+                  [value]="identity.adventurerId || ''"
+                  (change)="updatePortalIdentityAdventurer(identity, adventurerSelect.value)"
+                >
+                  <option value="">Aucun</option>
+                  @for (adventurer of adventurers(); track adventurer.id) {
+                    <option [value]="adventurer.id">{{ adventurer.name }}</option>
+                  }
+                </select>
+              </label>
+            </article>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="empty-state">Aucune identité portail connue.</p>
     }
   </section>
   }

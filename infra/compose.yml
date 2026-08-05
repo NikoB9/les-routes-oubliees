@@ -31,9 +31,11 @@ services:
       DATABASE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-routes_oubliees}
       DATABASE_USERNAME: ${POSTGRES_USER:-routes_oubliees}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-routes_oubliees_dev_password}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dev-google-client-id}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-dev-google-client-secret}
       ADMIN_BOOTSTRAP_EMAILS: ${ADMIN_BOOTSTRAP_EMAILS:-admin@example.invalid}
+      CF_ACCESS_ISSUER: ${CF_ACCESS_ISSUER:-https://example.cloudflareaccess.com}
+      CF_ACCESS_AUDIENCE: ${CF_ACCESS_AUDIENCE:-example-audience-tag}
+      CF_ACCESS_CERTS_URL: ${CF_ACCESS_CERTS_URL:-https://example.cloudflareaccess.com/cdn-cgi/access/certs}
+      CF_ACCESS_HOME_ASSISTANT_SUBJECT: ${CF_ACCESS_HOME_ASSISTANT_SUBJECT:-example-home-assistant-service-token-subject}
       MEDIA_STORAGE_PATH: /app/media
       SITE_PUBLIC_URL: ${SITE_PUBLIC_URL:-http://localhost:8088}
       SITE_TIMEZONE: ${SITE_TIMEZONE:-Europe/Paris}

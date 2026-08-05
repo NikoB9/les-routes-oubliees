@@ -1,8 +1,9 @@
 package fr.lesroutesoubliees.routesoubliees.auth;
 
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Component;
+
+import fr.lesroutesoubliees.routesoubliees.shared.security.CloudflareAccessPrincipal;
 
 @Component
 public class AdminIdentity {
@@ -11,8 +12,8 @@ public class AdminIdentity {
 		if (authentication == null || !authentication.isAuthenticated()) {
 			return null;
 		}
-		if (authentication.getPrincipal() instanceof OidcUser oidcUser) {
-			return oidcUser.getEmail();
+		if (authentication.getPrincipal() instanceof CloudflareAccessPrincipal principal) {
+			return principal.email();
 		}
 		return authentication.getName();
 	}

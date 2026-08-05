@@ -70,7 +70,7 @@ Le MVP comprend :
 * le socle Spring Boot ;
 * PostgreSQL ;
 * Flyway ;
-* l’authentification Google ;
+* l’authentification Cloudflare Access pour Radar et l'administration ;
 * l’allowlist d’administrateurs ;
 * la page d’accueil ;
 * la page carte ;
@@ -391,15 +391,15 @@ L’easter egg :
 
 * est présent dans l’interface publique ;
 * déclenche l’ouverture de la connexion admin ;
-* peut rediriger vers `/admin/login`;
+* peut rediriger vers `/admin`;
 * ne constitue pas une protection ;
 * ne doit jamais accorder de session ou de privilège directement.
 
-L’accès direct à `/admin/login` peut exister. L’absence de lien visible n’est pas une mesure de sécurité.
+L’accès direct à `/admin` existe. L’absence de lien visible n’est pas une mesure de sécurité.
 
 Le geste exact de l’easter egg sera choisi lors du lot 9. Cette décision n’est pas bloquante.
 
-### 10.2 Authentification Google
+### 10.2 Authentification Cloudflare Access
 
 Flux attendu :
 
@@ -744,7 +744,7 @@ Principes :
 
 ### 18.1 Sécurité
 
-* authentification Google OIDC ;
+* authentification Cloudflare Access ;
 * allowlist backend ;
 * session serveur ;
 * cookies sécurisés ;
@@ -841,7 +841,7 @@ Les données de démonstration doivent être fictives.
 
 ### Lot 2 — Authentification
 
-* Google OIDC ;
+* Cloudflare Access ;
 * session ;
 * allowlist ;
 * amorçage ;
@@ -1032,3 +1032,30 @@ Ces décisions ne doivent pas bloquer la création du socle.
 * rôles administratifs plus fins.
 
 Aucun de ces éléments ne doit être anticipé dans le MVP au prix d’une complexité supplémentaire.
+## Addendum 2026-08-05 - Module Radar d'Aurelune
+
+Le MVP inclut désormais un module connecté `Radar`, accessible depuis l'entrée de menu `Radar` et la route `/radar`.
+
+La page publique protégée s'intitule `Le Radar d'Aurelune`.
+
+Fonctions :
+
+* afficher une carte Leaflet zoomable ;
+* exiger l'authentification Cloudflare Access ;
+* exiger la sélection définitive d'un aventurier visible, sauf si aucun aventurier n'est disponible ;
+* proposer un accès invité authentifié lorsque tous les aventuriers visibles sont déjà attribués ;
+* exiger la géolocalisation du navigateur pour afficher la carte ;
+* afficher les positions des participants en temps réel ;
+* afficher la balise du trésor uniquement lorsque l'administration l'autorise ;
+* permettre la consultation des coordonnées, de la précision et de l'heure de relevé.
+
+Règles :
+
+* un aventurier ne peut être attribué qu'à une seule identité Cloudflare ;
+* un utilisateur ordinaire ne peut pas modifier son choix après confirmation ;
+* seul l'administrateur peut corriger une attribution ;
+* les positions des participants ne sont pas persistées ;
+* le trésor masqué n'est pas exposé par les API publiques ;
+* Radar n'est pas disponible hors ligne et n'est pas inclus dans le snapshot PWA.
+
+La navigation mobile comporte désormais quatre entrées : Accueil, Carte, Carnet et Radar.

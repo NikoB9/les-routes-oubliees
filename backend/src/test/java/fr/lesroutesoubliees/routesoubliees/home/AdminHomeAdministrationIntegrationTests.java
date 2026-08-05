@@ -50,7 +50,7 @@ class AdminHomeAdministrationIntegrationTests {
 	@Test
 	void canCreateAndActivatePublishedHomeMessage() throws Exception {
 		var created = mvc.perform(post("/api/admin/home/messages")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -73,7 +73,7 @@ class AdminHomeAdministrationIntegrationTests {
 		var id = JsonTestSupport.extractString(created, "id");
 
 		mvc.perform(post("/api/admin/home/messages/{id}/activate", id)
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.active").value(true));
@@ -89,7 +89,7 @@ class AdminHomeAdministrationIntegrationTests {
 	@Test
 	void canUpdateCompanyAndAdventurers() throws Exception {
 		mvc.perform(put("/api/admin/group")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -105,7 +105,7 @@ class AdminHomeAdministrationIntegrationTests {
 			.andExpect(jsonPath("$.name").value("Compagnie admin"));
 
 		mvc.perform(post("/api/admin/adventurers")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -124,7 +124,7 @@ class AdminHomeAdministrationIntegrationTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.visible").value(true));
 
-		mvc.perform(get("/api/admin/adventurers").with(user("admin@example.invalid")))
+		mvc.perform(get("/api/admin/adventurers").with(user("admin@example.invalid").roles("ADMIN")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$[*].name", hasItem("Aventurier admin")));
 

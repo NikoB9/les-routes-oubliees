@@ -1,7 +1,7 @@
 import { Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { AdminAuthService } from '../../../core/auth/admin-auth.service';
 import { AdminSession } from '../../../core/auth/admin-session';
@@ -30,11 +30,14 @@ import {
   AdminMapPreview,
   AdminMapVision,
   AdminMapVisionUpsert,
+  AdminPortalIdentity,
+  AdminRadarSettings,
   MapMarkerLabelPosition,
   AdminSiteSettings,
   AdminSiteSettingsUpdate,
   EditorialStatus,
   HomeMessageImportance,
+  PortalAccessMode,
   SiteStatus,
 } from '../admin-api.models';
 import { AdminApiService } from '../admin-api.service';
@@ -74,7 +77,6 @@ export class AdminShell {
   private readonly adminApi = inject(AdminApiService);
   private readonly notebookApi = inject(NotebookApiService);
   private readonly mediaApi = inject(MediaApiService);
-  private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly questErrorSummary = viewChild<ElementRef<HTMLElement>>('questErrorSummary');
@@ -175,6 +177,13 @@ export class AdminShell {
   protected readonly settingsForm = signal<AdminSiteSettingsUpdate>(this.emptySettingsForm());
   protected readonly settingsError = signal(false);
   protected readonly settingsSaved = signal(false);
+  protected readonly radarSettings = signal<AdminRadarSettings | null>(null);
+  protected readonly radarError = signal(false);
+  protected readonly radarSaved = signal(false);
+  protected readonly portalIdentities = signal<AdminPortalIdentity[]>([]);
+  protected readonly portalError = signal(false);
+  protected readonly portalSaved = signal(false);
+  protected readonly portalModes: PortalAccessMode[] = ['UNASSIGNED', 'ADVENTURER', 'GUEST'];
   protected readonly siteStatuses: SiteStatus[] = ['ONLINE', 'MAINTENANCE'];
   protected readonly countdownTimezone = computed(() => this.settings()?.timezone || 'Europe/Paris');
 
@@ -230,16 +239,20 @@ export class AdminShell {
       case 'settings':
         this.loadSettings();
         break;
+      case 'radar':
+        this.loadRadarSettings();
+        break;
+      case 'portal':
+        this.loadPortalIdentities();
+        this.loadAdventurers();
+        break;
       default:
         break;
     }
   }
 
   protected logout() {
-    this.authService.logout().subscribe({
-      next: () => void this.router.navigate(['/admin/login']),
-      error: () => this.error.set(true),
-    });
+    window.location.assign('/cdn-cgi/access/logout');
   }
 
   protected selectHomeMessage(message: AdminHomeMessage | null) {
@@ -980,6 +993,52 @@ export class AdminShell {
     });
   }
 
+  protected updateTreasureVisibility(visible: boolean) {
+    this.radarSaved.set(false);
+    this.adminApi.updateRadarSettings(visible).subscribe({
+      next: (settings) => {
+        this.radarSettings.set(settings);
+        this.radarSaved.set(true);
+        this.radarError.set(false);
+        this.loadAuditLogs();
+      },
+      error: () => this.radarError.set(true),
+    });
+  }
+
+  protected updatePortalIdentityMode(identity: AdminPortalIdentity, accessMode: string) {
+    if (!this.portalModes.includes(accessMode as PortalAccessMode)) {
+      return;
+    }
+    this.adminApi.updatePortalAssignment(identity.id, {
+      accessMode: accessMode as PortalAccessMode,
+      adventurerId: accessMode === 'ADVENTURER' ? identity.adventurerId : null,
+    }).subscribe({
+      next: () => {
+        this.portalSaved.set(true);
+        this.portalError.set(false);
+        this.loadPortalIdentities();
+        this.loadAuditLogs();
+      },
+      error: () => this.portalError.set(true),
+    });
+  }
+
+  protected updatePortalIdentityAdventurer(identity: AdminPortalIdentity, adventurerId: string) {
+    this.adminApi.updatePortalAssignment(identity.id, {
+      accessMode: 'ADVENTURER',
+      adventurerId: adventurerId || null,
+    }).subscribe({
+      next: () => {
+        this.portalSaved.set(true);
+        this.portalError.set(false);
+        this.loadPortalIdentities();
+        this.loadAuditLogs();
+      },
+      error: () => this.portalError.set(true),
+    });
+  }
+
   private loadQuests() {
     this.notebookApi.listAdminQuests().subscribe({
       next: (quests) => {
@@ -1080,6 +1139,26 @@ export class AdminShell {
         this.settingsError.set(false);
       },
       error: () => this.showSettingsError(),
+    });
+  }
+
+  private loadRadarSettings() {
+    this.adminApi.getRadarSettings().subscribe({
+      next: (settings) => {
+        this.radarSettings.set(settings);
+        this.radarError.set(false);
+      },
+      error: () => this.radarError.set(true),
+    });
+  }
+
+  private loadPortalIdentities() {
+    this.adminApi.listPortalIdentities().subscribe({
+      next: (identities) => {
+        this.portalIdentities.set(identities);
+        this.portalError.set(false);
+      },
+      error: () => this.portalError.set(true),
     });
   }
 

@@ -1,18 +1,24 @@
 package fr.lesroutesoubliees.routesoubliees.shared.security;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
 import java.util.function.Supplier;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
@@ -20,39 +26,42 @@ import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
 import org.springframework.util.StringUtils;
 
-import fr.lesroutesoubliees.routesoubliees.auth.AdminOidcUserService;
-
 @Configuration
+@EnableConfigurationProperties(CloudflareAccessProperties.class)
 class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(
 		HttpSecurity http,
-		ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository,
-		AdminOidcUserService adminOidcUserService
+		CloudflareAccessAuthenticationFilter cloudflareAccessAuthenticationFilter
 	) throws Exception {
-		http
+		return http
 			.authorizeHttpRequests((authorize) -> authorize
 				.requestMatchers("/", "/error", "/actuator/health").permitAll()
-				.requestMatchers("/oauth2/**", "/login/**").permitAll()
 				.requestMatchers("/api/public/**", "/media/**").permitAll()
-				.requestMatchers("/api/admin/**", "/admin/**").authenticated()
+				.requestMatchers("/api/portal/**", "/api/radar/**").hasRole("USER")
+				.requestMatchers("/api/admin/**").hasRole("ADMIN")
+				.requestMatchers("/api/integrations/home-assistant/**").hasRole("HOME_ASSISTANT")
 				.anyRequest().permitAll())
+			.sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.csrf((csrf) -> csrf
 				.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-				.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()));
-
-		if (clientRegistrationRepository.getIfAvailable() != null) {
-			http.oauth2Login((oauth2) -> oauth2
-				.defaultSuccessUrl("/admin", true)
-				.failureUrl("/admin/login?error=access_denied")
-				.userInfoEndpoint((userInfo) -> userInfo
-					.oidcUserService(adminOidcUserService)));
-		}
-
-		return http
-			.logout(withDefaults())
+				.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+				.ignoringRequestMatchers("/api/integrations/home-assistant/radar/treasure-position"))
+			.addFilterBefore(cloudflareAccessAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 			.build();
+	}
+
+	@Bean
+	JwtDecoder jwtDecoder(CloudflareAccessProperties properties) {
+		var decoder = NimbusJwtDecoder.withJwkSetUri(properties.certsUrl()).build();
+		OAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(
+			new JwtTimestampValidator(),
+			new JwtClaimValidator<String>("iss", properties.issuer()::equals),
+			new JwtClaimValidator<java.util.List<String>>("aud", (audience) -> audience != null && audience.contains(properties.audience()))
+		);
+		decoder.setJwtValidator(validator);
+		return decoder;
 	}
 
 	private static final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler {

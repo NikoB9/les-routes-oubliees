@@ -1,0 +1,137 @@
+<section class="radar-page" aria-labelledby="radar-title">
+  <header class="radar-header">
+    <h1 id="radar-title">Le Radar d'Aurelune</h1>
+    <p>Les échos de la Compagnie ne brillent que lorsque le Radar reste ouvert.</p>
+  </header>
+
+  @if (portalLoading()) {
+    <app-loading-indicator label="Ouverture du Radar." />
+  }
+  @else if (portalError()) {
+    <div class="state-message" role="alert">
+      <h2>Le portail demeure scelle</h2>
+      <p>Impossible de vérifier votre sceau pour le moment.</p>
+      <button type="button" (click)="loadPortal()">Réessayer</button>
+    </div>
+  }
+  @else if (needsAssignment()) {
+    <div class="identity-dialog" role="dialog" aria-modal="true" aria-labelledby="identity-title">
+      <h2 id="identity-title">Choisir votre reflet</h2>
+      <p>Ce choix est définitif pour votre sceau. Un éclaireur pourra le corriger depuis l'administration.</p>
+
+      @if (assignmentConflict()) {
+        <p class="alert" role="alert">Ce personnage vient d'être choisi. La liste a été actualisée.</p>
+      }
+
+      @if (portal()?.availableAdventurers?.length) {
+        <ul class="choice-list" aria-label="Aventuriers disponibles">
+          @for (adventurer of portal()?.availableAdventurers ?? []; track adventurer.id) {
+            <li>
+              <button type="button" class="choice-button" (click)="askAssignment(adventurer)">
+                @if (adventurer.avatarPath) {
+                  <img [src]="adventurer.avatarPath" [alt]="adventurer.avatarAlt || ''" />
+                }
+                @else {
+                  <span class="choice-fallback" aria-hidden="true">{{ adventurer.name.slice(0, 1) }}</span>
+                }
+                <span>
+                  <strong>{{ adventurer.name }}</strong>
+                  <small>{{ adventurer.title }}</small>
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+      @else if (portal()?.guestAvailable) {
+        <button type="button" class="guest-button" (click)="chooseGuest()">
+          <span aria-hidden="true">?</span>
+          Accéder comme invité
+        </button>
+      }
+    </div>
+  }
+  @else if (locationState() !== 'ready') {
+    <div class="state-message">
+      @if (locationState() === 'idle') {
+        <h2>Réveiller l'aiguille</h2>
+        <p>Votre position est requise pour entrer dans le Radar.</p>
+        <button type="button" (click)="requestLocation()">Autoriser ma localisation</button>
+      }
+      @else if (locationState() === 'waiting') {
+        <app-loading-indicator label="Recherche de votre position." />
+      }
+      @else {
+        <h2>Le Radar reste muet</h2>
+        <p role="alert">
+          @switch (locationState()) {
+            @case ('denied') { La localisation a été refusée. }
+            @case ('unavailable') { Votre position est indisponible sur cet appareil. }
+            @case ('timeout') { La recherche de position a expire. }
+            @case ('insecure') { La localisation exige une connexion HTTPS. }
+            @default { Impossible d'obtenir votre position. }
+          }
+        </p>
+        <button type="button" (click)="retryLocation()">Réessayer</button>
+      }
+    </div>
+  }
+  @else {
+    <div class="radar-actions" aria-label="Commandes du Radar">
+      <button type="button" (click)="recenter()">Recentrer</button>
+      <button type="button" (click)="fitCompany()">Voir toute la Compagnie</button>
+    </div>
+
+    @if (streamError()) {
+      <p class="alert" role="status">Le lien direct vacille. Une actualisation de secours est active.</p>
+    }
+
+    <div #map class="radar-map" aria-label="Carte du Radar d'Aurelune"></div>
+
+    <section class="radar-list" aria-labelledby="radar-list-title">
+      <h2 id="radar-list-title">Positions relevées</h2>
+
+      @if (snapshot()?.treasure; as treasure) {
+        <article class="position-row treasure">
+          <h3>Trésor</h3>
+          <p>
+            {{ treasure.latitude | number:'1.5-6' }},
+            {{ treasure.longitude | number:'1.5-6' }}
+          </p>
+          <p>Précision {{ treasure.accuracyM | number:'1.0-1' }} m - relevé {{ treasure.observedAt | date:'short' }}</p>
+          @if (treasure.stale) {
+            <p class="stale">Position ancienne</p>
+          }
+        </article>
+      }
+
+      @for (participant of snapshot()?.participants ?? []; track participant.identityId) {
+        <article class="position-row" [class.current]="participant.identityId === portal()?.identity?.id">
+          <h3>{{ participant.displayName }}</h3>
+          <p>
+            {{ participant.latitude | number:'1.5-6' }},
+            {{ participant.longitude | number:'1.5-6' }}
+          </p>
+          <p>Précision {{ participant.accuracyM | number:'1.0-1' }} m - relevé {{ participant.observedAt | date:'short' }}</p>
+          @if (participant.stale) {
+            <p class="stale">Position ancienne</p>
+          }
+          <button type="button" (click)="focusParticipant(participant)">Focaliser</button>
+        </article>
+      }
+    </section>
+  }
+</section>
+
+@if (confirmingAdventurer(); as adventurer) {
+  <div class="confirm-backdrop" role="presentation">
+    <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <h2 id="confirm-title">Confirmer le choix</h2>
+      <p>Vous allez porter le reflet de {{ adventurer.name }}. Ce choix ne pourra être corrigé que par un éclaireur.</p>
+      <div class="confirm-actions">
+        <button type="button" (click)="confirmAssignment()">Confirmer</button>
+        <button type="button" class="secondary" (click)="cancelAssignment()">Annuler</button>
+      </div>
+    </div>
+  </div>
+}
