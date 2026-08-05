@@ -14,6 +14,8 @@ import { DesktopNavigationComponent } from './layout/desktop-navigation/desktop-
 import { PublicHeaderComponent } from './layout/header/public-header';
 import { MobileNavigationComponent } from './layout/mobile-navigation/mobile-navigation';
 import { PublicContentCacheService } from './core/offline/public-content-cache.service';
+import { PortalIdentityDialogComponent } from './core/portal/portal-identity-dialog';
+import { PortalIdentityStore } from './core/portal/portal-identity.store';
 import { PwaInstallPromptService } from './core/pwa/pwa-install-prompt.service';
 import { LoadingIndicatorComponent } from './shared/components/loading-indicator/loading-indicator';
 import { PwaInstallPromptComponent } from './shared/components/pwa-install-prompt/pwa-install-prompt';
@@ -24,6 +26,7 @@ import { PwaInstallPromptComponent } from './shared/components/pwa-install-promp
     DesktopNavigationComponent,
     LoadingIndicatorComponent,
     MobileNavigationComponent,
+    PortalIdentityDialogComponent,
     PublicHeaderComponent,
     PwaInstallPromptComponent,
     RouterOutlet,
@@ -39,6 +42,7 @@ export class App {
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
   private readonly publicContentCache = inject(PublicContentCacheService);
+  private readonly portalIdentity = inject(PortalIdentityStore);
   private readonly onlineListener = () => this.refreshPublicCache();
   private readonly visibilityListener = () => {
     if (this.document.visibilityState === 'visible') {
@@ -47,6 +51,7 @@ export class App {
   };
 
   constructor() {
+    this.portalIdentity.load();
     this.refreshPublicCache();
 
     window.addEventListener('online', this.onlineListener);

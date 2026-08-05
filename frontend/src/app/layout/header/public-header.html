@@ -14,25 +14,38 @@
     </span>
   </a>
 
-  <a class="admin-gate-link" routerLink="/admin" title="Accès admin">
-    <span class="sr-only">Accès admin</span>
-    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-      <path
-        d="M12 3l7 3v5c0 4.6-2.8 8.7-7 10-4.2-1.3-7-5.4-7-10V6l7-3z"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.8"
-        stroke-linejoin="round"
-      />
-      <path
-        d="M9 12c.5-1 1.5-1.6 3-1.6s2.5.6 3 1.6M8.5 15c1 1 2.2 1.5 3.5 1.5s2.5-.5 3.5-1.5"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"
-      />
-    </svg>
-  </a>
+  <div class="profile-menu">
+    <button
+      type="button"
+      class="profile-button"
+      aria-haspopup="menu"
+      [attr.aria-expanded]="profileMenuOpen()"
+      [attr.aria-label]="profileLabel()"
+      (click)="toggleProfileMenu()"
+    >
+      <span class="profile-avatar" [class.guest]="portal.identity()?.accessMode === 'GUEST'">
+        @if (portal.identity()?.avatarPath; as avatarPath) {
+          <img [src]="avatarPath" alt="" />
+        }
+        @else if (portal.identity()?.accessMode === 'GUEST') {
+          <span aria-hidden="true">?</span>
+        }
+        @else {
+          <span aria-hidden="true">{{ profileInitials() }}</span>
+        }
+      </span>
+      <span class="profile-name">{{ profileName() }}</span>
+    </button>
+
+    @if (profileMenuOpen()) {
+      <div class="profile-panel" role="menu" aria-label="Actions du profil">
+        @if (portal.canAccessAdmin()) {
+          <a role="menuitem" routerLink="/admin" (click)="closeMenu()">Administration</a>
+        }
+        <a role="menuitem" [href]="logoutUrl">Se déconnecter</a>
+      </div>
+    }
+  </div>
 </header>
 
 @if (settings().status === 'MAINTENANCE') {

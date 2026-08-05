@@ -1,0 +1,57 @@
+@if (visible()) {
+  <div class="identity-backdrop" role="presentation">
+    <section class="identity-dialog" role="dialog" aria-modal="true" aria-labelledby="identity-title">
+      <h2 id="identity-title">Choisir votre reflet</h2>
+      <p>Ce choix est définitif pour votre sceau. Un éclaireur pourra le corriger depuis l'administration.</p>
+
+      @if (portal.assignmentConflict()) {
+        <p class="alert" role="alert">Ce personnage vient d'être choisi. La liste a été actualisée.</p>
+      }
+
+      @if (portal.portal()?.availableAdventurers?.length) {
+        <ul class="choice-list" aria-label="Aventuriers disponibles">
+          @for (adventurer of portal.portal()?.availableAdventurers ?? []; track adventurer.id) {
+            <li>
+              <button type="button" class="choice-button" (click)="portal.askAssignment(adventurer)">
+                @if (adventurer.avatarPath) {
+                  <img [src]="adventurer.avatarPath" [alt]="adventurer.avatarAlt || ''" />
+                }
+                @else {
+                  <span class="choice-fallback" aria-hidden="true">{{ adventurer.name.slice(0, 1) }}</span>
+                }
+                <span>
+                  <strong>{{ adventurer.name }}</strong>
+                  <small>{{ adventurer.title }}</small>
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+      @else if (portal.portal()?.guestAvailable) {
+        <button type="button" class="guest-button" (click)="portal.chooseGuest()">
+          <span aria-hidden="true">?</span>
+          Accéder comme invité
+        </button>
+      }
+      @else {
+        <app-loading-indicator label="Recherche des aventuriers disponibles." />
+      }
+    </section>
+  </div>
+}
+
+@if (!suppressed()) {
+  @if (portal.confirmingAdventurer(); as adventurer) {
+    <div class="confirm-backdrop" role="presentation">
+      <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <h2 id="confirm-title">Confirmer le choix</h2>
+        <p>Vous allez porter le reflet de {{ adventurer.name }}. Ce choix ne pourra être corrigé que par un éclaireur.</p>
+        <div class="confirm-actions">
+          <button type="button" (click)="portal.confirmAssignment()">Confirmer</button>
+          <button type="button" class="secondary" (click)="portal.cancelAssignment()">Annuler</button>
+        </div>
+      </section>
+    </div>
+  }
+}

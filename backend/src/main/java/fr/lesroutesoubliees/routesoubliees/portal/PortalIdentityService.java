@@ -32,7 +32,7 @@ public class PortalIdentityService {
 	@Transactional
 	PortalMeResponse me(CloudflareAccessPrincipal principal) {
 		var identity = ensureIdentity(principal);
-		return new PortalMeResponse(toPublicIdentity(identity), availableAdventurers(), guestAvailable());
+		return new PortalMeResponse(toPublicIdentity(identity), availableAdventurers(), guestAvailable(), false);
 	}
 
 	@Transactional

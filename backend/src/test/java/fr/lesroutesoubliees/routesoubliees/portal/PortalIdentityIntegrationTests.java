@@ -101,12 +101,23 @@ class PortalIdentityIntegrationTests {
 		mvc.perform(get("/api/portal/me").with(authentication(portalUser("subject-portal-3", "portal-test-3@example.invalid"))))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.availableAdventurers", not(empty())))
-			.andExpect(jsonPath("$.guestAvailable").value(false));
+			.andExpect(jsonPath("$.guestAvailable").value(false))
+			.andExpect(jsonPath("$.canAccessAdmin").value(false))
+			.andExpect(jsonPath("$.identity.email").doesNotExist());
 
 		mvc.perform(post("/api/portal/me/guest")
 				.with(authentication(portalUser("subject-portal-3", "portal-test-3@example.invalid")))
 				.with(csrf()))
 			.andExpect(status().isConflict());
+	}
+
+	@Test
+	void adminRoleIsExposedWithoutEmailInPortalMe() throws Exception {
+		mvc.perform(get("/api/portal/me")
+				.with(authentication(portalAdmin("subject-portal-admin", "portal-test-admin@example.invalid"))))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.canAccessAdmin").value(true))
+			.andExpect(jsonPath("$.identity.email").doesNotExist());
 	}
 
 	@Test
@@ -160,6 +171,13 @@ class PortalIdentityIntegrationTests {
 			new CloudflareAccessPrincipal(subject, email),
 			null,
 			List.of(new SimpleGrantedAuthority("ROLE_USER")));
+	}
+
+	private UsernamePasswordAuthenticationToken portalAdmin(String subject, String email) {
+		return new UsernamePasswordAuthenticationToken(
+			new CloudflareAccessPrincipal(subject, email),
+			null,
+			List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_ADMIN")));
 	}
 
 }

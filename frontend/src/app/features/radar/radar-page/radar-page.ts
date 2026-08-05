@@ -1,10 +1,9 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, DestroyRef, ElementRef, OnDestroy, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnDestroy, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, interval, switchMap } from 'rxjs';
 
-import { PortalApiService } from '../../../core/portal/portal-api.service';
-import { PortalAdventurerChoice, PortalMe } from '../../../core/portal/portal.models';
+import { PortalIdentityStore } from '../../../core/portal/portal-identity.store';
 import { LoadingIndicatorComponent } from '../../../shared/components/loading-indicator/loading-indicator';
 import { RadarApiService } from '../radar-api.service';
 import { RadarLocationPayload, RadarParticipant, RadarSnapshot } from '../radar.models';
@@ -22,24 +21,22 @@ type LeafletLayerGroup = import('leaflet').LayerGroup;
   styleUrl: './radar-page.css',
 })
 export class RadarPage implements OnDestroy {
-  private readonly portalApi = inject(PortalApiService);
+  protected readonly portalStore = inject(PortalIdentityStore);
   private readonly radarApi = inject(RadarApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly mapElement = viewChild<ElementRef<HTMLElement>>('map');
 
-  protected readonly portal = signal<PortalMe | null>(null);
-  protected readonly portalLoading = signal(true);
-  protected readonly portalError = signal(false);
-  protected readonly assignmentConflict = signal(false);
-  protected readonly confirmingAdventurer = signal<PortalAdventurerChoice | null>(null);
   protected readonly snapshot = signal<RadarSnapshot | null>(null);
   protected readonly locationState = signal<'idle' | 'waiting' | 'ready' | 'denied' | 'unavailable' | 'timeout' | 'insecure' | 'error'>('idle');
   protected readonly streamError = signal(false);
   protected readonly selectedParticipant = signal<RadarParticipant | null>(null);
 
-  protected readonly needsAssignment = computed(() => this.portal()?.identity.accessMode === 'UNASSIGNED');
+  protected readonly portal = computed(() => this.portalStore.portal());
+  protected readonly portalLoading = computed(() => this.portalStore.loading() || !this.portalStore.loaded());
+  protected readonly portalError = computed(() => this.portalStore.error());
+  protected readonly needsAssignment = computed(() => this.portalStore.needsAssignment());
   protected readonly assigned = computed(() => {
-    const mode = this.portal()?.identity.accessMode;
+    const mode = this.portalStore.identity()?.accessMode;
     return mode === 'ADVENTURER' || mode === 'GUEST';
   });
 
@@ -54,9 +51,16 @@ export class RadarPage implements OnDestroy {
   private locationInterval: ReturnType<typeof window.setInterval> | null = null;
   private lastLocation: RadarLocationPayload | null = null;
   private readonly visibilityListener = () => this.sendLatestLocation();
+  private snapshotLoaded = false;
 
   constructor() {
-    this.loadPortal();
+    this.portalStore.load();
+    effect(() => {
+      if (this.assigned() && !this.snapshotLoaded) {
+        this.snapshotLoaded = true;
+        this.loadSnapshot();
+      }
+    });
     document.addEventListener('visibilitychange', this.visibilityListener);
   }
 
@@ -68,59 +72,7 @@ export class RadarPage implements OnDestroy {
   }
 
   protected loadPortal() {
-    this.portalLoading.set(true);
-    this.portalError.set(false);
-    this.portalApi.me().subscribe({
-      next: (portal) => {
-        this.portal.set(portal);
-        this.portalLoading.set(false);
-        if (portal.identity.accessMode !== 'UNASSIGNED') {
-          this.loadSnapshot();
-        }
-      },
-      error: () => {
-        this.portalLoading.set(false);
-        this.portalError.set(true);
-      },
-    });
-  }
-
-  protected askAssignment(adventurer: PortalAdventurerChoice) {
-    this.assignmentConflict.set(false);
-    this.confirmingAdventurer.set(adventurer);
-  }
-
-  protected cancelAssignment() {
-    this.confirmingAdventurer.set(null);
-  }
-
-  protected confirmAssignment() {
-    const adventurer = this.confirmingAdventurer();
-    if (!adventurer) {
-      return;
-    }
-    this.portalApi.chooseAdventurer(adventurer.id).subscribe({
-      next: (portal) => {
-        this.portal.set(portal);
-        this.confirmingAdventurer.set(null);
-        this.loadSnapshot();
-      },
-      error: () => {
-        this.assignmentConflict.set(true);
-        this.confirmingAdventurer.set(null);
-        this.loadPortal();
-      },
-    });
-  }
-
-  protected chooseGuest() {
-    this.portalApi.chooseGuest().subscribe({
-      next: (portal) => {
-        this.portal.set(portal);
-        this.loadSnapshot();
-      },
-      error: () => this.loadPortal(),
-    });
+    this.portalStore.load(true);
   }
 
   protected requestLocation() {

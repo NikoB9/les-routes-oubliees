@@ -21,4 +21,5 @@ export interface PortalMe {
   identity: PortalIdentity;
   availableAdventurers: PortalAdventurerChoice[];
   guestAvailable: boolean;
+  canAccessAdmin: boolean;
 }

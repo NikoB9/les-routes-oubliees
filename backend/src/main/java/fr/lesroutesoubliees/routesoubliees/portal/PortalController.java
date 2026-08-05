@@ -31,7 +31,7 @@ class PortalController {
 
 	@GetMapping("/me")
 	ResponseEntity<PortalMeResponse> me(Authentication authentication) {
-		return noStore(identities.me(principal(authentication)));
+		return noStore(withAccess(identities.me(principal(authentication)), authentication));
 	}
 
 	@PostMapping("/me/adventurer")
@@ -39,12 +39,12 @@ class PortalController {
 		@Valid @RequestBody PortalAdventurerAssignmentRequest request,
 		Authentication authentication
 	) {
-		return noStore(identities.assignAdventurer(principal(authentication), request.adventurerId()));
+		return noStore(withAccess(identities.assignAdventurer(principal(authentication), request.adventurerId()), authentication));
 	}
 
 	@PostMapping("/me/guest")
 	ResponseEntity<PortalMeResponse> assignGuest(Authentication authentication) {
-		return noStore(identities.assignGuest(principal(authentication)));
+		return noStore(withAccess(identities.assignGuest(principal(authentication)), authentication));
 	}
 
 	private CloudflareAccessPrincipal principal(Authentication authentication) {
@@ -53,6 +53,14 @@ class PortalController {
 
 	private ResponseEntity<PortalMeResponse> noStore(PortalMeResponse body) {
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body);
+	}
+
+	private PortalMeResponse withAccess(PortalMeResponse response, Authentication authentication) {
+		return new PortalMeResponse(
+			response.identity(),
+			response.availableAdventurers(),
+			response.guestAvailable(),
+			authentication.getAuthorities().stream().anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority())));
 	}
 }
 

@@ -1,7 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { computed, signal } from '@angular/core';
 import { of } from 'rxjs';
 
-import { PortalApiService } from '../../../core/portal/portal-api.service';
+import { PortalIdentityStore } from '../../../core/portal/portal-identity.store';
 import { PortalMe } from '../../../core/portal/portal.models';
 import { RadarApiService } from '../radar-api.service';
 import { RadarLocationPayload, RadarSnapshot } from '../radar.models';
@@ -27,7 +28,9 @@ describe('RadarPage', () => {
     },
     availableAdventurers: [],
     guestAvailable: false,
+    canAccessAdmin: false,
   };
+  const portalSignal = signal(portal);
 
   const snapshot: RadarSnapshot = {
     serverTime: '2026-08-05T12:00:00Z',
@@ -63,11 +66,15 @@ describe('RadarPage', () => {
       imports: [RadarPage],
       providers: [
         {
-          provide: PortalApiService,
+          provide: PortalIdentityStore,
           useValue: {
-            me: vi.fn(() => of(portal)),
-            chooseAdventurer: vi.fn(),
-            chooseGuest: vi.fn(),
+            portal: portalSignal,
+            identity: computed(() => portalSignal().identity),
+            loading: signal(false),
+            loaded: signal(true),
+            error: signal(false),
+            needsAssignment: computed(() => false),
+            load: vi.fn(),
           },
         },
         {
