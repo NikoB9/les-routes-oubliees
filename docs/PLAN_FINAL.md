@@ -23,7 +23,7 @@ Le projet doit fournir :
 * une navigation simple sur ordinateur et mobile ;
 * une gestion progressive des révélations ;
 * une séparation stricte entre brouillons et contenus publics ;
-* une administration sécurisée par Google OpenID Connect ;
+* une administration sécurisée par Cloudflare Access ;
 * une interface accessible ;
 * une architecture simple à maintenir ;
 * un déploiement léger dans un conteneur Proxmox LXC.
@@ -51,7 +51,7 @@ Ne peut pas :
 
 Peut :
 
-* se connecter avec Google ;
+* se connecter avec Cloudflare Access ;
 * accéder à l’administration si son email est autorisé ;
 * gérer les contenus ;
 * publier ou masquer les quêtes ;
@@ -404,8 +404,8 @@ Le geste exact de l’easter egg sera choisi lors du lot 9. Cette décision n’
 Flux attendu :
 
 1. l’utilisateur ouvre la connexion ;
-2. il choisit « Se connecter avec Google » ;
-3. Google authentifie l’utilisateur ;
+2. il choisit « Se connecter avec Cloudflare Access » ;
+3. Cloudflare Access authentifie l’utilisateur ;
 4. le backend reçoit et valide l’identité OpenID Connect ;
 5. le backend vérifie que l’email est confirmé ;
 6. le backend normalise l’adresse ;
@@ -580,7 +580,7 @@ Actions minimales :
 
 Ne pas enregistrer :
 
-* les tokens Google ;
+* les tokens Cloudflare Access ;
 * les cookies ;
 * les secrets ;
 * l’intégralité de chaque contenu avant/après ;
@@ -633,7 +633,6 @@ Les réponses publiques ne doivent jamais contenir :
 
 ```text
 GET  /api/admin/me
-POST /api/admin/logout
 ```
 
 ### Parchemins
@@ -993,7 +992,7 @@ Le MVP est accepté lorsque :
 * le bloc-notes propose un éditeur Markdown enrichi avec prévisualisation ;
 * le Markdown est nettoyé ;
 * les médias sont validés ;
-* la connexion Google fonctionne ;
+* la connexion Cloudflare Access fonctionne ;
 * les emails non autorisés sont refusés ;
 * le dernier administrateur actif ne peut pas être supprimé ;
 * toutes les routes admin sont protégées côté backend ;

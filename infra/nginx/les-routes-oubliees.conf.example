@@ -30,6 +30,8 @@ server {
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Port 443;
         proxy_set_header Cf-Access-Jwt-Assertion $http_cf_access_jwt_assertion;
+        proxy_set_header Authorization $http_authorization;
+        add_header Cache-Control "no-store" always;
     }
 
     location ~ ^/(api|media)/ {
@@ -42,6 +44,8 @@ server {
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Port 443;
         proxy_set_header Cf-Access-Jwt-Assertion $http_cf_access_jwt_assertion;
+        proxy_set_header Authorization $http_authorization;
+        add_header Cache-Control "no-store" always;
     }
 
     location /actuator/ {

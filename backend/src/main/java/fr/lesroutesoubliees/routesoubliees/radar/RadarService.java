@@ -70,7 +70,7 @@ class RadarService {
 		}
 		validateObservedAt(request.observedAt());
 		var current = treasure(true);
-		if (current != null && current.observedAt().isAfter(request.observedAt())) {
+		if (current != null && !request.observedAt().isAfter(current.observedAt())) {
 			return;
 		}
 		jdbc.update("""
@@ -186,7 +186,7 @@ class RadarService {
 		if (latitude == null || longitude == null || accuracy == null || observedAt == null || receivedAt == null) {
 			return null;
 		}
-		var stale = Duration.between(receivedAt, now()).compareTo(Duration.ofMinutes(5)) > 0;
+		var stale = Duration.between(observedAt, now()).compareTo(Duration.ofMinutes(5)) > 0;
 		return new RadarTreasureResponse(
 			rs.getDouble("treasure_latitude"),
 			rs.getDouble("treasure_longitude"),

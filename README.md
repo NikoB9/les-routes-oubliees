@@ -15,7 +15,7 @@ Le site permettra aux aventuriers de suivre la progression de leurs quêtes, de 
 * carte de l’aventure révélée progressivement ;
 * carnet regroupant les quatre quêtes et le Val d’Aurelune ;
 * interface d’administration permettant de gérer les contenus ;
-* authentification des administrateurs avec Google ;
+* authentification des administrateurs avec Cloudflare Access ;
 * affichage responsive sur ordinateur, tablette et mobile ;
 * installation PWA des pages publiques ;
 * consultation hors ligne du dernier contenu public synchronise ;
@@ -46,7 +46,7 @@ Les contenus en cours de préparation resteront invisibles jusqu’à leur publi
 * Spring Boot 4.1.x ;
 * Spring Security ;
 * API REST ;
-* authentification Google OpenID Connect.
+* validation JWT Cloudflare Access pour les routes humaines protegees.
 
 ### Données
 
@@ -122,7 +122,7 @@ La procedure de copie et de deploiement serveur est decrite dans `docs/DEPLOIEME
 
 L’accès à la connexion administrateur sera révélé par un easter egg.
 
-Cet easter egg constitue uniquement un élément d’interface. L’accès réel à l’administration sera protégé par une authentification Google et par une liste d’adresses électroniques autorisées vérifiée côté serveur.
+Cet easter egg constitue uniquement un élément d’interface. L’accès réel à l’administration sera protégé par une authentification Cloudflare Access et par une liste d’adresses électroniques autorisées vérifiée côté serveur.
 
 L’administration permettra notamment de gérer :
 
@@ -157,7 +157,7 @@ Les premières étapes concernent :
 
 1. la création du socle Angular et Spring Boot ;
 2. la configuration de PostgreSQL ;
-3. la mise en place de l’authentification Google ;
+3. la mise en place de l’authentification Cloudflare Access ;
 4. le développement de l’interface publique ;
 5. le développement de l’administration.
 
@@ -178,7 +178,7 @@ Configuration minimale :
 CF_ACCESS_ISSUER=https://example.cloudflareaccess.com
 CF_ACCESS_AUDIENCE=example-audience-tag
 CF_ACCESS_CERTS_URL=https://example.cloudflareaccess.com/cdn-cgi/access/certs
-CF_ACCESS_HOME_ASSISTANT_SUBJECT=example-home-assistant-service-token-subject
+RADAR_HOME_ASSISTANT_TOKEN=change-me-with-a-random-256-bit-secret
 ```
 
 Le reverse proxy doit transmettre `Cf-Access-Jwt-Assertion` au backend et autoriser la géolocalisation via `Permissions-Policy`.

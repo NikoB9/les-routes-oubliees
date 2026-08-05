@@ -5,6 +5,8 @@ import java.util.UUID;
 
 import jakarta.validation.Valid;
 
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,25 +30,29 @@ class PortalController {
 	}
 
 	@GetMapping("/me")
-	PortalMeResponse me(Authentication authentication) {
-		return identities.me(principal(authentication));
+	ResponseEntity<PortalMeResponse> me(Authentication authentication) {
+		return noStore(identities.me(principal(authentication)));
 	}
 
 	@PostMapping("/me/adventurer")
-	PortalMeResponse assignAdventurer(
+	ResponseEntity<PortalMeResponse> assignAdventurer(
 		@Valid @RequestBody PortalAdventurerAssignmentRequest request,
 		Authentication authentication
 	) {
-		return identities.assignAdventurer(principal(authentication), request.adventurerId());
+		return noStore(identities.assignAdventurer(principal(authentication), request.adventurerId()));
 	}
 
 	@PostMapping("/me/guest")
-	PortalMeResponse assignGuest(Authentication authentication) {
-		return identities.assignGuest(principal(authentication));
+	ResponseEntity<PortalMeResponse> assignGuest(Authentication authentication) {
+		return noStore(identities.assignGuest(principal(authentication)));
 	}
 
 	private CloudflareAccessPrincipal principal(Authentication authentication) {
 		return (CloudflareAccessPrincipal) authentication.getPrincipal();
+	}
+
+	private ResponseEntity<PortalMeResponse> noStore(PortalMeResponse body) {
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body);
 	}
 }
 
@@ -63,16 +69,20 @@ class AdminPortalIdentityController {
 	}
 
 	@GetMapping
-	List<AdminPortalIdentityResponse> list() {
-		return identities.listAdminIdentities();
+	ResponseEntity<List<AdminPortalIdentityResponse>> list() {
+		return ResponseEntity.ok()
+			.cacheControl(CacheControl.noStore())
+			.body(identities.listAdminIdentities());
 	}
 
 	@PutMapping("/{id}/assignment")
-	AdminPortalIdentityResponse updateAssignment(
+	ResponseEntity<AdminPortalIdentityResponse> updateAssignment(
 		@PathVariable UUID id,
 		@Valid @RequestBody AdminPortalAssignmentRequest request,
 		Authentication authentication
 	) {
-		return identities.updateAdminAssignment(id, request, adminIdentity.email(authentication));
+		return ResponseEntity.ok()
+			.cacheControl(CacheControl.noStore())
+			.body(identities.updateAdminAssignment(id, request, adminIdentity.email(authentication)));
 	}
 }

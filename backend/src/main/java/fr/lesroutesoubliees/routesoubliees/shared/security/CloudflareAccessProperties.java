@@ -6,7 +6,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record CloudflareAccessProperties(
 	String issuer,
 	String audience,
-	String certsUrl,
-	String homeAssistantSubject
+	String certsUrl
 ) {
 }

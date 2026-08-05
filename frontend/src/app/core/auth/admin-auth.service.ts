@@ -10,8 +10,4 @@ export class AdminAuthService {
   currentSession() {
     return this.http.get<AdminSession>('/api/admin/me');
   }
-
-  logout() {
-    return this.http.post<void>('/api/admin/logout', {});
-  }
 }

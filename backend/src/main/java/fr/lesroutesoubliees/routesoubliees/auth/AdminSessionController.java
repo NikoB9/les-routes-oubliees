@@ -4,7 +4,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,18 +18,17 @@ class AdminSessionController {
 	}
 
 	@GetMapping("/me")
-	AdminSessionResponse me(Authentication authentication, CsrfToken csrfToken) {
+	ResponseEntity<AdminSessionResponse> me(Authentication authentication, CsrfToken csrfToken) {
 		csrfToken.getToken();
 		if (authentication == null || !authentication.isAuthenticated()) {
-			return new AdminSessionResponse(false, null);
+			return ResponseEntity.ok()
+				.cacheControl(org.springframework.http.CacheControl.noStore())
+				.body(new AdminSessionResponse(false, null));
 		}
 
-		return new AdminSessionResponse(true, identity.email(authentication));
-	}
-
-	@PostMapping("/logout")
-	ResponseEntity<Void> logout() {
-		return ResponseEntity.noContent().build();
+		return ResponseEntity.ok()
+			.cacheControl(org.springframework.http.CacheControl.noStore())
+			.body(new AdminSessionResponse(true, identity.email(authentication)));
 	}
 
 }

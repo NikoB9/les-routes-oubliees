@@ -51,14 +51,18 @@ export class RadarPage implements OnDestroy {
   private treasureCircle: LeafletCircle | null = null;
   private layerGroup: LeafletLayerGroup | null = null;
   private watchId: number | null = null;
-  private lastSentAt = 0;
+  private locationInterval: ReturnType<typeof window.setInterval> | null = null;
   private lastLocation: RadarLocationPayload | null = null;
+  private readonly visibilityListener = () => this.sendLatestLocation();
 
   constructor() {
     this.loadPortal();
+    document.addEventListener('visibilitychange', this.visibilityListener);
   }
 
   ngOnDestroy() {
+    document.removeEventListener('visibilitychange', this.visibilityListener);
+    this.stopLocationInterval();
     this.stopLocationWatch();
     this.map?.remove();
   }
@@ -178,11 +182,11 @@ export class RadarPage implements OnDestroy {
     this.radarApi
       .events()
       .pipe(
-        takeUntilDestroyed(this.destroyRef),
         catchError(() => {
           this.streamError.set(true);
           return interval(10000).pipe(switchMap(() => this.radarApi.snapshot()));
         }),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((snapshot) => this.applySnapshot(snapshot));
   }
@@ -197,7 +201,8 @@ export class RadarPage implements OnDestroy {
     this.lastLocation = payload;
     this.locationState.set('ready');
     await this.ensureMap(payload);
-    this.maybeSendLocation(payload);
+    this.startLocationInterval();
+    this.sendLatestLocation();
   }
 
   private handleLocationError(error: GeolocationPositionError) {
@@ -234,16 +239,21 @@ export class RadarPage implements OnDestroy {
     this.renderSnapshot();
   }
 
-  private maybeSendLocation(payload: RadarLocationPayload) {
+  private startLocationInterval() {
+    if (this.locationInterval !== null) {
+      return;
+    }
+    this.locationInterval = window.setInterval(() => this.sendLatestLocation(), 7000);
+  }
+
+  private sendLatestLocation() {
     if (document.visibilityState !== 'visible') {
       return;
     }
-    const now = Date.now();
-    if (now - this.lastSentAt < 7000) {
+    if (!this.lastLocation || this.locationState() !== 'ready') {
       return;
     }
-    this.lastSentAt = now;
-    this.radarApi.updateLocation(payload).subscribe({ error: () => this.streamError.set(true) });
+    this.radarApi.updateLocation(this.lastLocation).subscribe({ error: () => this.streamError.set(true) });
   }
 
   private applySnapshot(snapshot: RadarSnapshot) {
@@ -401,6 +411,13 @@ export class RadarPage implements OnDestroy {
     if (this.watchId !== null) {
       navigator.geolocation.clearWatch(this.watchId);
       this.watchId = null;
+    }
+  }
+
+  private stopLocationInterval() {
+    if (this.locationInterval !== null) {
+      window.clearInterval(this.locationInterval);
+      this.locationInterval = null;
     }
   }
 }

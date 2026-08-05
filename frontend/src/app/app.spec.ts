@@ -101,6 +101,8 @@ describe('App', () => {
 
     expect(desktopLinks).toEqual(['Accueil', 'Carte', 'Carnet', 'Radar']);
     expect(mobileLinks).toEqual(['Accueil', 'Carte', 'Carnet', 'Radar']);
+    expect(compiled.querySelector<HTMLAnchorElement>('.desktop-nav a[href="/radar"]')).toBeTruthy();
+    expect(compiled.querySelector<HTMLAnchorElement>('.mobile-nav a[href="/radar"]')).toBeTruthy();
   });
 
   it('should expose a direct accessible admin portal link', async () => {

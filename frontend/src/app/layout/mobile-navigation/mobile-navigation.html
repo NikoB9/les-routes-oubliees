@@ -1,22 +1,37 @@
 <nav class="mobile-nav" aria-label="Navigation principale mobile">
   @for (link of links; track link.path) {
-    <a
-      [routerLink]="link.path"
-      routerLinkActive="active"
-      #activeLink="routerLinkActive"
-      [routerLinkActiveOptions]="routeMatch(link)"
-      [attr.aria-label]="link.label"
-      [attr.aria-current]="activeLink.isActive ? 'page' : null"
-    >
-      <span
-        class="link-icon"
-        [class.home]="link.icon === 'home'"
-        [class.map]="link.icon === 'map'"
-        [class.notebook]="link.icon === 'notebook'"
-        [class.radar]="link.icon === 'radar'"
-        aria-hidden="true"
-      ></span>
-      <span class="link-label">{{ link.label }}</span>
-    </a>
+    @if (link.externalGate) {
+      <a [href]="link.path" [attr.aria-label]="link.label">
+        <span
+          class="link-icon"
+          [class.home]="link.icon === 'home'"
+          [class.map]="link.icon === 'map'"
+          [class.notebook]="link.icon === 'notebook'"
+          [class.radar]="link.icon === 'radar'"
+          aria-hidden="true"
+        ></span>
+        <span class="link-label">{{ link.label }}</span>
+      </a>
+    }
+    @else {
+      <a
+        [routerLink]="link.path"
+        routerLinkActive="active"
+        #activeLink="routerLinkActive"
+        [routerLinkActiveOptions]="routeMatch(link)"
+        [attr.aria-label]="link.label"
+        [attr.aria-current]="activeLink.isActive ? 'page' : null"
+      >
+        <span
+          class="link-icon"
+          [class.home]="link.icon === 'home'"
+          [class.map]="link.icon === 'map'"
+          [class.notebook]="link.icon === 'notebook'"
+          [class.radar]="link.icon === 'radar'"
+          aria-hidden="true"
+        ></span>
+        <span class="link-label">{{ link.label }}</span>
+      </a>
+    }
   }
 </nav>

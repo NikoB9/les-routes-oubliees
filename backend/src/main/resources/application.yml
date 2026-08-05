@@ -34,4 +34,6 @@ routes-oubliees:
     issuer: ${CF_ACCESS_ISSUER:https://example.cloudflareaccess.com}
     audience: ${CF_ACCESS_AUDIENCE:example-audience-tag}
     certs-url: ${CF_ACCESS_CERTS_URL:https://example.cloudflareaccess.com/cdn-cgi/access/certs}
-    home-assistant-subject: ${CF_ACCESS_HOME_ASSISTANT_SUBJECT:}
+  radar:
+    home-assistant:
+      token: ${RADAR_HOME_ASSISTANT_TOKEN:dev-radar-home-assistant-token-change-me}

@@ -40,7 +40,6 @@ describe('AdminShell', () => {
           provide: AdminAuthService,
           useValue: {
             currentSession: () => of({ authenticated: true, email: 'admin@example.test' }),
-            logout: () => of(void 0),
           },
         },
         {

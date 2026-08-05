@@ -27,13 +27,14 @@ import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler
 import org.springframework.util.StringUtils;
 
 @Configuration
-@EnableConfigurationProperties(CloudflareAccessProperties.class)
+@EnableConfigurationProperties({ CloudflareAccessProperties.class, RadarHomeAssistantProperties.class })
 class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(
 		HttpSecurity http,
-		CloudflareAccessAuthenticationFilter cloudflareAccessAuthenticationFilter
+		CloudflareAccessAuthenticationFilter cloudflareAccessAuthenticationFilter,
+		HomeAssistantBearerAuthenticationFilter homeAssistantBearerAuthenticationFilter
 	) throws Exception {
 		return http
 			.authorizeHttpRequests((authorize) -> authorize
@@ -41,15 +42,24 @@ class SecurityConfig {
 				.requestMatchers("/api/public/**", "/media/**").permitAll()
 				.requestMatchers("/api/portal/**", "/api/radar/**").hasRole("USER")
 				.requestMatchers("/api/admin/**").hasRole("ADMIN")
-				.requestMatchers("/api/integrations/home-assistant/**").hasRole("HOME_ASSISTANT")
+				.requestMatchers(HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH).permitAll()
+				.requestMatchers("/api/integrations/**").denyAll()
 				.anyRequest().permitAll())
 			.sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.csrf((csrf) -> csrf
 				.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
 				.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
 				.ignoringRequestMatchers("/api/integrations/home-assistant/radar/treasure-position"))
+			.addFilterBefore(homeAssistantBearerAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 			.addFilterBefore(cloudflareAccessAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 			.build();
+	}
+
+	@Bean
+	HomeAssistantBearerAuthenticationFilter homeAssistantBearerAuthenticationFilter(
+		RadarHomeAssistantProperties properties
+	) {
+		return new HomeAssistantBearerAuthenticationFilter(properties);
 	}
 
 	@Bean

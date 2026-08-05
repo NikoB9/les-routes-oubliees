@@ -1,25 +1,43 @@
 <nav class="desktop-nav" [attr.aria-labelledby]="labelledBy()">
   <p class="nav-kicker">Navigation</p>
   @for (link of links; track link.path) {
-    <a
-      [routerLink]="link.path"
-      routerLinkActive="active"
-      #activeLink="routerLinkActive"
-      [routerLinkActiveOptions]="routeMatch(link)"
-      [attr.aria-current]="activeLink.isActive ? 'page' : null"
-    >
-      <span
-        class="link-icon"
-        [class.home]="link.icon === 'home'"
-        [class.map]="link.icon === 'map'"
-        [class.notebook]="link.icon === 'notebook'"
-        [class.radar]="link.icon === 'radar'"
-        aria-hidden="true"
-      ></span>
-      <span class="link-copy">
-        <span class="link-label">{{ link.label }}</span>
-        <span class="link-description">{{ link.description }}</span>
-      </span>
-    </a>
+    @if (link.externalGate) {
+      <a [href]="link.path">
+        <span
+          class="link-icon"
+          [class.home]="link.icon === 'home'"
+          [class.map]="link.icon === 'map'"
+          [class.notebook]="link.icon === 'notebook'"
+          [class.radar]="link.icon === 'radar'"
+          aria-hidden="true"
+        ></span>
+        <span class="link-copy">
+          <span class="link-label">{{ link.label }}</span>
+          <span class="link-description">{{ link.description }}</span>
+        </span>
+      </a>
+    }
+    @else {
+      <a
+        [routerLink]="link.path"
+        routerLinkActive="active"
+        #activeLink="routerLinkActive"
+        [routerLinkActiveOptions]="routeMatch(link)"
+        [attr.aria-current]="activeLink.isActive ? 'page' : null"
+      >
+        <span
+          class="link-icon"
+          [class.home]="link.icon === 'home'"
+          [class.map]="link.icon === 'map'"
+          [class.notebook]="link.icon === 'notebook'"
+          [class.radar]="link.icon === 'radar'"
+          aria-hidden="true"
+        ></span>
+        <span class="link-copy">
+          <span class="link-label">{{ link.label }}</span>
+          <span class="link-description">{{ link.description }}</span>
+        </span>
+      </a>
+    }
   }
 </nav>

@@ -18,7 +18,7 @@ Inclus :
 4. Attribution unique d'un aventurier a une identite Cloudflare.
 5. Mode invite authentifie lorsque tous les aventuriers visibles sont deja attribues.
 6. Page publique protegee `/radar` avec carte Leaflet, geolocalisation obligatoire et SSE.
-7. Reception de la position du tresor depuis Home Assistant via Cloudflare Access Service Token.
+7. Reception de la position du tresor depuis Home Assistant via Bearer applicatif.
 8. Reglage admin pour afficher ou masquer le tresor.
 9. Adaptations Nginx et consignes Cloudflare Zero Trust.
 10. Tests backend, frontend, E2E et accessibilite pertinents.
@@ -96,7 +96,7 @@ Points a documenter :
 2. La navigation publique contient une quatrieme entree `Radar`.
 3. La navigation mobile accepte quatre entrees, avec verification explicite a 320 px.
 4. L'administration et Radar passent par Cloudflare Access.
-5. L'OAuth2 Google Spring interne est remplace par la validation backend du JWT Cloudflare Access.
+5. L'Cloudflare Access est remplace par la validation backend du JWT Cloudflare Access.
 6. Les pages publiques historiques restent consultables sans compte, sauf decision contraire.
 7. Radar exige HTTPS, Cloudflare Access, geolocalisation et connexion reseau.
 8. Radar est exclu du cache hors ligne public.
@@ -116,7 +116,7 @@ Supprimer ou rendre obsoletes les variables Google seulement lorsque le code ne 
 
 Backend :
 
-1. Retirer `spring-boot-starter-security-oauth2-client` si plus aucun code ne l'utilise.
+1. Conserver `spring-boot-starter-oauth2-resource-server` pour valider le JWT Cloudflare Access humain.
 2. Supprimer les routes et flux `/oauth2/**`, `/login/**`, `/logout` Spring OAuth2, et la page Angular `/admin/login`.
 3. Ajouter une configuration `CloudflareAccessProperties` :
 
@@ -302,7 +302,7 @@ Ne pas stocker :
 * identifiant Google de la balise ;
 * historique de deplacements.
 
-## Etape 5 - Service Token Cloudflare pour Home Assistant
+## Etape 5 - Bearer applicatif pour Home Assistant
 
 Configurer Cloudflare Zero Trust avec une application plus specifique pour :
 
@@ -313,7 +313,7 @@ Configurer Cloudflare Zero Trust avec une application plus specifique pour :
 Politique :
 
 * action `Service Auth` ;
-* service token dedie a Home Assistant ;
+* Bearer applicatif dedie a Home Assistant ;
 * pas d'autorisation humaine necessaire sur cet endpoint.
 
 Home Assistant envoie :
@@ -628,7 +628,7 @@ Consignes Cloudflare Zero Trust a documenter dans `docs/DEPLOIEMENT.md` :
 * politique limitee aux emails exacts des participants ;
 * ne pas autoriser tout detenteur d'une adresse email ;
 * application Access service plus specifique pour `/api/integrations/home-assistant/*` ;
-* Service Token dedie a Home Assistant ;
+* Bearer applicatif dedie a Home Assistant ;
 * variables `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUDIENCE`, et eventuellement audience separee pour l'integration.
 
 A la fin du lot, fournir les actions manuelles :
@@ -675,7 +675,7 @@ Tests backend obligatoires :
 * en-tete email falsifie sans JWT valide ;
 * role admin par allowlist ;
 * utilisateur ordinaire refuse sur `/api/admin/**` ;
-* Service Token Home Assistant valide/invalide ;
+* Bearer Home Assistant valide/invalide ;
 * validation coordonnees tresor ;
 * releves plus anciens ignores ou rejetes ;
 * attribution unique d'un aventurier ;
@@ -748,7 +748,7 @@ feat(radar): add Cloudflare-protected magical radar
 * Les positions utilisateurs s'affichent en temps reel et expirent sans persistance.
 * Le tresor s'affiche uniquement quand l'administration l'autorise.
 * Les coordonnees exactes, precisions et heures sont consultables au clic et dans une alternative textuelle.
-* Home Assistant peut publier la position du tresor via Service Token Cloudflare.
+* Home Assistant peut publier la position du tresor via Bearer applicatif.
 * Les API admin refusent un utilisateur non-admin.
 * Les routes Radar, identite et admin ne sont pas mises en cache.
 * Nginx versionne autorise la geolocalisation, transmet le JWT Access et supporte SSE.
@@ -763,4 +763,3 @@ feat(radar): add Cloudflare-protected magical radar
 * Les tuiles externes creent une dependance reseau et de confidentialite. Documenter le fournisseur choisi.
 * SSE peut etre affecte par le buffering proxy. Le bloc Nginx dedie doit etre valide en production.
 * La migration d'authentification peut casser l'administration si l'allowlist admin ou l'audience Cloudflare sont mal configurees.
-

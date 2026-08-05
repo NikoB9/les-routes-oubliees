@@ -158,31 +158,25 @@ Routage indicatif :
 /api/             -> Spring Boot
 /api/portal/      -> Spring Boot
 /api/radar/       -> Spring Boot
-/login/           -> Spring Boot
+/radar, /admin    -> Cloudflare Access puis frontend
 /media/           -> Spring Boot ou répertoire contrôlé
 /actuator/health  -> accès local uniquement
 ```
 
 ## 8. Domaine et Cloudflare Access
 
-Configurer dans Google l’URI de redirection exacte de production.
+Configurer Cloudflare Access pour les routes humaines protegees et recuperer l'Audience Tag de l'application.
 
-Format Spring Security habituel :
+Ne pas proteger tout le domaine : les pages publiques et l'endpoint Home Assistant doivent rester joignables sans session Access.
 
-```text
-https://DOMAINE/cdn-cgi/access/login
-```
-
-Ne pas utiliser une URI HTTP en production.
-
-Configurer correctement la gestion des en-têtes transférés afin que Spring reconstruise l’URL publique HTTPS derrière le proxy.
+Configurer correctement la gestion des en-têtes transférés afin que Spring reconstruise l'URL publique HTTPS derrière le proxy.
 
 Tester obligatoirement :
 
 * connexion ;
-* retour Google ;
-* création de session ;
-* logout ;
+* retour Cloudflare Access ;
+* validation du JWT `Cf-Access-Jwt-Assertion` ;
+* deconnexion via `/cdn-cgi/access/logout` ;
 * refus d’un email non autorisé ;
 * expiration de session.
 
@@ -220,7 +214,7 @@ DATABASE_PASSWORD=CHANGE_ME
 CF_ACCESS_ISSUER=https://TEAM.cloudflareaccess.com
 CF_ACCESS_AUDIENCE=CHANGE_ME
 CF_ACCESS_CERTS_URL=https://TEAM.cloudflareaccess.com/cdn-cgi/access/certs
-CF_ACCESS_HOME_ASSISTANT_SUBJECT=CHANGE_ME
+RADAR_HOME_ASSISTANT_TOKEN=CHANGE_ME_RANDOM_256_BITS_MINIMUM
 ADMIN_BOOTSTRAP_EMAILS=admin@example.invalid
 
 MEDIA_STORAGE_PATH=/var/lib/les-routes-oubliees/media
@@ -532,7 +526,7 @@ Avant la mise en place de la CI, les mêmes commandes doivent être exécutées 
 * carte ;
 * quêtes ;
 * prévisualisation ;
-* connexion Google ;
+* connexion Cloudflare Access ;
 * refus d’un non-administrateur ;
 * responsive ;
 * navigation clavier.
@@ -653,7 +647,7 @@ Variables de production à renseigner :
 CF_ACCESS_ISSUER=https://TEAM.cloudflareaccess.com
 CF_ACCESS_AUDIENCE=AUD_TAG_APPLICATION_HUMAINE
 CF_ACCESS_CERTS_URL=https://TEAM.cloudflareaccess.com/cdn-cgi/access/certs
-CF_ACCESS_HOME_ASSISTANT_SUBJECT=SUBJECT_DU_SERVICE_TOKEN_HOME_ASSISTANT
+RADAR_HOME_ASSISTANT_TOKEN=SECRET_ALEATOIRE_256_BITS_MINIMUM
 ```
 
 Cloudflare Zero Trust :
@@ -661,13 +655,13 @@ Cloudflare Zero Trust :
 * protéger `/radar`, `/radar/*`, `/admin`, `/admin/*`, `/api/portal/*`, `/api/radar/*` et `/api/admin/*` avec une politique humaine limitée aux emails autorisés ;
 * activer Google et le code email à usage unique si souhaité ;
 * ne pas créer de règle qui autorise toute adresse email ;
-* créer une application Access plus spécifique pour `/api/integrations/home-assistant/*` avec une politique `Service Auth` et un Service Token dédié.
+* ne pas creer d'application Access Home Assistant ;
+* si une application Access globale existe deja, creer uniquement une exception `Bypass` sur `/api/integrations/home-assistant/radar/treasure-position`.
 
 Home Assistant doit envoyer :
 
 ```text
-CF-Access-Client-Id: ...
-CF-Access-Client-Secret: ...
+Authorization: Bearer <RADAR_HOME_ASSISTANT_TOKEN>
 ```
 
 Nginx :
@@ -676,7 +670,7 @@ Nginx :
 * transmettre `Cf-Access-Jwt-Assertion` au backend ;
 * désactiver le buffering et le cache sur `/api/radar/events` ;
 * autoriser le domaine des tuiles Leaflet dans la CSP ;
-* ne plus router les anciens chemins OAuth2 Google internes si le backend ne les expose plus.
+* ne plus router les anciens chemins OAuth2/login Spring internes si le backend ne les expose plus.
 
 Après modification du fichier de production, valider puis recharger :
 
@@ -686,3 +680,93 @@ sudo systemctl reload nginx
 ```
 
 Le fichier versionné de référence est `infra/nginx/les-routes-oubliees.conf.example`. Le fichier de production à adapter est généralement `/etc/nginx/sites-available/les-routes-oubliees`, sauf installation différente.
+
+## Addendum 2026-08-05 - Ordre de deploiement Radar definitif
+
+L'ordre de mise en production du module Radar est le suivant :
+
+1. creer dans Cloudflare Zero Trust une application Access humaine couvrant uniquement `/radar`, `/radar/*`, `/admin`, `/admin/*`, `/api/portal/*`, `/api/radar/*` et `/api/admin/*` ;
+2. recuperer l'Audience Tag de cette application humaine ;
+3. renseigner sur le serveur `CF_ACCESS_ISSUER`, `CF_ACCESS_AUDIENCE`, `CF_ACCESS_CERTS_URL`, `ADMIN_BOOTSTRAP_EMAILS` et `RADAR_HOME_ASSISTANT_TOKEN` ;
+4. comparer le fichier Nginx actif avec `infra/nginx/les-routes-oubliees.conf.example` avant modification ;
+5. valider Nginx avec `sudo nginx -t` ;
+6. verifier Nginx avec `sudo systemctl is-active nginx`, puis recharger avec `sudo systemctl reload nginx` ;
+7. transferer `dist/les-routes-oubliees-release.tar.gz` vers le serveur ;
+8. verifier son SHA-256 localement et sur le serveur ;
+9. deployer avec `/usr/local/sbin/lro-deploy` ;
+10. tester les pages publiques ;
+11. tester `/radar` et `/admin` derriere Cloudflare Access ;
+12. tester Home Assistant avec le Bearer applicatif ;
+13. surveiller les logs sans afficher le secret ;
+14. nettoyer l'ancien OAuth Google interne uniquement apres validation et expiration de la periode de retour arriere.
+
+Generation du Bearer Home Assistant avec une source cryptographiquement sure :
+
+```bash
+openssl rand -base64 32
+```
+
+Test de l'endpoint sans inscrire le secret en clair dans l'historique du terminal :
+
+```bash
+read -r -s RADAR_AUTHORIZATION
+curl -fsS -X POST \
+  -H "Authorization: Bearer ${RADAR_AUTHORIZATION}" \
+  -H "Content-Type: application/json" \
+  --data '{"schemaVersion":1,"beacon":"tresor-aurelune","latitude":46.495854,"longitude":-1.775551,"accuracyM":6.414,"observedAt":"2026-08-04T21:51:57Z"}' \
+  https://DOMAINE/api/integrations/home-assistant/radar/treasure-position
+unset RADAR_AUTHORIZATION
+```
+
+Variables serveur Radar et Access :
+
+```text
+CF_ACCESS_ISSUER
+CF_ACCESS_AUDIENCE
+CF_ACCESS_CERTS_URL
+ADMIN_BOOTSTRAP_EMAILS
+RADAR_HOME_ASSISTANT_TOKEN
+```
+
+Ces variables s'ajoutent aux variables applicatives existantes pour PostgreSQL, le stockage des medias, l'URL publique et le fuseau horaire.
+
+Home Assistant utilise un Bearer applicatif, pas un Bearer applicatif. Exemple `secrets.yaml` :
+
+```yaml
+aurelune_position_endpoint: "https://<DOMAINE>/api/integrations/home-assistant/radar/treasure-position"
+aurelune_radar_authorization: "Bearer <RADAR_HOME_ASSISTANT_TOKEN>"
+```
+
+Exemple `configuration.yaml` :
+
+```yaml
+rest_command:
+  publier_position_aurelune:
+    url: !secret aurelune_position_endpoint
+    method: post
+    headers:
+      Authorization: !secret aurelune_radar_authorization
+      Accept: "application/json"
+    content_type: "application/json"
+    verify_ssl: true
+    timeout: 10
+    payload: >-
+      {{
+        {
+          "schemaVersion": 1,
+          "beacon": "tresor-aurelune",
+          "latitude": latitude | float,
+          "longitude": longitude | float,
+          "accuracyM": accuracy_m | float,
+          "observedAt": observed_at | string
+        } | to_json
+      }}
+```
+
+L'automatisation Home Assistant doit fournir les valeurs issues de `device_tracker.tresor_d_aurelune` : `latitude`, `longitude`, `accuracy_m` et `last_seen` mappe vers `observedAt`.
+
+Ne pas creer d'application Access Home Assistant. Si une application Access globale couvre deja tout le domaine, creer uniquement une exception plus specifique sur `/api/integrations/home-assistant/radar/treasure-position` avec une politique `Bypass`. Ne pas etendre cette exception a `/api/integrations/*` ou `/api/*`.
+
+Le fichier Nginx de production a identifier et modifier est generalement `/etc/nginx/sites-available/les-routes-oubliees`, sauf installation differente. Les differences obligatoires avec le fichier versionne sont : `Permissions-Policy` avec `geolocation=(self)`, `img-src` autorisant `https://tile.openstreetmap.org`, transmission de `Cf-Access-Jwt-Assertion`, preservation de `Authorization`, bloc SSE sans buffering/cache et `Cache-Control: no-store` sur les API d'identite, Radar, admin et integration Home Assistant.
+
+Les variables `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` peuvent rester temporairement sur le serveur pendant la periode de retour arriere, mais elles ne sont plus utilisees par l'application. Leur suppression serveur et la suppression du client OAuth correspondant dans Google Cloud Console sont des operations manuelles a realiser seulement apres validation de la nouvelle authentification.

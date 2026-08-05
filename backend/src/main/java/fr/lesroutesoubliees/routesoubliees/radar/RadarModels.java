@@ -6,24 +6,26 @@ import java.util.UUID;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import fr.lesroutesoubliees.routesoubliees.portal.PortalAccessMode;
 
 record RadarLocationRequest(
-	@DecimalMin("-90.0") @DecimalMax("90.0") double latitude,
-	@DecimalMin("-180.0") @DecimalMax("180.0") double longitude,
-	@DecimalMin("0.1") @DecimalMax("10000.0") double accuracyM,
+	@NotNull @DecimalMin("-90.0") @DecimalMax("90.0") Double latitude,
+	@NotNull @DecimalMin("-180.0") @DecimalMax("180.0") Double longitude,
+	@NotNull @DecimalMin("0.1") @DecimalMax("10000.0") Double accuracyM,
 	@NotNull OffsetDateTime observedAt
 ) {
 }
 
 record TreasurePositionRequest(
-	int schemaVersion,
-	String beacon,
-	@DecimalMin("-90.0") @DecimalMax("90.0") double latitude,
-	@DecimalMin("-180.0") @DecimalMax("180.0") double longitude,
-	@DecimalMin("0.1") @DecimalMax("10000.0") double accuracyM,
+	@NotNull @Min(1) Integer schemaVersion,
+	@NotBlank String beacon,
+	@NotNull @DecimalMin("-90.0") @DecimalMax("90.0") Double latitude,
+	@NotNull @DecimalMin("-180.0") @DecimalMax("180.0") Double longitude,
+	@NotNull @DecimalMin("0.1") @DecimalMax("10000.0") Double accuracyM,
 	@NotNull OffsetDateTime observedAt
 ) {
 }

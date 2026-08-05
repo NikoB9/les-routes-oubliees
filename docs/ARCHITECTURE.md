@@ -302,10 +302,9 @@ Opérations obligatoirement atomiques :
 
 ### 6.1 Choix
 
-* Google OpenID Connect ;
+* Cloudflare Access ;
 * validation JWT Cloudflare Access ;
-* session serveur ;
-* cookie sécurisé ;
+* session et cookie gérés par Cloudflare Access ;
 * allowlist PostgreSQL.
 
 ### 6.2 Flux
@@ -321,32 +320,20 @@ Cloudflare Access
     ▼
 Spring Security
     │
-    ├── vérifie l’identité
-    ├── vérifie email_verified
+    ├── vérifie signature, issuer, audience, exp et nbf
+    ├── extrait l'email depuis le JWT validé
     ├── normalise l’email
     ├── consulte l’allowlist
-    └── crée ou refuse la session
+    └── crée les autorités applicatives de la requête
 ```
 
-### 6.3 Session
+### 6.3 Session Access
 
-Le cookie de session doit être :
+La session humaine est gérée par Cloudflare Access avant l'origine. Le backend ne fournit plus de flux `/login`, `/oauth2/**`, ni de client OAuth Google interne.
 
-* `HttpOnly`;
-* `Secure` en production ;
-* `SameSite=Lax` sauf besoin OIDC contraire documenté ;
-* limité au domaine nécessaire ;
-* renouvelé après authentification.
+Cloudflare doit transmettre `Cf-Access-Jwt-Assertion` à l'origine. Le backend valide ce JWT pour chaque requête humaine protégée et ne doit jamais accepter un simple en-tête d'email falsifiable.
 
-Ne pas transmettre de JWT au frontend pour ce MVP.
-
-Les scopes Google doivent rester minimaux :
-
-```text
-openid email profile
-```
-
-Ne pas persister durablement les access tokens ou refresh tokens Google sauf besoin explicitement documenté. Les logs et l’audit ne doivent pas conserver les claims complets.
+Ne pas transmettre de JWT au frontend pour ce MVP. Les logs et l’audit ne doivent pas conserver les claims complets.
 
 ### 6.4 CSRF
 
@@ -593,9 +580,9 @@ Le backend valide le JWT reçu dans l'en-tête `Cf-Access-Jwt-Assertion` avant d
 
 * `ROLE_USER` pour une identité humaine Access avec email validé par le JWT ;
 * `ROLE_ADMIN` lorsque l'email normalisé est actif dans `admin_allowed_emails` ;
-* `ROLE_HOME_ASSISTANT` pour le sujet de Service Token Cloudflare configuré.
+* `ROLE_HOME_ASSISTANT` pour le Bearer applicatif Home Assistant valide.
 
-Les routes OAuth2 Google internes `/oauth2/**` et `/login/**` ne font plus partie de l'architecture cible.
+Les routes Spring OAuth2 internes `/oauth2/**` et `/login/**` ne font plus partie de l'architecture cible.
 
 Nouveaux préfixes API :
 
