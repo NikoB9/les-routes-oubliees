@@ -391,7 +391,7 @@ Une fonctionnalité visuelle n’est pas terminée tant que :
 
 ## 22. Page d’accessibilité
 
-Prévoir avant la mise en production une page publique indiquant :
+Prévoir avant la mise en production une page d'information indiquant :
 
 * le niveau de conformité évalué ;
 * les éventuelles non-conformités ;

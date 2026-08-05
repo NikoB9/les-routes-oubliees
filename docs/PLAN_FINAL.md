@@ -34,7 +34,7 @@ Le projet doit fournir :
 
 Peut :
 
-* consulter les pages publiques ;
+* consulter les pages de contenu ;
 * voir uniquement les contenus publiés et révélés ;
 * naviguer sans compte ;
 * consulter le site sur ordinateur, tablette ou téléphone.
@@ -78,7 +78,7 @@ Le MVP comprend :
 * l’administration ;
 * la gestion des médias hors cartes ;
 * la prévisualisation ;
-* l'installation PWA des pages publiques ;
+* l'installation PWA des pages de contenu ;
 * la consultation hors ligne du dernier contenu public synchronise ;
 * le responsive ;
 * les exigences d’accessibilité ;
@@ -881,7 +881,7 @@ Les données de démonstration doivent être fictives.
 * assets ;
 * modèle ;
 * sélection active ;
-* page publique ;
+* page de contenu ;
 * description accessible ;
 * administration.
 
@@ -891,7 +891,7 @@ Les données de démonstration doivent être fictives.
 * Markdown ;
 * visibilité ;
 * publication ;
-* page publique ;
+* page de contenu ;
 * administration ;
 * sanitation.
 
@@ -977,7 +977,7 @@ Ce lot est un audit final et une consolidation. Les vérifications d’accessibi
 
 Le MVP est accepté lorsque :
 
-* les trois pages publiques sont disponibles ;
+* les trois pages de contenu sont disponibles ;
 * le menu est adapté au desktop et au mobile ;
 * l’accueil affiche le message actif ;
 * le compte à rebours fonctionne ;
@@ -1035,7 +1035,7 @@ Aucun de ces éléments ne doit être anticipé dans le MVP au prix d’une comp
 
 Le MVP inclut désormais un module connecté `Radar`, accessible depuis l'entrée de menu `Radar` et la route `/radar`.
 
-La page publique protégée s'intitule `Le Radar d'Aurelune`.
+La page authentifiée s'intitule `Le Radar d'Aurelune`.
 
 Fonctions :
 
@@ -1054,7 +1054,7 @@ Règles :
 * un utilisateur ordinaire ne peut pas modifier son choix après confirmation ;
 * seul l'administrateur peut corriger une attribution ;
 * les positions des participants ne sont pas persistées ;
-* le trésor masqué n'est pas exposé par les API publiques ;
+* le trésor masqué n'est pas exposé par les API Radar ;
 * Radar n'est pas disponible hors ligne et n'est pas inclus dans le snapshot PWA.
 
 La navigation mobile comporte désormais quatre entrées : Accueil, Carte, Carnet et Radar.

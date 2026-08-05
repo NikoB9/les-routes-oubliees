@@ -183,4 +183,14 @@ describe('AdminShell', () => {
     ]);
     expect(offsetInput?.value).toBe('22');
   });
+
+  it('uses Cloudflare Access logout through a full navigation link', () => {
+    const fixture = TestBed.createComponent(AdminShell);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const logoutLink = compiled.querySelector<HTMLAnchorElement>('.logout-button');
+
+    expect(logoutLink?.href).toBe('https://lesroutesoubliees.nicolas-bourneuf.fr/cdn-cgi/access/logout');
+  });
 });

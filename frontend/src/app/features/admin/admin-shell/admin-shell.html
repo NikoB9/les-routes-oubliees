@@ -4,7 +4,7 @@
     <p class="alert" role="alert">La session administrateur ne peut pas être vérifiée.</p>
   } @else if (session(); as adminSession) {
     <p>Session ouverte pour {{ adminSession.email }}.</p>
-    <button type="button" class="logout-button" (click)="logout()">Se déconnecter</button>
+    <a class="logout-button" href="https://lesroutesoubliees.nicolas-bourneuf.fr/cdn-cgi/access/logout">Se déconnecter</a>
     <nav class="admin-navigation" aria-label="Navigation administration">
       <a routerLink="/admin/dashboard" [class.active]="section() === 'dashboard'">Tableau de bord</a>
       <a routerLink="/admin/notebook" [class.active]="section() === 'notebook'">Quêtes</a>

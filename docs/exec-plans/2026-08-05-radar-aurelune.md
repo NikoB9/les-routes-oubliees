@@ -97,7 +97,7 @@ Points a documenter :
 3. La navigation mobile accepte quatre entrees, avec verification explicite a 320 px.
 4. L'administration et Radar passent par Cloudflare Access.
 5. L'Cloudflare Access est remplace par la validation backend du JWT Cloudflare Access.
-6. Les pages publiques historiques restent consultables sans compte, sauf decision contraire.
+6. Les pages de contenu historiques restent accessibles apres authentification Cloudflare Access globale.
 7. Radar exige HTTPS, Cloudflare Access, geolocalisation et connexion reseau.
 8. Radar est exclu du cache hors ligne public.
 9. Les operations manuelles Cloudflare et Nginx sont decrites sans pretendre qu'elles ont ete appliquees en production.
@@ -304,34 +304,38 @@ Ne pas stocker :
 
 ## Etape 5 - Bearer applicatif pour Home Assistant
 
-Configurer Cloudflare Zero Trust avec une application plus specifique pour :
+Configurer manuellement dans Cloudflare Zero Trust une application plus specifique pour le chemin exact :
 
 ```text
-/api/integrations/home-assistant/*
+api/integrations/home-assistant/radar/treasure-position
 ```
 
 Politique :
 
-* action `Service Auth` ;
-* Bearer applicatif dedie a Home Assistant ;
-* pas d'autorisation humaine necessaire sur cet endpoint.
+* action `Bypass` / `Contourner` ;
+* include `Everyone` / `Tout le monde` ;
+* aucun joker ;
+* aucun Service Token Cloudflare ;
+* aucun second tunnel ou second sous-domaine.
 
 Home Assistant envoie :
 
 ```text
-CF-Access-Client-Id: ...
-CF-Access-Client-Secret: ...
+Authorization: Bearer <RADAR_HOME_ASSISTANT_TOKEN>
 ```
 
-Le backend recoit ensuite un JWT Access et doit valider :
+Le backend doit valider le Bearer applicatif :
 
-* signature ;
-* `iss` ;
-* `aud` de l'application integration ;
-* expiration ;
-* type de token/service si le claim est disponible dans le JWT.
+* endpoint exact uniquement ;
+* methode `POST` uniquement ;
+* `401 Unauthorized` si absent, vide ou incorrect ;
+* schema `Bearer` accepte sans sensibilite a la casse ;
+* autres schemas refuses ;
+* comparaison adaptee aux secrets ;
+* `Cache-Control: no-store` ;
+* validation stricte du JSON, des coordonnees, de la precision et de `observedAt`.
 
-Si une seule application Access est utilisee pour tout le site, documenter clairement comment distinguer les requetes service et humaines. Ne jamais accorder `ROLE_HOME_ASSISTANT` a un navigateur humain sur la base du seul email.
+Les chemins voisins de `/api/integrations/**` ne doivent pas beneficier de cette exception.
 
 ## Etape 6 - API Radar temps reel
 
@@ -351,7 +355,7 @@ Endpoints :
 | GET | `/api/admin/radar/settings` | Admin | `no-store` |
 | PUT | `/api/admin/radar/settings` | Admin + CSRF | `no-store` |
 
-Snapshot public :
+Snapshot Radar :
 
 ```json
 {
@@ -691,7 +695,7 @@ Tests backend obligatoires :
 Tests frontend obligatoires :
 
 * modale obligatoire apres authentification sans attribution ;
-* pas de modale sur pages publiques non protegees si elles restent anonymes ;
+* pas de modale sur les routes d'administration ;
 * exclusion des routes admin du choix personnage ;
 * `409 Conflict` recharge la liste ;
 * bouton invite affiche uniquement quand liste vide ;

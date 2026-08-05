@@ -17,7 +17,7 @@ Le site permettra aux aventuriers de suivre la progression de leurs quêtes, de 
 * interface d’administration permettant de gérer les contenus ;
 * authentification des administrateurs avec Cloudflare Access ;
 * affichage responsive sur ordinateur, tablette et mobile ;
-* installation PWA des pages publiques ;
+* installation PWA des pages de contenu ;
 * consultation hors ligne du dernier contenu public synchronise ;
 * prise en compte des exigences d’accessibilité.
 
@@ -170,7 +170,7 @@ Les cartes, illustrations, logos, textes narratifs et autres ressources créativ
 Consulter les fichiers `LICENSE` et `ASSETS-LICENSE.md` pour plus de détails.
 ## Radar d'Aurelune
 
-Le module `Radar` ajoute une route `/radar` protégée par Cloudflare Access.
+Le site complet est protégé par Cloudflare Access sur l'hôte de production. Le module `Radar` ajoute la route `/radar` dans cette application authentifiée.
 
 Configuration minimale :
 

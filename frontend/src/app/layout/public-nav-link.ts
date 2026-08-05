@@ -5,7 +5,6 @@ export interface PublicNavLink {
   readonly description: string;
   readonly path: string;
   readonly exact: boolean;
-  readonly externalGate?: boolean;
   readonly icon: 'home' | 'map' | 'notebook' | 'radar';
 }
 
@@ -50,7 +49,6 @@ export const publicNavLinks: readonly PublicNavLink[] = [
     description: 'Les échos vivants de la Compagnie',
     path: '/radar',
     exact: false,
-    externalGate: true,
     icon: 'radar',
   },
 ];

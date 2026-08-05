@@ -597,3 +597,5 @@ Nouveaux préfixes API :
 Radar utilise SSE avec `SseEmitter`. Les positions des participants sont conservées uniquement en mémoire avec expiration courte. La position du trésor est stockée dans `radar_state`, mais n'est jamais exposée publiquement lorsque `treasure_visible=false`.
 
 Radar est exclu du cache PWA, d'IndexedDB et du snapshot hors ligne.
+
+Depuis la protection Cloudflare Access globale, le service worker ne sert plus le shell Angular pour les navigations. Les navigations complètes doivent consulter le réseau afin que Cloudflare Access puisse intercepter une session absente ou expirée. Les assets restent pris en charge par la PWA, mais l'affichage hors ligne d'une nouvelle navigation est volontairement dégradé pour éviter qu'une page soit rendue depuis un cache local après déconnexion.
