@@ -150,6 +150,9 @@ class AdminAllowedEmailIntegrationTests {
 		mvc.perform(get("/api/admin/dashboard"))
 			.andExpect(status().isForbidden());
 
+		mvc.perform(get("/api/admin/dashboard").with(user("player@example.invalid").roles("USER")))
+			.andExpect(status().isForbidden());
+
 		mvc.perform(get("/api/admin/dashboard").with(user("admin@example.invalid").roles("ADMIN")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.visibleQuestCount").exists())

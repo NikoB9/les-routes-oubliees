@@ -117,7 +117,7 @@ Supprimer ou rendre obsoletes les variables Google seulement lorsque le code ne 
 Backend :
 
 1. Conserver `spring-boot-starter-oauth2-resource-server` pour valider le JWT Cloudflare Access humain.
-2. Supprimer les routes et flux `/oauth2/**`, `/login/**`, `/logout` Spring OAuth2, et la page Angular `/admin/login`.
+2. Supprimer les anciens flux Spring OAuth2 internes et la page Angular `/admin/login`.
 3. Ajouter une configuration `CloudflareAccessProperties` :
 
    * `teamDomain`
@@ -627,13 +627,13 @@ Changements attendus :
 
 Consignes Cloudflare Zero Trust a documenter dans `docs/DEPLOIEMENT.md` :
 
-* application Access humaine pour `/radar`, `/radar/*`, `/admin`, `/admin/*`, `/api/portal/*`, `/api/radar/*`, `/api/admin/*` ;
+* application Access humaine pour tout l'hote, avec le champ `Path` vide ;
 * fournisseurs recommandes : Google et One-time PIN par email ;
-* politique limitee aux emails exacts des participants ;
-* ne pas autoriser tout detenteur d'une adresse email ;
-* application Access service plus specifique pour `/api/integrations/home-assistant/*` ;
+* autorisation administrateur conservee dans l'allowlist applicative, pas uniquement dans Cloudflare ;
+* application Access d'exception Home Assistant plus specifique pour le chemin exact `api/integrations/home-assistant/radar/treasure-position`, en `Bypass` avec `Everyone` ;
+* aucun Service Token Cloudflare, second tunnel, second sous-domaine, joker d'exception ou audience separee ;
 * Bearer applicatif dedie a Home Assistant ;
-* variables `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUDIENCE`, et eventuellement audience separee pour l'integration.
+* variables `CF_ACCESS_ISSUER`, `CF_ACCESS_AUDIENCE` et `CF_ACCESS_CERTS_URL` pour l'unique application humaine.
 
 A la fin du lot, fournir les actions manuelles :
 

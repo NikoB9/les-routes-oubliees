@@ -109,6 +109,8 @@ PostgreSQL    : 127.0.0.1:5432
 
 Cloudflare Tunnel pointe vers le reverse proxy local.
 
+En developpement local, le profil Compose `app` publie aussi Spring Boot sur `127.0.0.1:${BACKEND_PORT:-8080}:8080` pour eviter une exposition reseau par defaut. En production LXC, le backend reste lance par systemd et joint uniquement via le proxy local.
+
 Ne pas exposer directement :
 
 * Spring Boot ;
@@ -695,7 +697,7 @@ Le fichier versionné de référence est `infra/nginx/les-routes-oubliees.conf.e
 
 L'ordre de mise en production du module Radar est le suivant :
 
-1. creer dans Cloudflare Zero Trust une application Access humaine couvrant uniquement `/radar`, `/radar/*`, `/admin`, `/admin/*`, `/api/portal/*`, `/api/radar/*` et `/api/admin/*` ;
+1. creer dans Cloudflare Zero Trust une application Access humaine couvrant tout l'hote `lesroutesoubliees.nicolas-bourneuf.fr`, avec le champ `Path` vide ;
 2. recuperer l'Audience Tag de cette application humaine ;
 3. renseigner sur le serveur `CF_ACCESS_ISSUER`, `CF_ACCESS_AUDIENCE`, `CF_ACCESS_CERTS_URL`, `ADMIN_BOOTSTRAP_EMAILS` et `RADAR_HOME_ASSISTANT_TOKEN` ;
 4. comparer le fichier Nginx actif avec `infra/nginx/les-routes-oubliees.conf.example` avant modification ;
@@ -780,6 +782,8 @@ Créer manuellement l'application Access d'exception Home Assistant uniquement p
 Le fichier Nginx de production a identifier et modifier est generalement `/etc/nginx/sites-available/les-routes-oubliees`, sauf installation differente. Les differences obligatoires avec le fichier versionne sont : `Permissions-Policy` avec `geolocation=(self)`, `img-src` autorisant `https://tile.openstreetmap.org`, transmission de `Cf-Access-Jwt-Assertion`, preservation de `Authorization`, bloc SSE sans buffering/cache et `Cache-Control: no-store` sur les API d'identite, Radar, admin et integration Home Assistant.
 
 Le service worker ne doit plus intercepter les navigations avec le shell Angular mis en cache. `frontend/ngsw-config.json` conserve les assets PWA, mais exclut toutes les navigations pour que Cloudflare Access voie les accès à `/`, `/radar`, `/admin` et aux routes rechargées. Cette décision réduit le comportement hors ligne d'une nouvelle navigation ; elle est volontaire pour éviter une page affichée depuis le cache après expiration ou déconnexion Access.
+
+Un shell statique deja present dans un cache navigateur ou un ancien service worker peut rester affichable localement jusqu'a son eviction. Cloudflare Access ne peut pas intercepter une reponse servie entierement depuis le cache local ; les API Radar, admin, portail et integration restent donc exclues du cache et revalidees par le reseau.
 
 Les variables `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` peuvent rester temporairement sur le serveur pendant la periode de retour arriere, mais elles ne sont plus utilisees par l'application. Leur suppression serveur et la suppression du client OAuth correspondant dans Google Cloud Console sont des operations manuelles a realiser seulement apres validation de la nouvelle authentification.
 

@@ -93,11 +93,25 @@ class RadarHomeAssistantIntegrationTests {
 
 		mvc.perform(postTreasure(now()).header(HttpHeaders.AUTHORIZATION, "Bearer test-ha-token extra"))
 			.andExpect(status().isUnauthorized());
+
+		mvc.perform(postTreasure(now())
+				.header(HttpHeaders.AUTHORIZATION, "Bearer test-ha-token")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer test-ha-token"))
+			.andExpect(status().isUnauthorized());
 	}
 
 	@Test
 	void rejectsInvalidPayloadsAndOtherIntegrationRoutes() throws Exception {
 		mvc.perform(post("/api/integrations/home-assistant/other")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer test-ha-token")
+				.with(csrf()))
+			.andExpect(status().isForbidden());
+
+		mvc.perform(get("/api/integrations/home-assistant/radar/treasure-position")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer test-ha-token"))
+			.andExpect(status().isForbidden());
+
+		mvc.perform(put("/api/integrations/home-assistant/radar/treasure-position")
 				.header(HttpHeaders.AUTHORIZATION, "Bearer test-ha-token")
 				.with(csrf()))
 			.andExpect(status().isForbidden());
@@ -119,6 +133,22 @@ class RadarHomeAssistantIntegrationTests {
 			.andExpect(status().isBadRequest());
 
 		mvc.perform(postTreasure(now().plusMinutes(3)).header(HttpHeaders.AUTHORIZATION, "Bearer test-ha-token"))
+			.andExpect(status().isBadRequest());
+
+		mvc.perform(post("/api/integrations/home-assistant/radar/treasure-position")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer test-ha-token")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "schemaVersion": 1,
+					  "beacon": "tresor-aurelune",
+					  "latitude": 46.0,
+					  "longitude": -1.0,
+					  "accuracyM": 5.0,
+					  "observedAt": "%s",
+					  "googleAccount": "leak@example.invalid"
+					}
+					""".formatted(now())))
 			.andExpect(status().isBadRequest());
 	}
 

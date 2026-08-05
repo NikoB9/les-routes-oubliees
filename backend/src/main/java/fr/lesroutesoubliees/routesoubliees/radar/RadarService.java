@@ -69,17 +69,16 @@ class RadarService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Balise Radar invalide.");
 		}
 		validateObservedAt(request.observedAt());
-		var current = treasure(true);
-		if (current != null && !request.observedAt().isAfter(current.observedAt())) {
-			return;
-		}
-		jdbc.update("""
+		var updatedRows = jdbc.update("""
 			update radar_state
 			set treasure_latitude = ?, treasure_longitude = ?, treasure_accuracy_m = ?,
 			    treasure_observed_at = ?, treasure_received_at = ?
 			where id = 1
-			""", request.latitude(), request.longitude(), request.accuracyM(), request.observedAt(), now());
-		broadcast();
+			  and (treasure_observed_at is null or treasure_observed_at < ?)
+			""", request.latitude(), request.longitude(), request.accuracyM(), request.observedAt(), now(), request.observedAt());
+		if (updatedRows > 0) {
+			broadcast();
+		}
 	}
 
 	@Transactional(readOnly = true)

@@ -42,7 +42,7 @@ services:
     volumes:
       - media-data:/app/media
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
 
   frontend:
     profiles: ["app"]

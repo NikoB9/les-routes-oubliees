@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collections;
 import java.util.List;
 
 import jakarta.servlet.FilterChain;
@@ -51,7 +52,12 @@ class HomeAssistantBearerAuthenticationFilter extends OncePerRequestFilter {
 			response.sendError(413);
 			return;
 		}
-		var authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
+		var authorizationHeaders = Collections.list(request.getHeaders(HttpHeaders.AUTHORIZATION));
+		if (authorizationHeaders.size() != 1) {
+			response.sendError(HttpStatus.UNAUTHORIZED.value());
+			return;
+		}
+		var authorization = authorizationHeaders.getFirst();
 		var token = extractBearerToken(authorization);
 		if (!constantTimeEquals(token, properties.token())) {
 			response.sendError(HttpStatus.UNAUTHORIZED.value());

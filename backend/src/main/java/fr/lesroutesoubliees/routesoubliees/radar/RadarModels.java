@@ -10,8 +10,11 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import fr.lesroutesoubliees.routesoubliees.portal.PortalAccessMode;
 
+@JsonIgnoreProperties(ignoreUnknown = false)
 record RadarLocationRequest(
 	@NotNull @DecimalMin("-90.0") @DecimalMax("90.0") Double latitude,
 	@NotNull @DecimalMin("-180.0") @DecimalMax("180.0") Double longitude,
@@ -20,6 +23,7 @@ record RadarLocationRequest(
 ) {
 }
 
+@JsonIgnoreProperties(ignoreUnknown = false)
 record TreasurePositionRequest(
 	@NotNull @Min(1) Integer schemaVersion,
 	@NotBlank String beacon,
@@ -78,5 +82,6 @@ record AdminRadarSettingsResponse(
 ) {
 }
 
+@JsonIgnoreProperties(ignoreUnknown = false)
 record AdminRadarSettingsUpdateRequest(boolean treasureVisible) {
 }

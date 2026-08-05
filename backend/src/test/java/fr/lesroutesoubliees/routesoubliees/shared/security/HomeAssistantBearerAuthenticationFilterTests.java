@@ -51,6 +51,30 @@ class HomeAssistantBearerAuthenticationFilterTests {
 	}
 
 	@Test
+	void rejectsMultipleAuthorizationHeaders() throws Exception {
+		var request = request("Bearer secret-token");
+		request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer secret-token");
+		var response = new MockHttpServletResponse();
+
+		filter.doFilter(request, response, chain());
+
+		assertThat(response.getStatus()).isEqualTo(401);
+		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+	}
+
+	@Test
+	void rejectsWhenConfiguredSecretIsBlank() throws Exception {
+		var blankSecretFilter = new HomeAssistantBearerAuthenticationFilter(new RadarHomeAssistantProperties(" "));
+		var request = request("Bearer secret-token");
+		var response = new MockHttpServletResponse();
+
+		blankSecretFilter.doFilter(request, response, chain());
+
+		assertThat(response.getStatus()).isEqualTo(401);
+		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+	}
+
+	@Test
 	void rejectsOversizedBodiesBeforeController() throws Exception {
 		var request = request("Bearer secret-token");
 		request.setContent(new byte[4097]);

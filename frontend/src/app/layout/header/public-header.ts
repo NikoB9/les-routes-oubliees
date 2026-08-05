@@ -1,4 +1,4 @@
-import { Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
@@ -15,10 +15,11 @@ import { PortalIdentityStore } from '../../core/portal/portal-identity.store';
 export class PublicHeaderComponent {
   private readonly settingsApi = inject(SiteSettingsApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
   protected readonly portal = inject(PortalIdentityStore);
 
   protected readonly fallbackLogo = '/assets/brand/logo-compagnie-des-routes-oubliees.png?v=12fa08d';
-  protected readonly logoutUrl = 'https://lesroutesoubliees.nicolas-bourneuf.fr/cdn-cgi/access/logout';
+  protected readonly logoutUrl = '/cdn-cgi/access/logout';
   protected readonly profileMenuOpen = signal(false);
   protected readonly profileName = computed(() => {
     const identity = this.portal.identity();
@@ -55,6 +56,16 @@ export class PublicHeaderComponent {
   @HostListener('document:keydown.escape')
   protected closeProfileMenu(): void {
     this.profileMenuOpen.set(false);
+  }
+
+  @HostListener('document:click', ['$event'])
+  protected closeProfileMenuOnOutsideClick(event: MouseEvent): void {
+    if (!this.profileMenuOpen()) {
+      return;
+    }
+    if (!this.elementRef.nativeElement.contains(event.target as Node | null)) {
+      this.profileMenuOpen.set(false);
+    }
   }
 
   protected toggleProfileMenu(): void {

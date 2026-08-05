@@ -1,7 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, ElementRef, OnDestroy, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, interval, switchMap } from 'rxjs';
+import { catchError, finalize, interval, switchMap } from 'rxjs';
 
 import { PortalIdentityStore } from '../../../core/portal/portal-identity.store';
 import { LoadingIndicatorComponent } from '../../../shared/components/loading-indicator/loading-indicator';
@@ -50,6 +50,8 @@ export class RadarPage implements OnDestroy {
   private watchId: number | null = null;
   private locationInterval: ReturnType<typeof window.setInterval> | null = null;
   private lastLocation: RadarLocationPayload | null = null;
+  private locationPublishInFlight = false;
+  private locationPublishPending = false;
   private readonly visibilityListener = () => this.sendLatestLocation();
   private snapshotLoaded = false;
 
@@ -158,7 +160,10 @@ export class RadarPage implements OnDestroy {
   }
 
   private handleLocationError(error: GeolocationPositionError) {
+    this.stopLocationInterval();
+    this.lastLocation = null;
     if (error.code === error.PERMISSION_DENIED) {
+      this.stopLocationWatch();
       this.locationState.set('denied');
     }
     else if (error.code === error.POSITION_UNAVAILABLE) {
@@ -205,7 +210,25 @@ export class RadarPage implements OnDestroy {
     if (!this.lastLocation || this.locationState() !== 'ready') {
       return;
     }
-    this.radarApi.updateLocation(this.lastLocation).subscribe({ error: () => this.streamError.set(true) });
+    if (this.locationPublishInFlight) {
+      this.locationPublishPending = true;
+      return;
+    }
+    const payload = this.lastLocation;
+    this.locationPublishInFlight = true;
+    this.locationPublishPending = false;
+    this.radarApi
+      .updateLocation(payload)
+      .pipe(
+        finalize(() => {
+          this.locationPublishInFlight = false;
+          if (this.locationPublishPending) {
+            this.locationPublishPending = false;
+            this.sendLatestLocation();
+          }
+        }),
+      )
+      .subscribe({ error: () => this.streamError.set(true) });
   }
 
   private applySnapshot(snapshot: RadarSnapshot) {

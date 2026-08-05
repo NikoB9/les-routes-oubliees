@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
@@ -42,7 +43,8 @@ class SecurityConfig {
 				.requestMatchers("/api/public/**", "/media/**").permitAll()
 				.requestMatchers("/api/portal/**", "/api/radar/**").hasRole("USER")
 				.requestMatchers("/api/admin/**").hasRole("ADMIN")
-				.requestMatchers(HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH).permitAll()
+				.requestMatchers(HttpMethod.POST, HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH).hasRole("HOME_ASSISTANT")
+				.requestMatchers(HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH).denyAll()
 				.requestMatchers("/api/integrations/**").denyAll()
 				.anyRequest().permitAll())
 			.sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

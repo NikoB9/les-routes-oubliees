@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { computed, signal } from '@angular/core';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 
 import { PortalIdentityStore } from '../../../core/portal/portal-identity.store';
 import { PortalMe } from '../../../core/portal/portal.models';
@@ -134,6 +134,50 @@ describe('RadarPage', () => {
     expect(radarApi.updateLocation).toHaveBeenCalledTimes(1);
   });
 
+  it('does not publish concurrent locations and keeps only the latest pending position', async () => {
+    const firstPublish = new Subject<void>();
+    radarApi.updateLocation.mockImplementationOnce(() => firstPublish.asObservable());
+    radarApi.updateLocation.mockImplementation(() => of(undefined));
+    const component = fixture.componentInstance as unknown as {
+      ensureMap: () => Promise<void>;
+      handlePosition: (position: GeolocationPosition) => Promise<void>;
+    };
+    vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
+
+    await component.handlePosition(position(46.1, -1.1));
+    await component.handlePosition(position(46.2, -1.2));
+
+    expect(radarApi.updateLocation).toHaveBeenCalledTimes(1);
+
+    firstPublish.complete();
+
+    expect(radarApi.updateLocation).toHaveBeenCalledTimes(2);
+    expect(radarApi.updateLocation).toHaveBeenLastCalledWith({
+      latitude: 46.2,
+      longitude: -1.2,
+      accuracyM: 6,
+      observedAt: '2026-08-05T12:00:00.000Z',
+    } satisfies RadarLocationPayload);
+  });
+
+  it('stops publishing when geolocation permission is lost', async () => {
+    const component = fixture.componentInstance as unknown as {
+      ensureMap: () => Promise<void>;
+      handleLocationError: (error: GeolocationPositionError) => void;
+      handlePosition: (position: GeolocationPosition) => Promise<void>;
+      watchId: number;
+    };
+    vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
+    component.watchId = 91;
+
+    await component.handlePosition(position(46.1, -1.1));
+    component.handleLocationError(locationError(1));
+    vi.advanceTimersByTime(70_000);
+
+    expect(clearWatch).toHaveBeenCalledWith(91);
+    expect(radarApi.updateLocation).toHaveBeenCalledTimes(1);
+  });
+
   function position(latitude: number, longitude: number): GeolocationPosition {
     return {
       coords: {
@@ -148,6 +192,16 @@ describe('RadarPage', () => {
       },
       timestamp: Date.parse('2026-08-05T12:00:00Z'),
       toJSON: () => ({}),
+    };
+  }
+
+  function locationError(code: number): GeolocationPositionError {
+    return {
+      code,
+      message: 'Permission denied',
+      PERMISSION_DENIED: 1,
+      POSITION_UNAVAILABLE: 2,
+      TIMEOUT: 3,
     };
   }
 });
