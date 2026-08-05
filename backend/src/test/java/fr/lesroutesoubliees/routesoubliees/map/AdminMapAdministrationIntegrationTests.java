@@ -54,7 +54,7 @@ class AdminMapAdministrationIntegrationTests {
 	@Test
 	void canCreatePreviewAndActivatePublishedMapVision() throws Exception {
 		var created = mvc.perform(post("/api/admin/map-views")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -76,14 +76,14 @@ class AdminMapAdministrationIntegrationTests {
 		var id = JSON.readTree(created).get("id").asString();
 
 		mvc.perform(get("/api/admin/map-preview")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.param("visionId", id))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.vision.name").value("Carte finale admin"))
 			.andExpect(jsonPath("$.markers", hasSize(5)));
 
 		mvc.perform(post("/api/admin/map-views/{id}/activate", id)
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.active").value(true));
@@ -99,12 +99,12 @@ class AdminMapAdministrationIntegrationTests {
 	@Test
 	void refusesDraftActivationAndUnsafeMapAssetPath() throws Exception {
 		mvc.perform(post("/api/admin/map-views/40000000-0000-0000-0000-000000000002/activate")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf()))
 			.andExpect(status().isBadRequest());
 
 		mvc.perform(post("/api/admin/map-views")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -123,7 +123,7 @@ class AdminMapAdministrationIntegrationTests {
 	@Test
 	void acceptsMediaLibraryImageAsMapBackground() throws Exception {
 		mvc.perform(post("/api/admin/map-views")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -144,7 +144,7 @@ class AdminMapAdministrationIntegrationTests {
 	@Test
 	void canUpdateMarkerPositionAndHideItFromPublicMap() throws Exception {
 		mvc.perform(put("/api/admin/map-markers/60000000-0000-0000-0000-000000000001")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -165,7 +165,7 @@ class AdminMapAdministrationIntegrationTests {
 			.andExpect(jsonPath("$.labelOffsetPx").value(28))
 			.andExpect(jsonPath("$.active").value(false));
 
-		mvc.perform(get("/api/admin/map-markers").with(user("admin@example.invalid")))
+		mvc.perform(get("/api/admin/map-markers").with(user("admin@example.invalid").roles("ADMIN")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$[*].title", hasItem("Premier appel deplace")));
 
@@ -177,7 +177,7 @@ class AdminMapAdministrationIntegrationTests {
 	@Test
 	void refusesInvalidMarkerLabelOffset() throws Exception {
 		mvc.perform(put("/api/admin/map-markers/60000000-0000-0000-0000-000000000001")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""

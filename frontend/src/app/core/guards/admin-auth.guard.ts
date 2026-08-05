@@ -9,8 +9,8 @@ export const adminAuthGuard: CanActivateFn = () => {
   const router = inject(Router);
 
   return authService.currentSession().pipe(
-    map((session) => (session.authenticated ? true : router.createUrlTree(['/admin/login']))),
-    catchError(() => of(router.createUrlTree(['/admin/login'], {
+    map((session) => (session.authenticated ? true : router.createUrlTree(['/admin/forbidden']))),
+    catchError(() => of(router.createUrlTree(['/admin/forbidden'], {
       queryParams: { error: 'access_denied' },
     }))),
   );

@@ -29,6 +29,12 @@ export const routes: Routes = [
     title: 'Quête - Les Routes Oubliées',
   },
   {
+    path: 'radar',
+    loadComponent: () =>
+      import('./features/radar/radar-page/radar-page').then((module) => module.RadarPage),
+    title: "Le Radar d'Aurelune - Les Routes Oubliées",
+  },
+  {
     path: 'admin',
     loadChildren: () => import('./features/admin/admin.routes').then((module) => module.adminRoutes),
   },

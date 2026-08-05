@@ -5,7 +5,7 @@ export interface PublicNavLink {
   readonly description: string;
   readonly path: string;
   readonly exact: boolean;
-  readonly icon: 'home' | 'map' | 'notebook';
+  readonly icon: 'home' | 'map' | 'notebook' | 'radar';
 }
 
 export const exactRouteMatch: IsActiveMatchOptions = {
@@ -43,5 +43,12 @@ export const publicNavLinks: readonly PublicNavLink[] = [
     path: '/notebook',
     exact: false,
     icon: 'notebook',
+  },
+  {
+    label: 'Radar',
+    description: 'Les échos vivants de la Compagnie',
+    path: '/radar',
+    exact: false,
+    icon: 'radar',
   },
 ];

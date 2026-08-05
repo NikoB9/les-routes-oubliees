@@ -18,6 +18,9 @@ import {
   AdminMapPreview,
   AdminMapVision,
   AdminMapVisionUpsert,
+  AdminPortalAssignmentUpdate,
+  AdminPortalIdentity,
+  AdminRadarSettings,
   AdminSiteSettings,
   AdminSiteSettingsUpdate,
 } from './admin-api.models';
@@ -167,5 +170,24 @@ export class AdminApiService {
     return this.http.get<AdminMapPreview>('/api/admin/map-preview', {
       params: { visionId },
     });
+  }
+
+  getRadarSettings() {
+    return this.http.get<AdminRadarSettings>('/api/admin/radar/settings');
+  }
+
+  updateRadarSettings(treasureVisible: boolean) {
+    return this.http.put<AdminRadarSettings>('/api/admin/radar/settings', { treasureVisible });
+  }
+
+  listPortalIdentities() {
+    return this.http.get<AdminPortalIdentity[]>('/api/admin/portal-identities');
+  }
+
+  updatePortalAssignment(id: string, payload: AdminPortalAssignmentUpdate) {
+    return this.http.put<AdminPortalIdentity>(
+      `/api/admin/portal-identities/${encodeURIComponent(id)}/assignment`,
+      payload,
+    );
   }
 }

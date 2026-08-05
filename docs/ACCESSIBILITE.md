@@ -96,7 +96,7 @@ Lorsqu’une modale est fermée, le focus revient à l’élément déclencheur.
 
 L’easter egg ne doit pas rendre l’administration impossible à utiliser au clavier.
 
-La route `/admin/login` reste accessible directement aux administrateurs qui connaissent son adresse.
+La route `/admin` reste accessible directement aux administrateurs authentifiés par Cloudflare Access.
 
 Si le déclencheur de l’easter egg est interactif :
 
@@ -336,7 +336,7 @@ Scénarios minimaux :
 
 * ordre de tabulation du layout public ;
 * navigation mobile ;
-* accès clavier à `/admin/login` et à l’easter egg ;
+* accès clavier à `/admin` et à l’easter egg ;
 * formulaire admin invalide avec résumé d’erreurs et focus ;
 * modale admin, ouverture et fermeture ;
 * carnet sous forme d’onglets ou navigation alternative ;
@@ -400,3 +400,16 @@ Prévoir avant la mise en production une page publique indiquant :
 * la date de l’audit.
 
 Ne pas annoncer une conformité totale sans audit correspondant.
+## Addendum 2026-08-05 - Radar
+
+La carte Leaflet du Radar doit être accompagnée d'une alternative textuelle listant les mêmes positions importantes.
+
+Exigences spécifiques :
+
+* la sélection d'identité utilise une vraie modale accessible ;
+* le focus reste dans la modale tant que l'utilisateur n'a pas choisi un aventurier ou le mode invité ;
+* le refus de géolocalisation affiche une page d'erreur structurée sans créer la carte ;
+* les commandes de carte `Recentrer` et `Voir toute la Compagnie` sont utilisables au clavier ;
+* les positions anciennes sont signalées autrement que par la couleur ;
+* les mises à jour temps réel ne doivent pas provoquer d'annonce vocale continue ;
+* les coordonnées, précisions et heures doivent être disponibles hors interaction visuelle avec la carte.

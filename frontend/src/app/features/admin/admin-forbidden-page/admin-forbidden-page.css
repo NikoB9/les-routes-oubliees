@@ -1,0 +1,21 @@
+.forbidden-page {
+  max-width: 42rem;
+  display: grid;
+  gap: 1rem;
+  margin: 4rem auto;
+  padding: 1rem;
+  background: #f8f0df;
+  border: 1px solid #c8a96c;
+  border-radius: 8px;
+}
+
+.forbidden-page h1,
+.forbidden-page p {
+  margin: 0;
+}
+
+.forbidden-page a {
+  justify-self: start;
+  color: #5b3d24;
+  font-weight: 800;
+}

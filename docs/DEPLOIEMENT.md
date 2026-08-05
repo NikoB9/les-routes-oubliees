@@ -123,7 +123,7 @@ Le reverse proxy :
 * sert les fichiers Angular ;
 * redirige les routes frontend vers `index.html`;
 * transmet `/api/` au backend ;
-* transmet les routes OAuth2 nécessaires ;
+* transmet le JWT Cloudflare Access et les routes API nécessaires ;
 * transmet `/media/` selon la stratégie retenue ;
 * ajoute ou préserve les en-têtes de proxy ;
 * limite la taille des uploads ;
@@ -148,7 +148,7 @@ Pour la PWA :
 
 * HTTPS est obligatoire en production ;
 * les fichiers du service worker Angular doivent être servis depuis la racine du frontend ;
-* les routes admin, OAuth2 et login ne doivent pas être servies depuis un cache applicatif hors ligne ;
+* les routes admin, Radar, portail, intégration et écriture ne doivent pas être servies depuis un cache applicatif hors ligne ;
 * après déploiement, vérifier l'installation PWA, le chargement hors ligne des pages publiques et la mise à jour du snapshot public après modification d'un contenu publié.
 
 Routage indicatif :
@@ -156,20 +156,21 @@ Routage indicatif :
 ```text
 /                 -> Angular
 /api/             -> Spring Boot
-/oauth2/          -> Spring Boot
+/api/portal/      -> Spring Boot
+/api/radar/       -> Spring Boot
 /login/           -> Spring Boot
 /media/           -> Spring Boot ou répertoire contrôlé
 /actuator/health  -> accès local uniquement
 ```
 
-## 8. Domaine et Google OIDC
+## 8. Domaine et Cloudflare Access
 
 Configurer dans Google l’URI de redirection exacte de production.
 
 Format Spring Security habituel :
 
 ```text
-https://DOMAINE/login/oauth2/code/google
+https://DOMAINE/cdn-cgi/access/login
 ```
 
 Ne pas utiliser une URI HTTP en production.
@@ -216,8 +217,10 @@ DATABASE_URL=jdbc:postgresql://127.0.0.1:5432/routes_oubliees
 DATABASE_USERNAME=routes_oubliees
 DATABASE_PASSWORD=CHANGE_ME
 
-GOOGLE_CLIENT_ID=CHANGE_ME
-GOOGLE_CLIENT_SECRET=CHANGE_ME
+CF_ACCESS_ISSUER=https://TEAM.cloudflareaccess.com
+CF_ACCESS_AUDIENCE=CHANGE_ME
+CF_ACCESS_CERTS_URL=https://TEAM.cloudflareaccess.com/cdn-cgi/access/certs
+CF_ACCESS_HOME_ASSISTANT_SUBJECT=CHANGE_ME
 ADMIN_BOOTSTRAP_EMAILS=admin@example.invalid
 
 MEDIA_STORAGE_PATH=/var/lib/les-routes-oubliees/media
@@ -642,3 +645,44 @@ Le script serveur :
 * conserve les cinq dernieres releases ;
 * supprime l'archive temporaire ;
 * ne modifie jamais directement une ancienne release.
+## Addendum 2026-08-05 - Cloudflare Access, Radar et Nginx
+
+Variables de production à renseigner :
+
+```text
+CF_ACCESS_ISSUER=https://TEAM.cloudflareaccess.com
+CF_ACCESS_AUDIENCE=AUD_TAG_APPLICATION_HUMAINE
+CF_ACCESS_CERTS_URL=https://TEAM.cloudflareaccess.com/cdn-cgi/access/certs
+CF_ACCESS_HOME_ASSISTANT_SUBJECT=SUBJECT_DU_SERVICE_TOKEN_HOME_ASSISTANT
+```
+
+Cloudflare Zero Trust :
+
+* protéger `/radar`, `/radar/*`, `/admin`, `/admin/*`, `/api/portal/*`, `/api/radar/*` et `/api/admin/*` avec une politique humaine limitée aux emails autorisés ;
+* activer Google et le code email à usage unique si souhaité ;
+* ne pas créer de règle qui autorise toute adresse email ;
+* créer une application Access plus spécifique pour `/api/integrations/home-assistant/*` avec une politique `Service Auth` et un Service Token dédié.
+
+Home Assistant doit envoyer :
+
+```text
+CF-Access-Client-Id: ...
+CF-Access-Client-Secret: ...
+```
+
+Nginx :
+
+* autoriser `Permissions-Policy: geolocation=(self)` ;
+* transmettre `Cf-Access-Jwt-Assertion` au backend ;
+* désactiver le buffering et le cache sur `/api/radar/events` ;
+* autoriser le domaine des tuiles Leaflet dans la CSP ;
+* ne plus router les anciens chemins OAuth2 Google internes si le backend ne les expose plus.
+
+Après modification du fichier de production, valider puis recharger :
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Le fichier versionné de référence est `infra/nginx/les-routes-oubliees.conf.example`. Le fichier de production à adapter est généralement `/etc/nginx/sites-available/les-routes-oubliees`, sauf installation différente.

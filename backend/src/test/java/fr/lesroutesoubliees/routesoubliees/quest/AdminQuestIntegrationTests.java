@@ -48,7 +48,7 @@ class AdminQuestIntegrationTests {
 
 	@Test
 	void listsTheFiveFixedQuestTabsForAdministrators() throws Exception {
-		mvc.perform(get("/api/admin/quest-tabs").with(user("admin@example.invalid")))
+		mvc.perform(get("/api/admin/quest-tabs").with(user("admin@example.invalid").roles("ADMIN")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$", hasSize(5)))
 			.andExpect(jsonPath("$[0].code").value("QUEST_1"))
@@ -57,14 +57,14 @@ class AdminQuestIntegrationTests {
 
 	@Test
 	void refusesWriteWithoutCsrfToken() throws Exception {
-		mvc.perform(post("/api/admin/quest-tabs/QUEST_3/publish").with(user("admin@example.invalid")))
+		mvc.perform(post("/api/admin/quest-tabs/QUEST_3/publish").with(user("admin@example.invalid").roles("ADMIN")))
 			.andExpect(status().isForbidden());
 	}
 
 	@Test
 	void keepsDraftQuestHiddenEvenIfUpdateRequestsVisibility() throws Exception {
 		mvc.perform(put("/api/admin/quest-tabs/QUEST_3")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -93,7 +93,7 @@ class AdminQuestIntegrationTests {
 	@Test
 	void previewsMarkdownWithoutPersistingQuest() throws Exception {
 		mvc.perform(post("/api/admin/quest-tabs/preview")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -116,7 +116,7 @@ class AdminQuestIntegrationTests {
 			.andExpect(jsonPath("$.extraContentHtml").value("<p></p>"))
 			.andExpect(jsonPath("$.adminDraftHtml").value("<p><strong>Secret</strong></p>"));
 
-		mvc.perform(get("/api/admin/quest-tabs/QUEST_3").with(user("admin@example.invalid")))
+		mvc.perform(get("/api/admin/quest-tabs/QUEST_3").with(user("admin@example.invalid").roles("ADMIN")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.title").value("Troisième quête brouillon"));
 	}
@@ -124,7 +124,7 @@ class AdminQuestIntegrationTests {
 	@Test
 	void canPublishThenHideAQuest() throws Exception {
 		mvc.perform(post("/api/admin/quest-tabs/QUEST_3/publish")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"visibleToPlayers\":true}"))
@@ -136,7 +136,7 @@ class AdminQuestIntegrationTests {
 			.andExpect(status().isOk());
 
 		mvc.perform(post("/api/admin/quest-tabs/QUEST_3/hide")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.visibleToPlayers").value(false));

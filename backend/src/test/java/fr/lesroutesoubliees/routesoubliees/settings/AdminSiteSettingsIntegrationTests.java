@@ -59,7 +59,7 @@ class AdminSiteSettingsIntegrationTests {
 	@Test
 	void updatesSettingsAndPublishesMaintenanceState() throws Exception {
 		mvc.perform(put("/api/admin/settings")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -85,7 +85,7 @@ class AdminSiteSettingsIntegrationTests {
 			.andExpect(jsonPath("$.maintenanceMessage").value("Maintenance courte en cours."))
 			.andExpect(jsonPath("$.updatedBy").doesNotExist());
 
-		mvc.perform(get("/api/admin/audit-logs").with(user("admin@example.invalid")))
+		mvc.perform(get("/api/admin/audit-logs").with(user("admin@example.invalid").roles("ADMIN")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$[*].action", hasItem("SITE_SETTINGS_UPDATED")));
 	}
@@ -93,7 +93,7 @@ class AdminSiteSettingsIntegrationTests {
 	@Test
 	void rejectsInvalidSettingsValues() throws Exception {
 		mvc.perform(put("/api/admin/settings")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""

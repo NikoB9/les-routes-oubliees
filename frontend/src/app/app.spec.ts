@@ -99,11 +99,11 @@ describe('App', () => {
       link.textContent?.trim(),
     );
 
-    expect(desktopLinks).toEqual(['Accueil', 'Carte', 'Carnet']);
-    expect(mobileLinks).toEqual(['Accueil', 'Carte', 'Carnet']);
+    expect(desktopLinks).toEqual(['Accueil', 'Carte', 'Carnet', 'Radar']);
+    expect(mobileLinks).toEqual(['Accueil', 'Carte', 'Carnet', 'Radar']);
   });
 
-  it('should expose a direct accessible admin login link', async () => {
+  it('should expose a direct accessible admin portal link', async () => {
     const fixture = TestBed.createComponent(App);
     flushSettings();
     await fixture.whenStable();
@@ -113,7 +113,7 @@ describe('App', () => {
     const adminLink = compiled.querySelector<HTMLAnchorElement>('.admin-gate-link');
 
     expect(adminLink?.textContent).toContain('Accès admin');
-    expect(adminLink?.getAttribute('href')).toBe('/admin/login');
+    expect(adminLink?.getAttribute('href')).toBe('/admin');
   });
 
   it('should render the public maintenance banner', async () => {

@@ -32,8 +32,8 @@ Cloudflare Tunnel
 Reverse proxy
     ├── fichiers Angular
     ├── /api/*       ───────────────┐
-    ├── /oauth2/*                   │
-    ├── /login/*                    ▼
+    ├── /api/*                      │
+    ├── /media/*                    ▼
     └── /media/*             Spring Boot
                                   │
                                   │ JDBC
@@ -154,7 +154,7 @@ Principes :
 * le service worker cache le shell public et les assets versionnes ;
 * les medias uploades `/media/**` ne sont pas caches par le service worker tant que l'acces public n'est pas filtre par contenu publie ;
 * les API publiques GET peuvent etre mises en cache avec une strategie freshness courte pour permettre le mode avion ;
-* les API admin, OAuth2, login et operations d'ecriture ne sont pas mises en cache ;
+* les API admin, Radar, portail, intégration et opérations d'écriture ne sont pas mises en cache ;
 * le dernier snapshot public est stocke dans IndexedDB ;
 * la mise a jour du snapshot passe par une empreinte publique fournie par le backend ;
 * le snapshot ne contient que les donnees deja visibles via les API publiques ;
@@ -174,7 +174,7 @@ Routes publiques :
 Routes admin :
 
 ```text
-/admin/login
+/admin
 /admin
 /admin/home
 /admin/group
@@ -303,7 +303,7 @@ Opérations obligatoirement atomiques :
 ### 6.1 Choix
 
 * Google OpenID Connect ;
-* Spring Security OAuth2 Login ;
+* validation JWT Cloudflare Access ;
 * session serveur ;
 * cookie sécurisé ;
 * allowlist PostgreSQL.
@@ -313,11 +313,11 @@ Opérations obligatoirement atomiques :
 ```text
 Navigateur
     │
-    ├── GET /oauth2/authorization/google
+    ├── accès protégé par Cloudflare Access
     ▼
-Google
+Cloudflare Access
     │
-    ├── callback OIDC
+    ├── JWT transmis à l'origine
     ▼
 Spring Security
     │
@@ -585,3 +585,28 @@ Un ADR contient :
 * statut.
 
 Créer ce dossier uniquement lorsque la première décision structurante non couverte par ce document apparaît.
+## Addendum 2026-08-05 - Authentification Cloudflare Access et Radar
+
+L'administration et le module Radar sont protégés par Cloudflare Access en amont du reverse proxy.
+
+Le backend valide le JWT reçu dans l'en-tête `Cf-Access-Jwt-Assertion` avant d'attribuer les rôles :
+
+* `ROLE_USER` pour une identité humaine Access avec email validé par le JWT ;
+* `ROLE_ADMIN` lorsque l'email normalisé est actif dans `admin_allowed_emails` ;
+* `ROLE_HOME_ASSISTANT` pour le sujet de Service Token Cloudflare configuré.
+
+Les routes OAuth2 Google internes `/oauth2/**` et `/login/**` ne font plus partie de l'architecture cible.
+
+Nouveaux préfixes API :
+
+```text
+/api/portal
+/api/radar
+/api/integrations/home-assistant/radar
+/api/admin/radar
+/api/admin/portal-identities
+```
+
+Radar utilise SSE avec `SseEmitter`. Les positions des participants sont conservées uniquement en mémoire avec expiration courte. La position du trésor est stockée dans `radar_state`, mais n'est jamais exposée publiquement lorsque `treasure_visible=false`.
+
+Radar est exclu du cache PWA, d'IndexedDB et du snapshot hors ligne.

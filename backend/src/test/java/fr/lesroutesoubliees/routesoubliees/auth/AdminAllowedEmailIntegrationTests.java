@@ -71,7 +71,7 @@ class AdminAllowedEmailIntegrationTests {
 		var email = "Lot9-" + UUID.randomUUID() + "@example.invalid";
 
 		var result = mvc.perform(post("/api/admin/allowed-emails")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -87,14 +87,14 @@ class AdminAllowedEmailIntegrationTests {
 
 		var id = idFrom(result);
 
-		mvc.perform(get("/api/admin/audit-logs").with(user("admin@example.invalid")))
+		mvc.perform(get("/api/admin/audit-logs").with(user("admin@example.invalid").roles("ADMIN")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$[0].action").value("ADMIN_ALLOWED_EMAIL_CREATED"))
 			.andExpect(jsonPath("$[0].entityType").value("ADMIN_ALLOWED_EMAIL"))
 			.andExpect(jsonPath("$[0].actorEmail").value("admin@example.invalid"));
 
 		mvc.perform(put("/api/admin/allowed-emails/" + id)
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -107,7 +107,7 @@ class AdminAllowedEmailIntegrationTests {
 			.andExpect(jsonPath("$.label").value("Responsable secondaire"))
 			.andExpect(jsonPath("$.active").value(false));
 
-		mvc.perform(get("/api/admin/allowed-emails").with(user("admin@example.invalid")))
+		mvc.perform(get("/api/admin/allowed-emails").with(user("admin@example.invalid").roles("ADMIN")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$", not(empty())));
 	}
@@ -128,7 +128,7 @@ class AdminAllowedEmailIntegrationTests {
 			.id();
 
 		mvc.perform(put("/api/admin/allowed-emails/" + id)
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -140,7 +140,7 @@ class AdminAllowedEmailIntegrationTests {
 			.andExpect(status().isConflict());
 
 		mvc.perform(delete("/api/admin/allowed-emails/" + id)
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf()))
 			.andExpect(status().isConflict());
 	}
@@ -150,12 +150,12 @@ class AdminAllowedEmailIntegrationTests {
 		mvc.perform(get("/api/admin/dashboard"))
 			.andExpect(status().isForbidden());
 
-		mvc.perform(get("/api/admin/dashboard").with(user("admin@example.invalid")))
+		mvc.perform(get("/api/admin/dashboard").with(user("admin@example.invalid").roles("ADMIN")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.visibleQuestCount").exists())
 			.andExpect(jsonPath("$.latestAuditLogs").isArray());
 
-		mvc.perform(get("/api/admin/audit-logs").with(user("admin@example.invalid")))
+		mvc.perform(get("/api/admin/audit-logs").with(user("admin@example.invalid").roles("ADMIN")))
 			.andExpect(status().isOk());
 	}
 

@@ -196,3 +196,36 @@ export interface AdminMapPreview {
   vision: AdminMapVision;
   markers: AdminMapMarker[];
 }
+
+export type PortalAccessMode = 'UNASSIGNED' | 'ADVENTURER' | 'GUEST';
+
+export interface AdminPortalIdentity {
+  id: string;
+  normalizedEmail: string;
+  cloudflareSubject: string;
+  accessMode: PortalAccessMode;
+  adventurerId: string | null;
+  adventurerName: string | null;
+  selectedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminPortalAssignmentUpdate {
+  accessMode: PortalAccessMode;
+  adventurerId: string | null;
+}
+
+export interface AdminRadarTreasure {
+  latitude: number;
+  longitude: number;
+  accuracyM: number;
+  observedAt: string;
+  receivedAt: string;
+  stale: boolean;
+}
+
+export interface AdminRadarSettings {
+  treasureVisible: boolean;
+  treasure: AdminRadarTreasure | null;
+}

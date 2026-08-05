@@ -118,7 +118,7 @@ class AdminMediaIntegrationTests {
 		mvc.perform(multipart("/api/admin/media")
 				.file(svg)
 				.param("altText", "Image piegee")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf()))
 			.andExpect(status().isBadRequest());
 	}
@@ -131,7 +131,7 @@ class AdminMediaIntegrationTests {
 		publishQuestWithMediaReference(id);
 
 		mvc.perform(delete("/api/admin/media/" + id)
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf()))
 			.andExpect(status().isConflict());
 	}
@@ -141,13 +141,13 @@ class AdminMediaIntegrationTests {
 		return mvc.perform(multipart("/api/admin/media")
 			.file(png)
 			.param("altText", altText)
-			.with(user("admin@example.invalid"))
+			.with(user("admin@example.invalid").roles("ADMIN"))
 			.with(csrf()));
 	}
 
 	private void publishQuestWithMediaReference(String id) throws Exception {
 		mvc.perform(put("/api/admin/quest-tabs/QUEST_1")
-				.with(user("admin@example.invalid"))
+				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
