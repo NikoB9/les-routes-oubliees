@@ -1,5 +1,6 @@
 package fr.lesroutesoubliees.routesoubliees.radar;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -10,7 +11,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Component;
 
-import fr.lesroutesoubliees.routesoubliees.portal.PortalAccessMode;
 import fr.lesroutesoubliees.routesoubliees.portal.PortalIdentity;
 
 @Component
@@ -20,9 +20,14 @@ class RadarPresenceRegistry {
 	private static final Duration REMOVE_AFTER = Duration.ofSeconds(45);
 
 	private final ConcurrentHashMap<UUID, RadarParticipantResponse> participants = new ConcurrentHashMap<>();
+	private final Clock clock;
+
+	RadarPresenceRegistry(Clock clock) {
+		this.clock = clock;
+	}
 
 	void update(PortalIdentity identity, RadarIdentityResponse display, RadarLocationRequest request) {
-		var receivedAt = OffsetDateTime.now(ZoneOffset.UTC);
+		var receivedAt = now();
 		participants.put(identity.id(), new RadarParticipantResponse(
 			identity.id(),
 			identity.accessMode(),
@@ -37,18 +42,38 @@ class RadarPresenceRegistry {
 			false));
 	}
 
+	/**
+	 * Retire la presence d'une identite.
+	 *
+	 * @return {@code true} si une presence a reellement ete retiree
+	 */
+	boolean remove(UUID identityId) {
+		return identityId != null && participants.remove(identityId) != null;
+	}
+
 	List<RadarParticipantResponse> snapshot() {
-		prune();
-		var now = OffsetDateTime.now(ZoneOffset.UTC);
+		pruneExpired();
+		var now = now();
 		return participants.values().stream()
 			.map(participant -> withStaleFlag(participant, now))
 			.sorted(Comparator.comparing(RadarParticipantResponse::displayName, Comparator.nullsLast(String::compareToIgnoreCase)))
 			.toList();
 	}
 
-	private void prune() {
-		var now = OffsetDateTime.now(ZoneOffset.UTC);
-		participants.entrySet().removeIf(entry -> Duration.between(entry.getValue().receivedAt(), now).compareTo(REMOVE_AFTER) > 0);
+	/**
+	 * Retire les presences dont le dernier relevé depasse le TTL.
+	 *
+	 * <p>Appele par le balayage periodique du serveur : l'expiration ne doit pas dependre
+	 * d'une nouvelle publication de position.
+	 *
+	 * @return le nombre de presences retirees
+	 */
+	int pruneExpired() {
+		var now = now();
+		var before = participants.size();
+		participants.entrySet()
+			.removeIf(entry -> Duration.between(entry.getValue().receivedAt(), now).compareTo(REMOVE_AFTER) > 0);
+		return before - participants.size();
 	}
 
 	private RadarParticipantResponse withStaleFlag(RadarParticipantResponse participant, OffsetDateTime now) {
@@ -65,5 +90,9 @@ class RadarPresenceRegistry {
 			participant.observedAt(),
 			participant.receivedAt(),
 			stale);
+	}
+
+	private OffsetDateTime now() {
+		return OffsetDateTime.now(clock).withOffsetSameInstant(ZoneOffset.UTC);
 	}
 }

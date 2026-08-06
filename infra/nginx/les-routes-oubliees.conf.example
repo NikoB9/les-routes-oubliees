@@ -38,6 +38,23 @@ server {
         add_header Cache-Control "no-store" always;
     }
 
+    # Publication de position Home Assistant : seul chemin exempte de Cloudflare Access.
+    # Le corps utile fait quelques centaines d'octets ; la limite est volontairement
+    # restreinte a ce seul emplacement et ne s'applique pas aux autres routes.
+    location = /api/integrations/home-assistant/radar/treasure-position {
+        client_max_body_size 4k;
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port 443;
+        proxy_set_header Authorization $http_authorization;
+        add_header Cache-Control "no-store" always;
+    }
+
     location ~ ^/(api|media)/ {
         proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;

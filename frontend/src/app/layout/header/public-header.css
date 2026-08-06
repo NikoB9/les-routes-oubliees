@@ -29,7 +29,8 @@
 
 .brand:focus-visible,
 .profile-button:focus-visible,
-.profile-panel a:focus-visible {
+.profile-panel a:focus-visible,
+.profile-panel button:focus-visible {
   outline: 3px solid #f1c76d;
   outline-offset: 3px;
 }
@@ -138,7 +139,8 @@
   box-shadow: 0 0.75rem 1.5rem rgb(0 0 0 / 30%);
 }
 
-.profile-panel a {
+.profile-panel a,
+.profile-panel button {
   padding: 0.7rem 0.8rem;
   color: #2d2017;
   font-weight: 800;
@@ -146,7 +148,17 @@
   border-radius: 6px;
 }
 
-.profile-panel a:hover {
+.profile-panel button {
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 800;
+  text-align: start;
+  cursor: pointer;
+}
+
+.profile-panel a:hover,
+.profile-panel button:hover {
   background: #ead7ab;
 }
 

@@ -1,5 +1,7 @@
 # Radar d'Aurelune
 
+> Note 2026-08-06 : plan historique. L'etat final est decrit par `docs/exec-plans/2026-08-06-finalisation-securite-radar-accessibilite.md`, `docs/ARCHITECTURE.md` et `docs/DEPLOIEMENT.md`. Depuis la finalisation : toutes les API humaines, y compris `/api/public/**` et `/media/**`, exigent un JWT Cloudflare valide ; le secret Home Assistant n'a plus aucune valeur de secours ; la position n'est publiee que pendant l'affichage de Radar, avec retrait immediat a la sortie normale et expiration serveur obligatoire ; les anciens flux Spring OAuth2 internes et la page `/admin/login` n'existent plus.
+
 ## Objectif
 
 Ajouter un module `Radar` protege par Cloudflare Access permettant aux aventuriers authentifies de partager leur position en temps reel, de voir la position des autres participants et, lorsque l'administration l'autorise, la position de la balise du tresor.

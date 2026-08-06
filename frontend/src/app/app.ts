@@ -10,6 +10,7 @@ import {
   RouterOutlet,
 } from '@angular/router';
 
+import { CloudflareAccessSessionService } from './core/api/cloudflare-access-session.service';
 import { DesktopNavigationComponent } from './layout/desktop-navigation/desktop-navigation';
 import { PublicHeaderComponent } from './layout/header/public-header';
 import { MobileNavigationComponent } from './layout/mobile-navigation/mobile-navigation';
@@ -37,6 +38,7 @@ import { PwaInstallPromptComponent } from './shared/components/pwa-install-promp
 export class App {
   protected readonly isNavigating = signal(false);
   protected readonly pwaPrompt = inject(PwaInstallPromptService);
+  protected readonly accessSession = inject(CloudflareAccessSessionService);
 
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);

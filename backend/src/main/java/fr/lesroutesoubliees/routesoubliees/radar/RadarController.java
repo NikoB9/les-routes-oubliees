@@ -7,6 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -49,6 +50,18 @@ class RadarController {
 		return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
 	}
 
+	/**
+	 * Retire la presence de l'utilisateur authentifie lors d'une sortie normale de Radar.
+	 *
+	 * <p>Aucun identifiant fourni par le client n'est accepte : seule l'identite issue du
+	 * JWT valide est utilisee. L'operation est idempotente.
+	 */
+	@DeleteMapping("/me/location")
+	ResponseEntity<Void> removeMyLocation(Authentication authentication) {
+		radar.removeMyLocation(principal(authentication));
+		return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+	}
+
 	private CloudflareAccessPrincipal principal(Authentication authentication) {
 		return (CloudflareAccessPrincipal) authentication.getPrincipal();
 	}
@@ -68,10 +81,24 @@ class HomeAssistantRadarController {
 		this.radar = radar;
 	}
 
+	/**
+	 * Publie un releve tresor.
+	 *
+	 * <p>{@code 204 No Content} lorsque la mesure est appliquee, {@code 200 OK} avec un
+	 * statut minimal lorsqu'elle est ignoree car non strictement plus recente. La mise a
+	 * jour n'etant jamais differee, {@code 202 Accepted} serait trompeur.
+	 */
 	@PostMapping("/treasure-position")
-	ResponseEntity<Void> updateTreasurePosition(@Valid @RequestBody TreasurePositionRequest request) {
-		radar.updateTreasurePosition(request);
-		return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+	ResponseEntity<TreasureUpdateStatusResponse> updateTreasurePosition(
+		@Valid @RequestBody TreasurePositionRequest request
+	) {
+		var outcome = radar.updateTreasurePosition(request);
+		if (outcome == TreasureUpdateOutcome.APPLIED) {
+			return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+		}
+		return ResponseEntity.ok()
+			.cacheControl(CacheControl.noStore())
+			.body(TreasureUpdateStatusResponse.ignored());
 	}
 }
 
@@ -106,6 +133,9 @@ class AdminRadarSettingsController {
 @org.springframework.stereotype.Component
 class RadarHeartbeat {
 
+	/** Intervalle du balayage des presences expirees, en millisecondes. */
+	static final long PRESENCE_SWEEP_INTERVAL_MS = 5000;
+
 	private final RadarService radar;
 
 	RadarHeartbeat(RadarService radar) {
@@ -115,5 +145,14 @@ class RadarHeartbeat {
 	@Scheduled(fixedDelay = 20000)
 	void heartbeat() {
 		radar.heartbeat();
+	}
+
+	/**
+	 * Retire les presences expirees et diffuse leur disparition sans attendre une nouvelle
+	 * publication de position.
+	 */
+	@Scheduled(fixedDelay = PRESENCE_SWEEP_INTERVAL_MS)
+	void sweepExpiredPresences() {
+		radar.sweepExpiredPresences();
 	}
 }

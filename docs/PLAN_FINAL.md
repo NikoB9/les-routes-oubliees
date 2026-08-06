@@ -36,7 +36,7 @@ Peut :
 
 * consulter les pages de contenu ;
 * voir uniquement les contenus publiés et révélés ;
-* naviguer sans compte ;
+* naviguer sans compte applicatif : aucune inscription ni mot de passe n’existe, l’accès au site est ouvert par Cloudflare Access qui protège la totalité de l’hôte ;
 * consulter le site sur ordinateur, tablette ou téléphone.
 
 Ne peut pas :
@@ -403,14 +403,14 @@ Le geste exact de l’easter egg sera choisi lors du lot 9. Cette décision n’
 
 Flux attendu :
 
-1. l’utilisateur ouvre la connexion ;
-2. il choisit « Se connecter avec Cloudflare Access » ;
-3. Cloudflare Access authentifie l’utilisateur ;
-4. le backend reçoit et valide l’identité OpenID Connect ;
-5. le backend vérifie que l’email est confirmé ;
-6. le backend normalise l’adresse ;
-7. le backend vérifie l’allowlist ;
-8. une session admin est créée si l’accès est autorisé ;
+1. l’utilisateur ouvre une URL du site ;
+2. Cloudflare Access intercepte la requête avant l’origine, aucun écran de connexion applicatif n’existe ;
+3. Cloudflare Access authentifie l’utilisateur et injecte son assertion sur chaque requête proxifiée ;
+4. le backend valide le JWT Cloudflare : signature, `iss`, `aud` et horodatages ;
+5. le backend normalise l’adresse email portée par le jeton ;
+6. le backend vérifie l’allowlist administrateur pour les routes `/api/admin/**` ;
+7. aucune session applicative n’est créée : chaque requête est validée indépendamment ;
+8. la déconnexion passe par `/cdn-cgi/access/logout` ;
 9. sinon, l’accès est refusé.
 
 Message de refus :

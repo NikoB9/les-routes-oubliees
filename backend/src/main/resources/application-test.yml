@@ -5,3 +5,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+
+routes-oubliees:
+  radar:
+    home-assistant:
+      # Valeur de test dediee, sans rapport avec un secret reel.
+      token: integration-test-home-assistant-bearer-0123456789abcdef

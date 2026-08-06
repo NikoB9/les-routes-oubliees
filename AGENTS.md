@@ -58,7 +58,7 @@ En cas de contradiction :
 * Maven Wrapper ;
 * Spring Web ;
 * Spring Security ;
-* OAuth2 Login / OpenID Connect avec Google ;
+* validation du JWT Cloudflare Access (serveur de ressources OAuth2, sans flux de connexion applicatif) ;
 * Spring Data JPA ;
 * Bean Validation ;
 * Flyway ;
@@ -471,22 +471,25 @@ Règles :
 
 ## 10. Authentification et autorisation
 
-L’administration utilise Google OpenID Connect.
+L’accès humain est protégé par Cloudflare Access devant l’origine. Le backend valide le JWT Cloudflare et conserve l’autorisation applicative.
 
 Règles non négociables :
 
-* l’easter egg révèle uniquement l’accès à la connexion ;
-* l’easter egg n’accorde aucun droit ;
+* l’hôte humain est entièrement protégé par Cloudflare Access ;
+* toutes les API humaines, y compris `/api/public/**` et `/media/**`, exigent un JWT Cloudflare valide côté backend ;
+* la seule exception est le `POST` exact de publication de position Home Assistant, authentifié par un Bearer applicatif ;
 * toutes les routes admin sont protégées côté backend ;
-* l’adresse email doit être vérifiée par le fournisseur ;
+* l’adresse email provient du jeton validé, jamais d’un en-tête non signé ;
 * l’adresse doit figurer dans l’allowlist active ;
 * les contrôles ne doivent jamais reposer uniquement sur Angular ;
 * aucune authentification locale par mot de passe ;
+* aucun flux de connexion applicatif : la déconnexion passe par `/cdn-cgi/access/logout` ;
 * aucune clé ou secret dans le frontend ;
 * aucun token d’authentification persistant dans `localStorage`;
-* utiliser une session serveur et un cookie sécurisé ;
+* aucune session applicative : chaque requête est validée indépendamment ;
 * conserver la protection CSRF pour les opérations d’écriture ;
-* éviter une politique CORS ouverte.
+* éviter une politique CORS ouverte ;
+* les opérations Cloudflare (applications Access, politiques, tunnel) restent manuelles et hors dépôt.
 
 ## 11. Contenus et publication
 
@@ -545,7 +548,7 @@ Règles :
 * le backend reste la source canonique des contenus publics ;
 * le cache hors ligne doit utiliser uniquement un snapshot public filtré par le backend ;
 * ne jamais inclure de brouillon, contenu masqué, champ admin, audit, email administrateur, secret ou Markdown source non public dans le snapshot ;
-* ne jamais mettre en cache les routes admin, les opérations d'écriture, OAuth2 ou les sessions ;
+* ne jamais mettre en cache les routes admin, portail, Radar, intégration ou les opérations d'écriture ;
 * le service worker ne doit pas contourner les contrôles backend ;
 * IndexedDB peut stocker le dernier snapshot public pour consultation hors ligne ;
 * la mise à jour du cache doit comparer une version ou empreinte publique avant de remplacer le snapshot local ;
@@ -645,7 +648,7 @@ Ne pas développer sans demande explicite :
 
 Ne jamais versionner :
 
-* client secret Google ;
+* secret Bearer Home Assistant ;
 * identifiants PostgreSQL ;
 * cookies ou sessions ;
 * clés Cloudflare ;

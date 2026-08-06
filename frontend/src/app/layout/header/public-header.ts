@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, HostListener, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
@@ -15,8 +15,10 @@ import { PortalIdentityStore } from '../../core/portal/portal-identity.store';
 export class PublicHeaderComponent {
   private readonly settingsApi = inject(SiteSettingsApiService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly elementRef = inject(ElementRef<HTMLElement>);
   protected readonly portal = inject(PortalIdentityStore);
+
+  private readonly profileMenu = viewChild<ElementRef<HTMLElement>>('profileMenu');
+  private readonly profileButton = viewChild<ElementRef<HTMLButtonElement>>('profileButton');
 
   protected readonly fallbackLogo = '/assets/brand/logo-compagnie-des-routes-oubliees.png?v=12fa08d';
   protected readonly logoutUrl = '/cdn-cgi/access/logout';
@@ -53,18 +55,30 @@ export class PublicHeaderComponent {
       });
   }
 
+  /** `Escape` ferme le panneau et restitue le focus au bouton de profil. */
   @HostListener('document:keydown.escape')
-  protected closeProfileMenu(): void {
-    this.profileMenuOpen.set(false);
+  protected closeProfileMenuWithEscape(): void {
+    if (!this.profileMenuOpen()) {
+      return;
+    }
+    this.closeProfileMenu();
+    this.profileButton()?.nativeElement.focus();
   }
 
+  /**
+   * Un clic réellement extérieur au panneau ferme celui-ci.
+   *
+   * La zone de référence est le conteneur du profil, pas l'en-tête entier : un clic sur le
+   * logo est donc extérieur et ferme le panneau.
+   */
   @HostListener('document:click', ['$event'])
   protected closeProfileMenuOnOutsideClick(event: MouseEvent): void {
     if (!this.profileMenuOpen()) {
       return;
     }
-    if (!this.elementRef.nativeElement.contains(event.target as Node | null)) {
-      this.profileMenuOpen.set(false);
+    const container = this.profileMenu()?.nativeElement;
+    if (!container || !container.contains(event.target as Node | null)) {
+      this.closeProfileMenu();
     }
   }
 
@@ -72,8 +86,14 @@ export class PublicHeaderComponent {
     this.profileMenuOpen.update((open) => !open);
   }
 
-  protected closeMenu(): void {
+  protected closeProfileMenu(): void {
     this.profileMenuOpen.set(false);
+  }
+
+  /** La déconnexion est une action : Cloudflare Access termine la session. */
+  protected logout(): void {
+    this.closeProfileMenu();
+    window.location.assign(this.logoutUrl);
   }
 
   private initials(name: string): string {

@@ -1,7 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, ElementRef, OnDestroy, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, finalize, interval, switchMap } from 'rxjs';
+import { Subscription, catchError, finalize, interval, switchMap } from 'rxjs';
 
 import { PortalIdentityStore } from '../../../core/portal/portal-identity.store';
 import { LoadingIndicatorComponent } from '../../../shared/components/loading-indicator/loading-indicator';
@@ -50,9 +50,11 @@ export class RadarPage implements OnDestroy {
   private watchId: number | null = null;
   private locationInterval: ReturnType<typeof window.setInterval> | null = null;
   private lastLocation: RadarLocationPayload | null = null;
+  private locationPublishSubscription: Subscription | null = null;
   private locationPublishInFlight = false;
   private locationPublishPending = false;
-  private readonly visibilityListener = () => this.sendLatestLocation();
+  private locationPublished = false;
+  private destroyed = false;
   private snapshotLoaded = false;
 
   constructor() {
@@ -63,14 +65,28 @@ export class RadarPage implements OnDestroy {
         this.loadSnapshot();
       }
     });
-    document.addEventListener('visibilitychange', this.visibilityListener);
   }
 
+  /**
+   * La géolocalisation, la publication et le flux SSE n'existent que pendant l'affichage
+   * du Radar. L'état détruit est positionné en premier afin qu'aucun callback tardif,
+   * timer ou `finalize()` ne puisse déclencher une nouvelle publication.
+   */
   ngOnDestroy() {
-    document.removeEventListener('visibilitychange', this.visibilityListener);
+    this.destroyed = true;
     this.stopLocationInterval();
     this.stopLocationWatch();
+    this.locationPublishSubscription?.unsubscribe();
+    this.locationPublishSubscription = null;
+    this.locationPublishInFlight = false;
+    this.locationPublishPending = false;
+    this.lastLocation = null;
     this.map?.remove();
+    this.map = null;
+    if (this.locationPublished) {
+      this.locationPublished = false;
+      this.radarApi.announceDeparture();
+    }
   }
 
   protected loadPortal() {
@@ -78,6 +94,9 @@ export class RadarPage implements OnDestroy {
   }
 
   protected requestLocation() {
+    if (this.destroyed) {
+      return;
+    }
     if (!window.isSecureContext) {
       this.locationState.set('insecure');
       return;
@@ -126,10 +145,13 @@ export class RadarPage implements OnDestroy {
   }
 
   private loadSnapshot() {
-    this.radarApi.snapshot().subscribe({
-      next: (snapshot) => this.applySnapshot(snapshot),
-      error: () => this.streamError.set(true),
-    });
+    this.radarApi
+      .snapshot()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (snapshot) => this.applySnapshot(snapshot),
+        error: () => this.streamError.set(true),
+      });
   }
 
   private startEvents() {
@@ -146,6 +168,9 @@ export class RadarPage implements OnDestroy {
   }
 
   private async handlePosition(position: GeolocationPosition) {
+    if (this.destroyed) {
+      return;
+    }
     const payload: RadarLocationPayload = {
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
@@ -160,6 +185,9 @@ export class RadarPage implements OnDestroy {
   }
 
   private handleLocationError(error: GeolocationPositionError) {
+    if (this.destroyed) {
+      return;
+    }
     this.stopLocationInterval();
     this.lastLocation = null;
     if (error.code === error.PERMISSION_DENIED) {
@@ -178,12 +206,12 @@ export class RadarPage implements OnDestroy {
   }
 
   private async ensureMap(location: RadarLocationPayload) {
-    if (this.map) {
+    if (this.map || this.destroyed) {
       return;
     }
     this.leaflet = await import('leaflet');
     const element = this.mapElement()?.nativeElement;
-    if (!element || !this.leaflet) {
+    if (!element || !this.leaflet || this.destroyed) {
       return;
     }
     this.map = this.leaflet.map(element, { zoomControl: true }).setView([location.latitude, location.longitude], 16);
@@ -197,14 +225,17 @@ export class RadarPage implements OnDestroy {
   }
 
   private startLocationInterval() {
-    if (this.locationInterval !== null) {
+    if (this.locationInterval !== null || this.destroyed) {
       return;
     }
+    // La dernière position connue est republiée toutes les sept secondes, même sans
+    // nouveau relevé du navigateur : un aventurier immobile reste visible malgré le TTL
+    // serveur de 45 secondes.
     this.locationInterval = window.setInterval(() => this.sendLatestLocation(), 7000);
   }
 
   private sendLatestLocation() {
-    if (document.visibilityState !== 'visible') {
+    if (this.destroyed) {
       return;
     }
     if (!this.lastLocation || this.locationState() !== 'ready') {
@@ -217,13 +248,18 @@ export class RadarPage implements OnDestroy {
     const payload = this.lastLocation;
     this.locationPublishInFlight = true;
     this.locationPublishPending = false;
-    this.radarApi
+    this.locationPublished = true;
+    this.locationPublishSubscription = this.radarApi
       .updateLocation(payload)
       .pipe(
         finalize(() => {
           this.locationPublishInFlight = false;
-          if (this.locationPublishPending) {
-            this.locationPublishPending = false;
+          this.locationPublishSubscription = null;
+          const pending = this.locationPublishPending;
+          this.locationPublishPending = false;
+          // Un `finalize()` déclenché par la destruction ne doit jamais relancer une
+          // publication : l'état détruit est vérifié avant tout nouvel envoi.
+          if (pending && !this.destroyed) {
             this.sendLatestLocation();
           }
         }),

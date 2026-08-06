@@ -109,7 +109,24 @@ PostgreSQL    : 127.0.0.1:5432
 
 Cloudflare Tunnel pointe vers le reverse proxy local.
 
-En developpement local, le profil Compose `app` publie aussi Spring Boot sur `127.0.0.1:${BACKEND_PORT:-8080}:8080` pour eviter une exposition reseau par defaut. En production LXC, le backend reste lance par systemd et joint uniquement via le proxy local.
+### 6.1 Adresse d’écoute Spring
+
+L’adresse d’écoute est pilotée par la variable `SERVER_ADDRESS` (`server.address` côté Spring). Les deux topologies du dépôt sont différentes et ne doivent pas être confondues.
+
+**Déploiement systemd sur l’hôte (production LXC)**
+
+* `SERVER_ADDRESS=127.0.0.1`, valeur déjà présente dans `infra/systemd/les-routes-oubliees.service.example` ;
+* Spring n’est joignable que depuis l’hôte ;
+* Nginx, sur la même machine, est le seul point d’entrée ;
+* aucun port Spring n’est ouvert sur les autres interfaces.
+
+**Déploiement en conteneurs (profil Compose `app`)**
+
+* `SERVER_ADDRESS=0.0.0.0` dans le conteneur backend : Nginx s’exécute dans un conteneur distinct et doit pouvoir joindre le service par le réseau Compose ;
+* la publication du port reste limitée au loopback de l’hôte : `127.0.0.1:${BACKEND_PORT:-8080}:8080` ;
+* l’écoute large est donc confinée au réseau interne du conteneur, jamais exposée sur les interfaces de l’hôte.
+
+Ne jamais figer `server.address=127.0.0.1` dans un profil également utilisé par un conteneur séparé de Nginx : le proxy ne pourrait plus joindre le backend.
 
 Ne pas exposer directement :
 
@@ -157,13 +174,15 @@ Routage indicatif :
 
 ```text
 /                 -> Angular
-/api/             -> Spring Boot
-/api/portal/      -> Spring Boot
-/api/radar/       -> Spring Boot
+/api/             -> Spring Boot, JWT Cloudflare exigé
+/api/portal/      -> Spring Boot, JWT Cloudflare exigé
+/api/radar/       -> Spring Boot, JWT Cloudflare exigé
 /radar, /admin    -> Angular, après validation Cloudflare Access globale
-/media/           -> Spring Boot ou répertoire contrôlé
+/media/           -> Spring Boot, JWT Cloudflare exigé
 /actuator/health  -> accès local uniquement
 ```
+
+Côté Spring, seules `/`, `/error` et `/actuator/health` restent accessibles sans identité : la racine et les fichiers Angular sont servis par le reverse proxy, `/error` est le dispatch interne du conteneur servlet, et `/actuator/health` est restreint au loopback par Nginx. Toute autre requête, y compris `/api/public/**` et `/media/**`, exige un JWT Cloudflare Access valide. Le seul `POST /api/integrations/home-assistant/radar/treasure-position` fait exception et utilise son Bearer applicatif.
 
 ## 8. Domaine et Cloudflare Access
 
@@ -177,6 +196,28 @@ Configurer Cloudflare Access avec deux applications manuelles sur le même hôte
 L'application humaine protège la totalité de l'hôte. Aucune page du site n'est accessible anonymement. Cloudflare authentifie l'utilisateur, mais l'application conserve l'autorisation : les routes `/api/admin/**` exigent toujours un email présent dans l'allowlist administrateur active.
 
 L'exception Home Assistant doit être strictement limitée au chemin exact de publication de position. Ne pas utiliser de joker, ne pas étendre à `/api/integrations/*`, `/api/integrations/home-assistant/*` ou `/api/*`, ne pas créer de second sous-domaine, de second tunnel, de Service Token Cloudflare ni d'application Service Auth.
+
+### 8.1 Secret Home Assistant
+
+Le secret Bearer applicatif est obligatoire en production :
+
+* générer au moins 32 octets aléatoires, encodés en base64url, soit 43 caractères :
+  `openssl rand -base64 32 | tr '+/' '-_' | tr -d '='` ;
+* le fournir par `RADAR_HOME_ASSISTANT_TOKEN` dans le fichier d'environnement du service ;
+* aucune valeur de secours n'existe dans le dépôt : sans variable, le démarrage du profil `prod` échoue immédiatement ;
+* le démarrage échoue également si la valeur est vide, reconnaissable comme factice, ou plus courte que l'encodage documenté ;
+* la longueur ne prouve pas l'entropie : elle est vérifiée pour détecter une erreur de configuration, pas pour valider le caractère aléatoire du secret ;
+* le secret n'est écrit ni dans les journaux ni dans les messages d'erreur ;
+* le profil `dev`, qui injecte une identité locale factice à la place de Cloudflare Access, ne doit jamais être actif sur le serveur : le contrôle de démarrage `prod` refuse cette combinaison.
+
+### 8.2 Limite de taille du chemin Home Assistant
+
+Le corps accepté sur `POST /api/integrations/home-assistant/radar/treasure-position` est limité à 4096 octets à deux niveaux :
+
+* Nginx applique `client_max_body_size 4k` sur cet emplacement exact uniquement ;
+* le backend lit le corps de manière bornée, y compris lorsque `Content-Length` est absent ou que la requête utilise un transfert fragmenté, et répond `413 Payload Too Large` au-delà.
+
+Cette limite n'est pas généralisée aux autres routes, dont les besoins diffèrent (téléversement de médias notamment).
 
 Configurer correctement la gestion des en-têtes transférés afin que Spring reconstruise l'URL publique HTTPS derrière le proxy.
 
@@ -225,7 +266,7 @@ DATABASE_PASSWORD=CHANGE_ME
 CF_ACCESS_ISSUER=https://TEAM.cloudflareaccess.com
 CF_ACCESS_AUDIENCE=CHANGE_ME
 CF_ACCESS_CERTS_URL=https://TEAM.cloudflareaccess.com/cdn-cgi/access/certs
-RADAR_HOME_ASSISTANT_TOKEN=CHANGE_ME_RANDOM_256_BITS_MINIMUM
+RADAR_HOME_ASSISTANT_TOKEN=32_OCTETS_ALEATOIRES_EN_BASE64URL
 ADMIN_BOOTSTRAP_EMAILS=admin@example.invalid
 
 MEDIA_STORAGE_PATH=/var/lib/les-routes-oubliees/media
@@ -658,7 +699,9 @@ Variables de production à renseigner :
 CF_ACCESS_ISSUER=https://TEAM.cloudflareaccess.com
 CF_ACCESS_AUDIENCE=AUD_TAG_APPLICATION_HUMAINE
 CF_ACCESS_CERTS_URL=https://TEAM.cloudflareaccess.com/cdn-cgi/access/certs
-RADAR_HOME_ASSISTANT_TOKEN=SECRET_ALEATOIRE_256_BITS_MINIMUM
+RADAR_HOME_ASSISTANT_TOKEN=32_OCTETS_ALEATOIRES_EN_BASE64URL
+SERVER_ADDRESS=127.0.0.1
+SPRING_PROFILES_ACTIVE=prod
 ```
 
 Cloudflare Zero Trust :
@@ -785,7 +828,7 @@ Le service worker ne doit plus intercepter les navigations avec le shell Angular
 
 Un shell statique deja present dans un cache navigateur ou un ancien service worker peut rester affichable localement jusqu'a son eviction. Cloudflare Access ne peut pas intercepter une reponse servie entierement depuis le cache local ; les API Radar, admin, portail et integration restent donc exclues du cache et revalidees par le reseau.
 
-Les variables `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` peuvent rester temporairement sur le serveur pendant la periode de retour arriere, mais elles ne sont plus utilisees par l'application. Leur suppression serveur et la suppression du client OAuth correspondant dans Google Cloud Console sont des operations manuelles a realiser seulement apres validation de la nouvelle authentification.
+Les variables `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` ne sont plus utilisees par l'application : l'authentification humaine repose entierement sur Cloudflare Access. Leur suppression du fichier d'environnement du serveur et la suppression du client OAuth correspondant dans Google Cloud Console sont des operations manuelles restantes.
 
 Vérifications manuelles Cloudflare après déploiement :
 
@@ -793,9 +836,12 @@ Vérifications manuelles Cloudflare après déploiement :
 2. Sans session Access, l'accès direct à `/radar` et `/admin` déclenche aussi Cloudflare.
 3. Une fois l'application chargée, les liens Angular vers `/radar` et `/admin` fonctionnent sans rechargement complet.
 4. Sans session Access, un `POST` sur `/api/integrations/home-assistant/radar/treasure-position` sans Bearer atteint le backend et répond `401`, sans redirection Cloudflare.
-5. Le même endpoint avec un Bearer valide répond `204`.
-6. Un chemin voisin, par exemple `/api/integrations/home-assistant/radar`, reste intercepté par Cloudflare Access.
-7. Aucune autre route `/api/integrations/**` n'est ouverte.
-8. Une session Access expirée pendant l'utilisation de la SPA provoque une reconnexion compréhensible, sans boucle.
-9. Après navigation vers `https://lesroutesoubliees.nicolas-bourneuf.fr/cdn-cgi/access/logout`, une nouvelle navigation vers le site redemande une authentification.
-10. Aucune donnée Radar, administrative ou Home Assistant n'est récupérée depuis un cache après expiration ou déconnexion.
+5. Le même endpoint avec un Bearer valide répond `204` pour une mesure strictement plus récente, et `200` avec `{"status":"ignored"}` pour une mesure non plus récente.
+6. Un corps supérieur à 4096 octets sur ce même chemin répond `413`.
+7. Un chemin voisin, par exemple `/api/integrations/home-assistant/radar`, reste intercepté par Cloudflare Access.
+8. Aucune autre route `/api/integrations/**` n'est ouverte.
+9. Toute route `/api/**` humaine et `/media/**` atteinte sans JWT Cloudflare valide répond `401` avec l'en-tête `X-LRO-Auth-Error: application`.
+10. Une session Access expirée pendant l'utilisation de la SPA provoque une reconnexion compréhensible, sans boucle : un seul rechargement, puis une action « Se reconnecter » stable.
+11. Après navigation vers `https://lesroutesoubliees.nicolas-bourneuf.fr/cdn-cgi/access/logout`, une nouvelle navigation vers le site redemande une authentification.
+12. Aucune donnée Radar, administrative ou Home Assistant n'est récupérée depuis un cache après expiration ou déconnexion.
+13. En quittant `/radar` par une navigation Angular normale, le repère disparaît immédiatement chez les autres participants ; après une interruption brutale, il disparaît au plus tard au terme du TTL serveur d'environ 45 secondes suivi du balayage périodique.

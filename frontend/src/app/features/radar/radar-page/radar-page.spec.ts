@@ -1,5 +1,5 @@
+import { Component, computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { computed, signal } from '@angular/core';
 import { Subject, of } from 'rxjs';
 
 import { PortalIdentityStore } from '../../../core/portal/portal-identity.store';
@@ -8,14 +8,24 @@ import { RadarApiService } from '../radar-api.service';
 import { RadarLocationPayload, RadarSnapshot } from '../radar.models';
 import { RadarPage } from './radar-page';
 
+interface RadarPageInternals {
+  ensureMap: () => Promise<void>;
+  handlePosition: (position: GeolocationPosition) => Promise<void>;
+  handleLocationError: (error: GeolocationPositionError) => void;
+  requestLocation: () => void;
+  watchId: number | null;
+}
+
 describe('RadarPage', () => {
   let fixture: ComponentFixture<RadarPage>;
   let radarApi: {
     snapshot: ReturnType<typeof vi.fn>;
     updateLocation: ReturnType<typeof vi.fn>;
     events: ReturnType<typeof vi.fn>;
+    announceDeparture: ReturnType<typeof vi.fn>;
   };
   let clearWatch: ReturnType<typeof vi.fn>;
+  let watchPosition: ReturnType<typeof vi.fn>;
 
   const portal: PortalMe = {
     identity: {
@@ -48,10 +58,11 @@ describe('RadarPage', () => {
   beforeEach(async () => {
     vi.useFakeTimers();
     clearWatch = vi.fn();
+    watchPosition = vi.fn(() => 42);
     Object.defineProperty(navigator, 'geolocation', {
       configurable: true,
       value: {
-        watchPosition: vi.fn(),
+        watchPosition,
         clearWatch,
       },
     });
@@ -60,6 +71,7 @@ describe('RadarPage', () => {
       snapshot: vi.fn(() => of(snapshot)),
       updateLocation: vi.fn(() => of(undefined)),
       events: vi.fn(() => of(snapshot)),
+      announceDeparture: vi.fn(),
     };
 
     await TestBed.configureTestingModule({
@@ -93,11 +105,24 @@ describe('RadarPage', () => {
     vi.useRealTimers();
   });
 
-  it('publishes the latest known position every seven seconds while visible', async () => {
-    const component = fixture.componentInstance as unknown as {
-      ensureMap: () => Promise<void>;
-      handlePosition: (position: GeolocationPosition) => Promise<void>;
-    };
+  it('never starts geolocation before the adventurer opens the Radar', () => {
+    expect(watchPosition).not.toHaveBeenCalled();
+    expect(radarApi.updateLocation).not.toHaveBeenCalled();
+  });
+
+  it('starts the geolocation watch when the Radar is opened', () => {
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    Object.defineProperty(window, 'isSecureContext', { configurable: true, value: true });
+
+    component.requestLocation();
+
+    expect(watchPosition).toHaveBeenCalledTimes(1);
+    // Aucune publication avant la reception d'une position valide.
+    expect(radarApi.updateLocation).not.toHaveBeenCalled();
+  });
+
+  it('publishes the latest known position every seven seconds', async () => {
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
     vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
 
     await component.handlePosition(position(46.495854, -1.775551));
@@ -115,12 +140,21 @@ describe('RadarPage', () => {
     } satisfies RadarLocationPayload);
   });
 
-  it('stops the geolocation watch and interval when leaving Radar', async () => {
-    const component = fixture.componentInstance as unknown as {
-      ensureMap: () => Promise<void>;
-      handlePosition: (position: GeolocationPosition) => Promise<void>;
-      watchId: number;
-    };
+  it('keeps a motionless adventurer present without any new GPS callback', async () => {
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
+
+    await component.handlePosition(position(46.1, -1.1));
+    const initialCalls = radarApi.updateLocation.mock.calls.length;
+
+    // 45 secondes de TTL serveur : au moins six republications doivent survenir.
+    vi.advanceTimersByTime(45_000);
+
+    expect(radarApi.updateLocation.mock.calls.length - initialCalls).toBeGreaterThanOrEqual(6);
+  });
+
+  it('stops the geolocation watch, the timer and the stream when leaving Radar', async () => {
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
     vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
     component.watchId = 77;
 
@@ -134,39 +168,96 @@ describe('RadarPage', () => {
     expect(radarApi.updateLocation).toHaveBeenCalledTimes(1);
   });
 
+  it('announces the departure when leaving Radar after publishing a position', async () => {
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
+
+    await component.handlePosition(position(46.1, -1.1));
+    fixture.destroy();
+
+    expect(radarApi.announceDeparture).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not announce a departure when no position was ever published', () => {
+    fixture.destroy();
+
+    expect(radarApi.announceDeparture).not.toHaveBeenCalled();
+  });
+
   it('does not publish concurrent locations and keeps only the latest pending position', async () => {
     const firstPublish = new Subject<void>();
     radarApi.updateLocation.mockImplementationOnce(() => firstPublish.asObservable());
     radarApi.updateLocation.mockImplementation(() => of(undefined));
-    const component = fixture.componentInstance as unknown as {
-      ensureMap: () => Promise<void>;
-      handlePosition: (position: GeolocationPosition) => Promise<void>;
-    };
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
     vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
 
     await component.handlePosition(position(46.1, -1.1));
     await component.handlePosition(position(46.2, -1.2));
+    await component.handlePosition(position(46.3, -1.3));
 
     expect(radarApi.updateLocation).toHaveBeenCalledTimes(1);
 
     firstPublish.complete();
 
+    // Une seule position en attente : la derniere connue.
     expect(radarApi.updateLocation).toHaveBeenCalledTimes(2);
     expect(radarApi.updateLocation).toHaveBeenLastCalledWith({
-      latitude: 46.2,
-      longitude: -1.2,
+      latitude: 46.3,
+      longitude: -1.3,
       accuracyM: 6,
       observedAt: '2026-08-05T12:00:00.000Z',
     } satisfies RadarLocationPayload);
   });
 
+  it('cancels an in-flight publication on destruction and ignores its late response', async () => {
+    const pending = new Subject<void>();
+    radarApi.updateLocation.mockImplementation(() => pending.asObservable());
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
+
+    await component.handlePosition(position(46.1, -1.1));
+    expect(radarApi.updateLocation).toHaveBeenCalledTimes(1);
+
+    fixture.destroy();
+    pending.next();
+    pending.complete();
+    vi.advanceTimersByTime(70_000);
+
+    expect(radarApi.updateLocation).toHaveBeenCalledTimes(1);
+  });
+
+  it('never lets finalize() publish again after destruction', async () => {
+    const pending = new Subject<void>();
+    radarApi.updateLocation.mockImplementationOnce(() => pending.asObservable());
+    radarApi.updateLocation.mockImplementation(() => of(undefined));
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
+
+    await component.handlePosition(position(46.1, -1.1));
+    // Une position est mise en attente pendant que le premier PUT est en vol.
+    await component.handlePosition(position(46.2, -1.2));
+    expect(radarApi.updateLocation).toHaveBeenCalledTimes(1);
+
+    fixture.destroy();
+    pending.complete();
+    vi.advanceTimersByTime(70_000);
+
+    expect(radarApi.updateLocation).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a late geolocation callback received after destruction', async () => {
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
+
+    fixture.destroy();
+    await component.handlePosition(position(46.4, -1.4));
+    vi.advanceTimersByTime(70_000);
+
+    expect(radarApi.updateLocation).not.toHaveBeenCalled();
+  });
+
   it('stops publishing when geolocation permission is lost', async () => {
-    const component = fixture.componentInstance as unknown as {
-      ensureMap: () => Promise<void>;
-      handleLocationError: (error: GeolocationPositionError) => void;
-      handlePosition: (position: GeolocationPosition) => Promise<void>;
-      watchId: number;
-    };
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
     vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
     component.watchId = 91;
 
@@ -204,4 +295,52 @@ describe('RadarPage', () => {
       TIMEOUT: 3,
     };
   }
+});
+
+@Component({
+  selector: 'app-other-page-host',
+  template: '<p>Une autre page</p>',
+})
+class OtherPageComponent {}
+
+describe('pages other than Radar', () => {
+  let watchPosition: ReturnType<typeof vi.fn>;
+  let getCurrentPosition: ReturnType<typeof vi.fn>;
+  let updateLocation: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    watchPosition = vi.fn(() => 1);
+    getCurrentPosition = vi.fn();
+    updateLocation = vi.fn(() => of(undefined));
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { watchPosition, getCurrentPosition, clearWatch: vi.fn() },
+    });
+
+    await TestBed.configureTestingModule({
+      imports: [OtherPageComponent],
+      providers: [
+        {
+          provide: RadarApiService,
+          useValue: {
+            snapshot: vi.fn(),
+            updateLocation,
+            events: vi.fn(),
+            announceDeparture: vi.fn(),
+          },
+        },
+      ],
+    }).compileComponents();
+  });
+
+  it('never requests a position nor publishes one', () => {
+    const fixture = TestBed.createComponent(OtherPageComponent);
+    fixture.detectChanges();
+
+    expect(watchPosition).not.toHaveBeenCalled();
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+    expect(updateLocation).not.toHaveBeenCalled();
+
+    fixture.destroy();
+  });
 });

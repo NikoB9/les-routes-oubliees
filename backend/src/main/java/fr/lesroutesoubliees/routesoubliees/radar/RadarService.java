@@ -1,15 +1,13 @@
 package fr.lesroutesoubliees.routesoubliees.radar;
 
-import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -34,18 +32,23 @@ class RadarService {
 	private final PortalIdentityService identities;
 	private final RadarPresenceRegistry presence;
 	private final AuditService audit;
-	private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
+	private final RadarEventBroadcaster events;
+	private final Clock clock;
 
 	RadarService(
 		JdbcTemplate jdbc,
 		PortalIdentityService identities,
 		RadarPresenceRegistry presence,
-		AuditService audit
+		AuditService audit,
+		RadarEventBroadcaster events,
+		Clock clock
 	) {
 		this.jdbc = jdbc;
 		this.identities = identities;
 		this.presence = presence;
 		this.audit = audit;
+		this.events = events;
+		this.clock = clock;
 	}
 
 	@Transactional(readOnly = true)
@@ -63,8 +66,28 @@ class RadarService {
 		broadcast();
 	}
 
+	/**
+	 * Retire la presence de l'utilisateur authentifie.
+	 *
+	 * <p>Idempotent : l'absence de presence n'est pas une erreur. La diffusion est
+	 * inconditionnelle afin que le repere disparaisse immediatement chez les autres
+	 * participants.
+	 */
 	@Transactional
-	void updateTreasurePosition(TreasurePositionRequest request) {
+	void removeMyLocation(CloudflareAccessPrincipal principal) {
+		var identity = identities.requireAssignedIdentity(principal);
+		presence.remove(identity.id());
+		broadcast();
+	}
+
+	/**
+	 * Applique un releve tresor uniquement s'il est strictement plus recent.
+	 *
+	 * @return {@link TreasureUpdateOutcome#APPLIED} si la mise a jour atomique a touche la
+	 *     ligne, {@link TreasureUpdateOutcome#IGNORED} sinon
+	 */
+	@Transactional
+	TreasureUpdateOutcome updateTreasurePosition(TreasurePositionRequest request) {
 		if (request.schemaVersion() != 1 || !TREASURE_BEACON.equals(request.beacon())) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Balise Radar invalide.");
 		}
@@ -78,7 +101,9 @@ class RadarService {
 			""", request.latitude(), request.longitude(), request.accuracyM(), request.observedAt(), now(), request.observedAt());
 		if (updatedRows > 0) {
 			broadcast();
+			return TreasureUpdateOutcome.APPLIED;
 		}
+		return TreasureUpdateOutcome.IGNORED;
 	}
 
 	@Transactional(readOnly = true)
@@ -102,26 +127,32 @@ class RadarService {
 	@Transactional(readOnly = true)
 	SseEmitter events(CloudflareAccessPrincipal principal) {
 		var identity = identities.requireAssignedIdentity(principal);
-		var emitter = new SseEmitter(SSE_TIMEOUT_MS);
-		emitters.add(emitter);
-		emitter.onCompletion(() -> emitters.remove(emitter));
-		emitter.onTimeout(() -> emitters.remove(emitter));
-		emitter.onError(error -> emitters.remove(emitter));
-		send(emitter, "snapshot", buildSnapshot(identity));
-		send(emitter, "heartbeat", java.util.Map.of("serverTime", now()));
+		var emitter = events.register(SSE_TIMEOUT_MS);
+		events.send(emitter, "snapshot", buildSnapshot(identity));
+		events.send(emitter, "heartbeat", java.util.Map.of("serverTime", now()));
 		return emitter;
 	}
 
 	void heartbeat() {
-		for (var emitter : emitters) {
-			send(emitter, "heartbeat", java.util.Map.of("serverTime", now()));
+		events.broadcast("heartbeat", java.util.Map.of("serverTime", now()));
+	}
+
+	/**
+	 * Filet de securite obligatoire : retire les presences expirees et diffuse le nouvel
+	 * etat, meme si personne ne publie plus de position.
+	 *
+	 * @return le nombre de presences retirees
+	 */
+	int sweepExpiredPresences() {
+		var removed = presence.pruneExpired();
+		if (removed > 0) {
+			broadcast();
 		}
+		return removed;
 	}
 
 	private void broadcast() {
-		for (var emitter : emitters) {
-			send(emitter, "snapshot", buildAnonymousSnapshot());
-		}
+		events.broadcast("snapshot", buildAnonymousSnapshot());
 	}
 
 	private RadarSnapshotResponse buildSnapshot(PortalIdentity identity) {
@@ -201,18 +232,8 @@ class RadarService {
 		}
 	}
 
-	private void send(SseEmitter emitter, String name, Object data) {
-		try {
-			emitter.send(SseEmitter.event().name(name).data(data));
-		}
-		catch (IOException | IllegalStateException exception) {
-			emitters.remove(emitter);
-			emitter.complete();
-		}
-	}
-
 	private OffsetDateTime now() {
-		return OffsetDateTime.now(ZoneOffset.UTC);
+		return OffsetDateTime.now(clock).withOffsetSameInstant(ZoneOffset.UTC);
 	}
 
 	private OffsetDateTime offset(Timestamp timestamp) {

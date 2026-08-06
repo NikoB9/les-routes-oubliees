@@ -34,6 +34,24 @@ record TreasurePositionRequest(
 ) {
 }
 
+/** Resultat d'un releve tresor : mise a jour appliquee ou mesure ignoree. */
+enum TreasureUpdateOutcome {
+	APPLIED,
+	IGNORED
+}
+
+/**
+ * Statut minimal renvoye lorsqu'un releve n'est pas strictement plus recent.
+ *
+ * <p>Ne contient jamais la position enregistree.
+ */
+record TreasureUpdateStatusResponse(String status) {
+
+	static TreasureUpdateStatusResponse ignored() {
+		return new TreasureUpdateStatusResponse("ignored");
+	}
+}
+
 record RadarSnapshotResponse(
 	OffsetDateTime serverTime,
 	RadarIdentityResponse currentIdentity,

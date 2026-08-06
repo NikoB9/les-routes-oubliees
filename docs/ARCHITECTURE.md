@@ -255,6 +255,10 @@ GET /api/public/offline-snapshot
 
 Ces endpoints exposent uniquement les contenus publics publies et visibles. Ils ne doivent jamais inclure de brouillons, donnees admin, audit, emails administrateurs, secrets ou champs narratifs source non publics.
 
+Le prefixe `/api/public` designe le **filtrage editorial** des contenus, pas une absence d'authentification : comme toutes les API humaines, ces endpoints exigent un JWT Cloudflare Access valide. Cote Spring, seules `/`, `/error` et `/actuator/health` restent accessibles sans identite ; `/media/**` exige egalement une identite valide. La seule exception est le `POST` exact de publication de position Home Assistant, authentifie par un Bearer applicatif.
+
+Les refus d'authentification emis par l'application portent l'en-tete `X-LRO-Auth-Error: application` afin d'etre distingues d'une expiration de session Cloudflare Access, qui est renvoyee par Cloudflare avant l'origine et ne porte donc pas ce marqueur.
+
 Les erreurs utilisent `application/problem+json`.
 
 Une erreur doit contenir au minimum :
@@ -597,5 +601,25 @@ Nouveaux préfixes API :
 Radar utilise SSE avec `SseEmitter`. Les positions des participants sont conservées uniquement en mémoire avec expiration courte. La position du trésor est stockée dans `radar_state`, mais n'est jamais exposée publiquement lorsque `treasure_visible=false`.
 
 Radar est exclu du cache PWA, d'IndexedDB et du snapshot hors ligne.
+
+### Cycle de vie des présences Radar
+
+La géolocalisation est strictement limitée au composant `RadarPage` :
+
+* le suivi `watchPosition()` démarre à l'ouverture de Radar, sur action de l'utilisateur, jamais au lancement de l'application ;
+* aucune publication n'a lieu avant une première position valide ;
+* la dernière position valide est republiée toutes les sept secondes, même sans nouveau relevé du navigateur, afin qu'un aventurier immobile reste visible ;
+* un seul `PUT` est en vol à la fois, avec au plus une position en attente ;
+* la destruction du composant marque immédiatement un état détruit, arrête le timer, appelle `clearWatch()`, ferme le SSE, annule le `PUT` en cours et vide la position en attente ; aucun callback tardif ni `finalize()` ne peut republier ;
+* aucun suivi n'est déplacé dans un service global et aucune autre page ne demande de position.
+
+Retrait de la présence :
+
+* `DELETE /api/radar/me/location` retire la présence de l'utilisateur authentifié, sans accepter d'identifiant fourni par le client, de façon idempotente (`204 No Content`), et diffuse immédiatement un nouvel état SSE ;
+* lors d'une navigation Angular normale hors de Radar, cette notification est envoyée après l'arrêt des publications, par une requête même origine détachée du composant (`keepalive`) ;
+* cette notification n'est jamais garantie : fermeture brutale, perte réseau ou appareil éteint peuvent l'empêcher ;
+* le TTL serveur d'environ 45 secondes est donc le filet de sécurité obligatoire. Un balayage périodique côté serveur retire les présences expirées et diffuse leur disparition, sans dépendre d'une nouvelle publication de position. La latence maximale de disparition est le TTL suivi de l'intervalle de balayage.
+
+Le releve tresor Home Assistant reste applique par une mise a jour atomique strictement temporelle : `204 No Content` lorsque la mesure est appliquee, `200 OK` avec `{"status":"ignored"}` lorsqu'elle n'est pas strictement plus recente. `202 Accepted` n'est pas utilise, la mise a jour n'etant jamais differee.
 
 Depuis la protection Cloudflare Access globale, le service worker ne sert plus le shell Angular pour les navigations. Les navigations complètes doivent consulter le réseau afin que Cloudflare Access puisse intercepter une session absente ou expirée. Les assets restent pris en charge par la PWA, mais l'affichage hors ligne d'une nouvelle navigation est volontairement dégradé pour éviter qu'une page soit rendue depuis un cache local après déconnexion.

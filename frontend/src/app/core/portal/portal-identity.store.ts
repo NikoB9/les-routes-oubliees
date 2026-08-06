@@ -1,11 +1,13 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 
+import { CloudflareAccessSessionService } from '../api/cloudflare-access-session.service';
 import { PortalApiService } from './portal-api.service';
 import { PortalAdventurerChoice, PortalMe } from './portal.models';
 
 @Injectable({ providedIn: 'root' })
 export class PortalIdentityStore {
   private readonly api = inject(PortalApiService);
+  private readonly accessSession = inject(CloudflareAccessSessionService);
 
   readonly portal = signal<PortalMe | null>(null);
   readonly loading = signal(false);
@@ -33,6 +35,9 @@ export class PortalIdentityStore {
         this.portal.set(portal);
         this.loading.set(false);
         this.loaded.set(true);
+        // Le chargement de l'identité prouve qu'une session Cloudflare Access valide
+        // existe : c'est la seule confirmation qui libère le verrou de reconnexion.
+        this.accessSession.confirmValidSession();
       },
       error: () => {
         this.loading.set(false);

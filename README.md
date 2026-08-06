@@ -178,9 +178,13 @@ Configuration minimale :
 CF_ACCESS_ISSUER=https://example.cloudflareaccess.com
 CF_ACCESS_AUDIENCE=example-audience-tag
 CF_ACCESS_CERTS_URL=https://example.cloudflareaccess.com/cdn-cgi/access/certs
-RADAR_HOME_ASSISTANT_TOKEN=change-me-with-a-random-256-bit-secret
+RADAR_HOME_ASSISTANT_TOKEN=
 ```
 
+`RADAR_HOME_ASSISTANT_TOKEN` n'a aucune valeur de secours : il doit contenir 32 octets aléatoires encodés en base64url et devient obligatoire en production, où le démarrage échoue si la variable est absente, vide, factice ou trop courte.
+
 Le reverse proxy doit transmettre `Cf-Access-Jwt-Assertion` au backend et autoriser la géolocalisation via `Permissions-Policy`.
+
+La localisation n'est active que pendant l'affichage de la page Radar : le suivi démarre à l'ouverture, la dernière position connue est republiée toutes les sept secondes, et tout s'arrête à la sortie. Une sortie normale tente un retrait immédiat du repère ; en cas d'interruption non signalée, l'expiration serveur d'environ 45 secondes reste le filet de sécurité.
 
 Radar utilise Leaflet 1.9.4 et les tuiles OpenStreetMap standard dans la configuration versionnée. Les positions des participants ne sont pas persistées ; seul le dernier relevé de la balise trésor est stocké, et il reste masqué côté API lorsque l'administration désactive son affichage.

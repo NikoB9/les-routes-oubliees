@@ -1,18 +1,18 @@
-.identity-backdrop,
-.confirm-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
+.identity-dialog::backdrop,
+.confirm-dialog::backdrop {
   background: rgb(0 0 0 / 58%);
+}
+
+/* Un <dialog> fermé ne doit rien afficher, y compris lorsque `display: grid` s'applique. */
+.identity-dialog:not([open]),
+.confirm-dialog:not([open]) {
+  display: none;
 }
 
 .identity-dialog,
 .confirm-dialog {
   display: grid;
-  width: min(100%, 46rem);
+  width: min(100% - 2rem, 46rem);
   max-height: calc(100dvh - 2rem);
   gap: 1rem;
   overflow: auto;

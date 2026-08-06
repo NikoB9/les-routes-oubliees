@@ -11,6 +11,11 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  jackson:
+    deserialization:
+      # Refus explicite des proprietes JSON inconnues : la stricte lecture des DTO
+      # ne doit pas dependre d'un defaut de la bibliotheque ou du demarreur.
+      fail-on-unknown-properties: true
 
 management:
   endpoints:
@@ -22,6 +27,10 @@ management:
       show-details: never
 
 server:
+  # Adresse d'ecoute configurable : voir docs/DEPLOIEMENT.md.
+  # Deploiement systemd sur l'hote : SERVER_ADDRESS=127.0.0.1.
+  # Deploiement en conteneur : 0.0.0.0 dans le conteneur, publication limitee au loopback de l'hote.
+  address: ${SERVER_ADDRESS:0.0.0.0}
   forward-headers-strategy: framework
 
 routes-oubliees:
@@ -36,4 +45,6 @@ routes-oubliees:
     certs-url: ${CF_ACCESS_CERTS_URL:https://example.cloudflareaccess.com/cdn-cgi/access/certs}
   radar:
     home-assistant:
-      token: ${RADAR_HOME_ASSISTANT_TOKEN:dev-radar-home-assistant-token-change-me}
+      # Aucun secret de secours : un token vide fait echouer toute authentification
+      # Home Assistant. Le profil prod exige explicitement la variable d'environnement.
+      token: ${RADAR_HOME_ASSISTANT_TOKEN:}

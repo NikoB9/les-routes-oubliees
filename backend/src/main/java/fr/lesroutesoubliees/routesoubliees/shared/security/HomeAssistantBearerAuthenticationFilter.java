@@ -1,15 +1,24 @@
 package fr.lesroutesoubliees.routesoubliees.shared.security;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.http.HttpHeaders;
@@ -24,7 +33,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 class HomeAssistantBearerAuthenticationFilter extends OncePerRequestFilter {
 
 	static final String TREASURE_POSITION_PATH = "/api/integrations/home-assistant/radar/treasure-position";
-	private static final int MAX_BODY_BYTES = 4096;
+
+	/** Limite stricte du corps accepte sur ce seul chemin. */
+	static final int MAX_BODY_BYTES = 4096;
 
 	private final RadarHomeAssistantProperties properties;
 
@@ -49,18 +60,26 @@ class HomeAssistantBearerAuthenticationFilter extends OncePerRequestFilter {
 		}
 		response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
 		if (request.getContentLengthLong() > MAX_BODY_BYTES) {
-			response.sendError(413);
+			reject(response, HttpStatus.PAYLOAD_TOO_LARGE);
 			return;
 		}
 		var authorizationHeaders = Collections.list(request.getHeaders(HttpHeaders.AUTHORIZATION));
 		if (authorizationHeaders.size() != 1) {
-			response.sendError(HttpStatus.UNAUTHORIZED.value());
+			reject(response, HttpStatus.UNAUTHORIZED);
 			return;
 		}
-		var authorization = authorizationHeaders.getFirst();
-		var token = extractBearerToken(authorization);
+		var token = extractBearerToken(authorizationHeaders.getFirst());
 		if (!constantTimeEquals(token, properties.token())) {
-			response.sendError(HttpStatus.UNAUTHORIZED.value());
+			reject(response, HttpStatus.UNAUTHORIZED);
+			return;
+		}
+
+		// La limite ne peut pas reposer sur Content-Length : l'en-tete est absent en
+		// transfert fragmente et reste declaratif. Le corps est donc lu de maniere bornee
+		// puis rejoue au controleur, sans jamais etre journalise.
+		var body = readBoundedBody(request.getInputStream());
+		if (body == null) {
+			reject(response, HttpStatus.PAYLOAD_TOO_LARGE);
 			return;
 		}
 
@@ -69,7 +88,34 @@ class HomeAssistantBearerAuthenticationFilter extends OncePerRequestFilter {
 			null,
 			List.of(new SimpleGrantedAuthority("ROLE_HOME_ASSISTANT")));
 		SecurityContextHolder.getContext().setAuthentication(authentication);
-		filterChain.doFilter(request, response);
+		filterChain.doFilter(new BoundedBodyRequest(request, body), response);
+	}
+
+	private void reject(HttpServletResponse response, HttpStatus status) throws IOException {
+		if (status == HttpStatus.UNAUTHORIZED) {
+			response.setHeader(
+				ApplicationAuthenticationEntryPoint.AUTH_ERROR_HEADER,
+				ApplicationAuthenticationEntryPoint.AUTH_ERROR_APPLICATION);
+		}
+		response.sendError(status.value());
+	}
+
+	/**
+	 * Lit au plus {@link #MAX_BODY_BYTES} octets.
+	 *
+	 * @return le corps complet, ou {@code null} lorsque la limite est depassee
+	 */
+	private byte[] readBoundedBody(InputStream input) throws IOException {
+		var buffer = new byte[MAX_BODY_BYTES + 1];
+		var total = 0;
+		while (total < buffer.length) {
+			var read = input.read(buffer, total, buffer.length - total);
+			if (read < 0) {
+				break;
+			}
+			total += read;
+		}
+		return total > MAX_BODY_BYTES ? null : Arrays.copyOf(buffer, total);
 	}
 
 	private String extractBearerToken(String authorization) {
@@ -96,6 +142,77 @@ class HomeAssistantBearerAuthenticationFilter extends OncePerRequestFilter {
 		}
 		catch (NoSuchAlgorithmException exception) {
 			throw new IllegalStateException("SHA-256 is not available", exception);
+		}
+	}
+
+	/** Rejoue le corps deja lu et borne, sans exposer le flux d'origine. */
+	private static final class BoundedBodyRequest extends HttpServletRequestWrapper {
+
+		private final byte[] body;
+
+		private BoundedBodyRequest(HttpServletRequest request, byte[] body) {
+			super(request);
+			this.body = body;
+		}
+
+		@Override
+		public int getContentLength() {
+			return this.body.length;
+		}
+
+		@Override
+		public long getContentLengthLong() {
+			return this.body.length;
+		}
+
+		@Override
+		public ServletInputStream getInputStream() {
+			var delegate = new ByteArrayInputStream(this.body);
+			return new ServletInputStream() {
+
+				@Override
+				public boolean isFinished() {
+					return delegate.available() == 0;
+				}
+
+				@Override
+				public boolean isReady() {
+					return true;
+				}
+
+				@Override
+				public void setReadListener(ReadListener readListener) {
+					throw new UnsupportedOperationException("Lecture asynchrone non supportee sur ce chemin.");
+				}
+
+				@Override
+				public int read() {
+					return delegate.read();
+				}
+
+				@Override
+				public int read(byte[] buffer, int offset, int length) {
+					return delegate.read(buffer, offset, length);
+				}
+			};
+		}
+
+		@Override
+		public BufferedReader getReader() {
+			return new BufferedReader(new InputStreamReader(getInputStream(), charset()));
+		}
+
+		private Charset charset() {
+			var encoding = getCharacterEncoding();
+			if (!StringUtils.hasText(encoding)) {
+				return StandardCharsets.UTF_8;
+			}
+			try {
+				return Charset.forName(encoding);
+			}
+			catch (RuntimeException exception) {
+				return StandardCharsets.UTF_8;
+			}
 		}
 	}
 }

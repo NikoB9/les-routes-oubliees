@@ -10,6 +10,10 @@ User=routesoubliees
 Group=routesoubliees
 WorkingDirectory=/var/lib/les-routes-oubliees
 EnvironmentFile=/etc/les-routes-oubliees/application.env
+# Deploiement sur l'hote : Spring n'ecoute que sur le loopback, Nginx reste le seul point
+# d'entree. En conteneur, cette valeur doit etre 0.0.0.0 (voir infra/compose.yml).
+Environment=SERVER_ADDRESS=127.0.0.1
+Environment=SPRING_PROFILES_ACTIVE=prod
 ExecStart=/usr/bin/java -jar /opt/les-routes-oubliees/current/backend/app.jar
 Restart=on-failure
 RestartSec=10

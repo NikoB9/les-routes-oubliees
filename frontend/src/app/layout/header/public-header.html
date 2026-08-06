@@ -14,12 +14,17 @@
     </span>
   </a>
 
-  <div class="profile-menu">
+  <!--
+    Panneau de divulgation et non modèle ARIA « menu » : deux actions au plus, donc du HTML
+    natif (bouton, lien, bouton) plutôt qu'un modèle clavier complet à réimplémenter.
+  -->
+  <div class="profile-menu" #profileMenu>
     <button
+      #profileButton
       type="button"
       class="profile-button"
-      aria-haspopup="menu"
       [attr.aria-expanded]="profileMenuOpen()"
+      aria-controls="profile-panel"
       [attr.aria-label]="profileLabel()"
       (click)="toggleProfileMenu()"
     >
@@ -38,11 +43,11 @@
     </button>
 
     @if (profileMenuOpen()) {
-      <div class="profile-panel" role="menu" aria-label="Actions du profil">
+      <div class="profile-panel" id="profile-panel">
         @if (portal.canAccessAdmin()) {
-          <a role="menuitem" routerLink="/admin" (click)="closeMenu()">Administration</a>
+          <a routerLink="/admin" (click)="closeProfileMenu()">Administration</a>
         }
-        <a role="menuitem" [href]="logoutUrl">Se déconnecter</a>
+        <button type="button" class="profile-logout" (click)="logout()">Se déconnecter</button>
       </div>
     }
   </div>

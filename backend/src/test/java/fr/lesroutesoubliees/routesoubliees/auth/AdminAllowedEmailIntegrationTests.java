@@ -63,7 +63,7 @@ class AdminAllowedEmailIntegrationTests {
 	@Test
 	void requiresAuthenticationForAllowedEmailList() throws Exception {
 		mvc.perform(get("/api/admin/allowed-emails"))
-			.andExpect(status().isForbidden());
+			.andExpect(status().isUnauthorized());
 	}
 
 	@Test
@@ -148,7 +148,7 @@ class AdminAllowedEmailIntegrationTests {
 	@Test
 	void exposesDashboardAndAuditOnlyToAdministrators() throws Exception {
 		mvc.perform(get("/api/admin/dashboard"))
-			.andExpect(status().isForbidden());
+			.andExpect(status().isUnauthorized());
 
 		mvc.perform(get("/api/admin/dashboard").with(user("player@example.invalid").roles("USER")))
 			.andExpect(status().isForbidden());

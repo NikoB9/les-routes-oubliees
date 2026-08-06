@@ -2,6 +2,8 @@ package fr.lesroutesoubliees.routesoubliees.shared.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.charset.StandardCharsets;
+
 import jakarta.servlet.FilterChain;
 
 import org.junit.jupiter.api.AfterEach;
@@ -46,6 +48,8 @@ class HomeAssistantBearerAuthenticationFilterTests {
 
 			assertThat(response.getStatus()).isEqualTo(401);
 			assertThat(response.getHeader(HttpHeaders.CACHE_CONTROL)).isEqualTo("no-store");
+			assertThat(response.getHeader(ApplicationAuthenticationEntryPoint.AUTH_ERROR_HEADER))
+				.isEqualTo(ApplicationAuthenticationEntryPoint.AUTH_ERROR_APPLICATION);
 			assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
 		}
 	}
@@ -77,7 +81,7 @@ class HomeAssistantBearerAuthenticationFilterTests {
 	@Test
 	void rejectsOversizedBodiesBeforeController() throws Exception {
 		var request = request("Bearer secret-token");
-		request.setContent(new byte[4097]);
+		request.setContent(new byte[HomeAssistantBearerAuthenticationFilter.MAX_BODY_BYTES + 1]);
 		var response = new MockHttpServletResponse();
 
 		filter.doFilter(request, response, chain());
@@ -85,8 +89,71 @@ class HomeAssistantBearerAuthenticationFilterTests {
 		assertThat(response.getStatus()).isEqualTo(413);
 	}
 
+	@Test
+	void rejectsOversizedBodiesWhenContentLengthIsAbsent() throws Exception {
+		var request = requestWithoutContentLength("Bearer secret-token");
+		request.setContent(new byte[HomeAssistantBearerAuthenticationFilter.MAX_BODY_BYTES + 1]);
+		var response = new MockHttpServletResponse();
+
+		filter.doFilter(request, response, chain());
+
+		assertThat(response.getStatus()).isEqualTo(413);
+		assertThat(response.getHeader(HttpHeaders.CACHE_CONTROL)).isEqualTo("no-store");
+	}
+
+	@Test
+	void acceptsBodyExactlyAtTheLimitAndReplaysItToTheChain() throws Exception {
+		var body = new byte[HomeAssistantBearerAuthenticationFilter.MAX_BODY_BYTES];
+		java.util.Arrays.fill(body, (byte) 'x');
+		var request = requestWithoutContentLength("Bearer secret-token");
+		request.setContent(body);
+		var response = new MockHttpServletResponse();
+		var replayed = new StringBuilder();
+
+		filter.doFilter(request, response, (servletRequest, servletResponse) -> {
+			replayed.append(new String(servletRequest.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
+			((MockHttpServletResponse) servletResponse).setStatus(200);
+		});
+
+		assertThat(response.getStatus()).isEqualTo(200);
+		assertThat(replayed.length()).isEqualTo(HomeAssistantBearerAuthenticationFilter.MAX_BODY_BYTES);
+	}
+
+	@Test
+	void ignoresOtherMethodsOnTheSamePath() throws Exception {
+		var request = new MockHttpServletRequest("GET", HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH);
+		request.setRequestURI(HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH);
+		var response = new MockHttpServletResponse();
+
+		filter.doFilter(request, response, chain());
+
+		assertThat(response.getStatus()).isEqualTo(200);
+		assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+	}
+
 	private MockHttpServletRequest request(String authorization) {
-		var request = new MockHttpServletRequest("POST", HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH);
+		return prepare(new MockHttpServletRequest("POST", HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH),
+			authorization);
+	}
+
+	/** Simule un transfert fragmente : corps present, {@code Content-Length} inconnu. */
+	private MockHttpServletRequest requestWithoutContentLength(String authorization) {
+		var request = new MockHttpServletRequest("POST", HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH) {
+
+			@Override
+			public long getContentLengthLong() {
+				return -1;
+			}
+
+			@Override
+			public int getContentLength() {
+				return -1;
+			}
+		};
+		return prepare(request, authorization);
+	}
+
+	private MockHttpServletRequest prepare(MockHttpServletRequest request, String authorization) {
 		request.setRequestURI(HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH);
 		if (authorization != null) {
 			request.addHeader(HttpHeaders.AUTHORIZATION, authorization);

@@ -67,28 +67,43 @@ describe('PublicHeaderComponent', () => {
     expect(compiled.querySelector('.profile-name')?.textContent).toContain('Aurelune');
   });
 
-  it('offers logout only to non-admin users', () => {
+  it('exposes a disclosure button instead of an ARIA menu', () => {
     const root = fixture.nativeElement as HTMLElement;
-    const button = root.querySelector<HTMLButtonElement>('.profile-button');
+    const button = profileButton();
+
+    expect(button?.getAttribute('aria-expanded')).toBe('false');
+    expect(button?.getAttribute('aria-controls')).toBe('profile-panel');
+    expect(button?.hasAttribute('aria-haspopup')).toBe(false);
+
     button?.click();
     fixture.detectChanges();
 
-    const menuItems = Array.from(root.querySelectorAll('[role="menuitem"]')).map((item) =>
-      item.textContent?.trim(),
-    );
-
-    expect(menuItems).toEqual(['Se déconnecter']);
-    expect(root.querySelector<HTMLAnchorElement>('a[href="/admin"]')).toBeNull();
-    expect(root.querySelector<HTMLAnchorElement>('a[href="/cdn-cgi/access/logout"]')).not.toBeNull();
+    expect(button?.getAttribute('aria-expanded')).toBe('true');
+    expect(root.querySelector('#profile-panel')).not.toBeNull();
+    expect(root.querySelector('[role="menu"]')).toBeNull();
+    expect(root.querySelector('[role="menuitem"]')).toBeNull();
   });
 
-  it('offers administration to admins', () => {
+  it('offers a real logout button to a non-administrator', () => {
+    const root = fixture.nativeElement as HTMLElement;
+    profileButton()?.click();
+    fixture.detectChanges();
+
+    const actions = Array.from(root.querySelectorAll('#profile-panel a, #profile-panel button')).map(
+      (item) => item.textContent?.trim(),
+    );
+
+    expect(actions).toEqual(['Se déconnecter']);
+    expect(root.querySelector<HTMLAnchorElement>('a[href="/admin"]')).toBeNull();
+    expect(root.querySelector<HTMLButtonElement>('.profile-logout')?.tagName).toBe('BUTTON');
+  });
+
+  it('offers an administration link to admins', () => {
     canAccessAdmin.set(true);
     fixture.detectChanges();
 
     const root = fixture.nativeElement as HTMLElement;
-    const button = root.querySelector<HTMLButtonElement>('.profile-button');
-    button?.click();
+    profileButton()?.click();
     fixture.detectChanges();
 
     expect(root.querySelector<HTMLAnchorElement>('a[href="/admin"]')?.textContent).toContain(
@@ -96,47 +111,46 @@ describe('PublicHeaderComponent', () => {
     );
   });
 
-  it('closes the profile menu when clicking outside', () => {
+  it('closes the panel when clicking outside, including on the logo', () => {
     const root = fixture.nativeElement as HTMLElement;
-    root.querySelector<HTMLButtonElement>('.profile-button')?.click();
+    profileButton()?.click();
+    fixture.detectChanges();
+    expect(root.querySelector('#profile-panel')).not.toBeNull();
+
+    root.querySelector<HTMLAnchorElement>('.brand')?.click();
     fixture.detectChanges();
 
-    expect(root.querySelector('[role="menu"]')).not.toBeNull();
-
-    document.body.click();
-    fixture.detectChanges();
-
-    expect(root.querySelector('[role="menu"]')).toBeNull();
+    expect(root.querySelector('#profile-panel')).toBeNull();
+    expect(profileButton()?.getAttribute('aria-expanded')).toBe('false');
   });
 
-  it('keeps the profile menu open when clicking inside it', () => {
+  it('keeps the panel open when clicking inside it', () => {
     const root = fixture.nativeElement as HTMLElement;
-    root.querySelector<HTMLButtonElement>('.profile-button')?.click();
+    profileButton()?.click();
     fixture.detectChanges();
 
     root.querySelector<HTMLElement>('.profile-panel')?.click();
     fixture.detectChanges();
 
-    expect(root.querySelector('[role="menu"]')).not.toBeNull();
+    expect(root.querySelector('#profile-panel')).not.toBeNull();
   });
 
-  it('closes the profile menu with Escape', () => {
+  it('closes with Escape and restores the focus to the profile button', () => {
     const root = fixture.nativeElement as HTMLElement;
-    const button = root.querySelector<HTMLButtonElement>('.profile-button');
+    const button = profileButton();
     button?.click();
     fixture.detectChanges();
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     fixture.detectChanges();
 
-    expect(root.querySelector('[role="menu"]')).toBeNull();
+    expect(root.querySelector('#profile-panel')).toBeNull();
     expect(button?.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(button);
   });
 
   it('gives the profile button an accessible label', () => {
-    const root = fixture.nativeElement as HTMLElement;
-
-    expect(root.querySelector<HTMLButtonElement>('.profile-button')?.getAttribute('aria-label')).toBe(
+    expect(profileButton()?.getAttribute('aria-label')).toBe(
       'Menu du profil Aurelune la Gardienne des Secrets',
     );
   });
@@ -158,4 +172,8 @@ describe('PublicHeaderComponent', () => {
     expect(compiled.textContent).toContain('Ombre de la Compagnie');
     expect(compiled.textContent).not.toContain('@');
   });
+
+  function profileButton(): HTMLButtonElement | null {
+    return (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.profile-button');
+  }
 });

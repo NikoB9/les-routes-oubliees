@@ -41,7 +41,7 @@ class AdminSiteSettingsIntegrationTests {
 
 	@Test
 	void exposesPublicSettingsWithoutAdminMetadata() throws Exception {
-		mvc.perform(get("/api/public/settings"))
+		mvc.perform(get("/api/public/settings").with(user("aventurier@example.invalid").roles("USER")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.siteName").value("Les Routes Oubliées"))
 			.andExpect(jsonPath("$.timezone").value("Europe/Paris"))
@@ -53,7 +53,7 @@ class AdminSiteSettingsIntegrationTests {
 	@Test
 	void requiresAuthenticationForAdminSettings() throws Exception {
 		mvc.perform(get("/api/admin/settings"))
-			.andExpect(status().isForbidden());
+			.andExpect(status().isUnauthorized());
 	}
 
 	@Test
@@ -78,7 +78,7 @@ class AdminSiteSettingsIntegrationTests {
 			.andExpect(jsonPath("$.timezone").value("UTC"))
 			.andExpect(jsonPath("$.updatedBy").value("admin@example.invalid"));
 
-		mvc.perform(get("/api/public/settings"))
+		mvc.perform(get("/api/public/settings").with(user("aventurier@example.invalid").roles("USER")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.siteName").value("Les Routes de Test"))
 			.andExpect(jsonPath("$.status").value("MAINTENANCE"))

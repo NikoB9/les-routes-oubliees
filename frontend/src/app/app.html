@@ -2,6 +2,13 @@
 
 <a class="skip-link" href="#main-content">Aller au contenu principal</a>
 
+@if (accessSession.reconnectRequired()) {
+  <div class="access-reconnect" role="alert">
+    <p>Votre session sécurisée a expiré.</p>
+    <button type="button" (click)="accessSession.retryNow()">Se reconnecter</button>
+  </div>
+}
+
 <app-public-header />
 
 <div class="app-shell">

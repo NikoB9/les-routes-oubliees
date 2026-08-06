@@ -137,7 +137,10 @@ describe('App', () => {
     const profileButton = compiled.querySelector<HTMLButtonElement>('.profile-button');
 
     expect(profileButton?.textContent).toContain('Aurelune');
-    expect(profileButton?.getAttribute('aria-haspopup')).toBe('menu');
+    // Panneau de divulgation : aucun modèle ARIA « menu » n'est annoncé.
+    expect(profileButton?.getAttribute('aria-expanded')).toBe('false');
+    expect(profileButton?.getAttribute('aria-controls')).toBe('profile-panel');
+    expect(profileButton?.hasAttribute('aria-haspopup')).toBe(false);
   });
 
   it('should render the maintenance banner', async () => {

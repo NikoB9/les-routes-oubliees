@@ -5,6 +5,7 @@ import java.util.function.Supplier;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,30 +32,49 @@ import org.springframework.util.StringUtils;
 @EnableConfigurationProperties({ CloudflareAccessProperties.class, RadarHomeAssistantProperties.class })
 class SecurityConfig {
 
+	/**
+	 * Regles d'acces.
+	 *
+	 * <p>Ordre volontaire : l'unique {@code POST} Home Assistant est traite avant toute
+	 * autre regle, les chemins voisins sont fermes, puis toutes les API humaines exigent
+	 * une identite Cloudflare valide.
+	 *
+	 * <p>Les seules ressources laissees accessibles par Spring sont :
+	 * <ul>
+	 * <li>{@code /} : racine servie par le reverse proxy, jamais par Spring en production ;
+	 * <li>{@code /error} : dispatch interne d'erreur du conteneur servlet ;
+	 * <li>{@code /actuator/health} : sonde de disponibilite, restreinte au loopback par Nginx.
+	 * </ul>
+	 * Tout le reste, y compris {@code /media/**}, exige une identite Cloudflare.
+	 */
 	@Bean
 	SecurityFilterChain securityFilterChain(
 		HttpSecurity http,
 		CloudflareAccessAuthenticationFilter cloudflareAccessAuthenticationFilter,
-		HomeAssistantBearerAuthenticationFilter homeAssistantBearerAuthenticationFilter
+		HomeAssistantBearerAuthenticationFilter homeAssistantBearerAuthenticationFilter,
+		ObjectProvider<DevelopmentIdentityFilter> developmentIdentityFilter
 	) throws Exception {
-		return http
+		http
 			.authorizeHttpRequests((authorize) -> authorize
-				.requestMatchers("/", "/error", "/actuator/health").permitAll()
-				.requestMatchers("/api/public/**", "/media/**").permitAll()
-				.requestMatchers("/api/portal/**", "/api/radar/**").hasRole("USER")
-				.requestMatchers("/api/admin/**").hasRole("ADMIN")
 				.requestMatchers(HttpMethod.POST, HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH).hasRole("HOME_ASSISTANT")
 				.requestMatchers(HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH).denyAll()
 				.requestMatchers("/api/integrations/**").denyAll()
-				.anyRequest().permitAll())
+				.requestMatchers("/api/admin/**").hasRole("ADMIN")
+				.requestMatchers("/api/**", "/media/**").hasRole("USER")
+				.requestMatchers("/", "/error", "/actuator/health").permitAll()
+				.anyRequest().denyAll())
+			.exceptionHandling((exceptions) -> exceptions
+				.authenticationEntryPoint(new ApplicationAuthenticationEntryPoint()))
 			.sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.csrf((csrf) -> csrf
 				.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
 				.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
-				.ignoringRequestMatchers("/api/integrations/home-assistant/radar/treasure-position"))
+				.ignoringRequestMatchers(HomeAssistantBearerAuthenticationFilter.TREASURE_POSITION_PATH))
 			.addFilterBefore(homeAssistantBearerAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-			.addFilterBefore(cloudflareAccessAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-			.build();
+			.addFilterBefore(cloudflareAccessAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+		developmentIdentityFilter.ifAvailable((filter) ->
+			http.addFilterAfter(filter, CloudflareAccessAuthenticationFilter.class));
+		return http.build();
 	}
 
 	@Bean
