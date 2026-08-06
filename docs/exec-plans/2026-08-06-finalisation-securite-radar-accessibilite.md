@@ -61,6 +61,19 @@ Revue du commit `5d0b320`. Sept écarts confirmés et corrigés, un écart non r
 
 Les quatre tests de régression ajoutés ont été vérifiés en échec sur les sources du commit `5d0b320` avant correction, les neuf tests de présence préexistants restant verts.
 
+## Audit du commit `e2b7bc9`
+
+Audit complet rejoué après publication de la branche. Un écart réel trouvé, corrigé, et mesuré avant/après.
+
+**En-têtes de sécurité Nginx perdus sur tous les documents HTML.** `add_header` n'est hérité du niveau supérieur que si l'emplacement courant n'en déclare aucun. Les emplacements posant leur propre `Cache-Control` annulaient donc les quatre en-têtes du niveau `server`, et `try_files` redirigeant en interne toutes les routes de la SPA vers `location = /index.html`, aucune page ne recevait de CSP. Mesuré dans un conteneur `nginx:alpine` sur les deux exemples de configuration : `/`, `/radar` et `/index.html` sans `Content-Security-Policy`, `Permissions-Policy` ni `X-Content-Type-Options` avant correction ; les quatre en-têtes présents après, `Cache-Control: no-store` conservé, `nginx -t` valide.
+
+Observations conservées sans correction, car sans conséquence exploitable :
+
+* la vérification du départ et l'écriture de la présence ne sont pas atomiques entre les deux cartes de `RadarPresenceRegistry` : un `DELETE` intercalé entre les deux laisserait un repère jusqu'au TTL, sur une fenêtre de quelques nanosecondes et pour la seule identité concernée ;
+* un refus de géolocalisation en cours de session arrête les publications sans annoncer de départ : la disparition attend le TTL ;
+* `initials()` n'échappe pas son résultat, contrairement à `avatarPath` : au plus deux caractères, premières lettres de mots, valeurs issues de l'administration ;
+* la topologie conteneur proxifie `/actuator` sans restriction d'adresse, là où l'exemple de production le limite au loopback : Spring n'expose que `health`, le reste tombe sur `anyRequest().denyAll()`.
+
 ## Intégration continue
 
 `.github/workflows/ci.yml` rejoue à chaque `push` et `pull request` : lint, tests et build frontend sur Node 24, puis `./mvnw --batch-mode test` sur Temurin 25 avec Testcontainers. Playwright reste hors CI (téléchargement de navigateur) et documenté pour une exécution locale.

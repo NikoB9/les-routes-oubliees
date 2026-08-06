@@ -8,6 +8,11 @@ server {
     client_max_body_size 10m;
     server_tokens off;
 
+    # Nginx n'herite les add_header du niveau superieur que si l'emplacement n'en declare
+    # aucun. Tout emplacement qui pose son propre Cache-Control doit donc repeter ces quatre
+    # en-tetes, sinon la reponse part sans politique de securite. Le cas le plus grave est
+    # `location = /index.html` : `try_files` y redirige en interne toutes les routes de la
+    # SPA, donc c'est le document HTML de chaque page qui perdrait sa CSP.
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
@@ -19,6 +24,10 @@ server {
 
     location = /index.html {
         add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 
     location = /api/radar/events {
@@ -36,6 +45,10 @@ server {
         proxy_set_header Cf-Access-Jwt-Assertion $http_cf_access_jwt_assertion;
         proxy_set_header Authorization $http_authorization;
         add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 
     # Publication de position Home Assistant : seul chemin exempte de Cloudflare Access.
@@ -53,6 +66,10 @@ server {
         proxy_set_header X-Forwarded-Port 443;
         proxy_set_header Authorization $http_authorization;
         add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 
     location ~ ^/(api|media)/ {
@@ -67,6 +84,10 @@ server {
         proxy_set_header Cf-Access-Jwt-Assertion $http_cf_access_jwt_assertion;
         proxy_set_header Authorization $http_authorization;
         add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 
     location /actuator/ {

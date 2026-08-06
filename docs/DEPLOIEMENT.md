@@ -165,6 +165,8 @@ Permissions-Policy
 X-Frame-Options ou frame-ancestors dans la CSP
 ```
 
+Nginx n’hérite les `add_header` du niveau supérieur que si l’emplacement courant n’en déclare aucun. Chaque emplacement qui pose son propre `Cache-Control` doit donc répéter les en-têtes de sécurité, sans quoi la réponse part sans politique. Le cas critique est `location = /index.html` : `try_files` y redirige en interne toutes les routes de la SPA, donc le document HTML de chaque page perdrait sa CSP. Les exemples `infra/nginx/les-routes-oubliees.conf.example` et `frontend/nginx.conf` appliquent cette répétition ; vérifier après toute modification que `/`, `/radar` et `/carnet` renvoient bien la CSP et `Permissions-Policy`.
+
 Les réponses admin et API sensibles ne doivent pas être mises en cache par un proxy partagé. Les médias publics peuvent avoir une politique de cache séparée lorsqu’ils sont publiés.
 
 Pour la PWA :
