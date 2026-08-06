@@ -1,11 +1,11 @@
 import { Component, computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Subject, of } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { PortalIdentityStore } from '../../../core/portal/portal-identity.store';
 import { PortalMe } from '../../../core/portal/portal.models';
 import { RadarApiService } from '../radar-api.service';
-import { RadarLocationPayload, RadarSnapshot } from '../radar.models';
+import { RadarLocationPayload, RadarSnapshot, RadarStreamEvent } from '../radar.models';
 import { RadarPage } from './radar-page';
 
 interface RadarPageInternals {
@@ -13,6 +13,10 @@ interface RadarPageInternals {
   handlePosition: (position: GeolocationPosition) => Promise<void>;
   handleLocationError: (error: GeolocationPositionError) => void;
   requestLocation: () => void;
+  loadSnapshot: () => void;
+  startEvents: () => void;
+  streamError: () => boolean;
+  publishError: () => boolean;
   watchId: number | null;
 }
 
@@ -70,7 +74,7 @@ describe('RadarPage', () => {
     radarApi = {
       snapshot: vi.fn(() => of(snapshot)),
       updateLocation: vi.fn(() => of(undefined)),
-      events: vi.fn(() => of(snapshot)),
+      events: vi.fn(() => of<RadarStreamEvent>({ kind: 'snapshot', snapshot })),
       announceDeparture: vi.fn(),
     };
 
@@ -294,6 +298,121 @@ describe('RadarPage', () => {
     component.handleLocationError(locationError(1));
 
     expect(radarApi.announceDeparture).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Le sondage de secours ne couvre qu'une coupure : il doit s'arrêter dès le retour du
+   * flux, sans quoi la page resterait en mode dégradé pour le reste de la session — le
+   * défaut que la reconnexion native corrige.
+   */
+  it('polls while the stream is reconnecting, then stops as soon as it recovers', () => {
+    const stream = new Subject<RadarStreamEvent>();
+    radarApi.events.mockReturnValue(stream.asObservable());
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    component.startEvents();
+    const beforeOutage = radarApi.snapshot.mock.calls.length;
+
+    stream.next({ kind: 'reconnecting' });
+    vi.advanceTimersByTime(30_000);
+
+    expect(component.streamError()).toBe(true);
+    expect(radarApi.snapshot.mock.calls.length - beforeOutage).toBe(3);
+
+    stream.next({ kind: 'connected' });
+    const afterRecovery = radarApi.snapshot.mock.calls.length;
+    vi.advanceTimersByTime(30_000);
+
+    expect(component.streamError()).toBe(false);
+    expect(radarApi.snapshot.mock.calls.length).toBe(afterRecovery);
+  });
+
+  /** Un tirage en échec ne doit pas emporter le sondage : c'est le seul relais disponible. */
+  it('keeps polling after a failed snapshot', () => {
+    const stream = new Subject<RadarStreamEvent>();
+    radarApi.events.mockReturnValue(stream.asObservable());
+    radarApi.snapshot.mockReturnValue(throwError(() => new Error('offline')));
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    component.startEvents();
+    const beforeOutage = radarApi.snapshot.mock.calls.length;
+
+    stream.next({ kind: 'reconnecting' });
+    vi.advanceTimersByTime(30_000);
+
+    expect(radarApi.snapshot.mock.calls.length - beforeOutage).toBe(3);
+    expect(component.streamError()).toBe(true);
+  });
+
+  /**
+   * Une publication en échec rend l'aventurier invisible aux autres, ce qui n'a rien à voir
+   * avec sa propre réception. Un seul signal pour les deux causes affichait un message faux,
+   * qu'un instantané reçu effaçait de surcroît quelques secondes plus tard.
+   */
+  it('signals a failed publication apart from the reception banner', async () => {
+    radarApi.updateLocation.mockReturnValue(throwError(() => new Error('offline')));
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
+
+    await component.handlePosition(position(46.1, -1.1));
+
+    expect(component.publishError()).toBe(true);
+    expect(component.streamError()).toBe(false);
+
+    // Recevoir un instantané prouve la réception, jamais la publication : le message tient.
+    component.startEvents();
+
+    expect(component.publishError()).toBe(true);
+  });
+
+  it('clears the publication warning as soon as a publication succeeds', async () => {
+    radarApi.updateLocation.mockReturnValueOnce(throwError(() => new Error('offline')));
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
+
+    await component.handlePosition(position(46.1, -1.1));
+    expect(component.publishError()).toBe(true);
+
+    vi.advanceTimersByTime(7000);
+
+    expect(component.publishError()).toBe(false);
+  });
+
+  /** Le premier état manquant est déjà une réception dégradée : elle doit se rattraper seule. */
+  it('falls back to polling when the initial snapshot fails', () => {
+    radarApi.snapshot.mockReturnValue(throwError(() => new Error('offline')));
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+
+    component.loadSnapshot();
+    const beforeOutage = radarApi.snapshot.mock.calls.length;
+    vi.advanceTimersByTime(30_000);
+
+    expect(component.streamError()).toBe(true);
+    expect(radarApi.snapshot.mock.calls.length - beforeOutage).toBe(3);
+  });
+
+  /**
+   * Une coupure définitive laissait la session entière en sondage : le mode dégradé sans issue
+   * que la reconnexion native venait justement de supprimer, revenu par une autre porte.
+   */
+  it('reopens the direct stream a minute after a definitive failure', () => {
+    const stream = new Subject<RadarStreamEvent>();
+    radarApi.events.mockReturnValueOnce(throwError(() => new Error('closed')));
+    radarApi.events.mockReturnValue(stream.asObservable());
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    const beforeOutage = radarApi.events.mock.calls.length;
+
+    component.startEvents();
+
+    expect(radarApi.events.mock.calls.length - beforeOutage).toBe(1);
+    expect(component.streamError()).toBe(true);
+
+    vi.advanceTimersByTime(60_000);
+
+    expect(radarApi.events.mock.calls.length - beforeOutage).toBe(2);
+
+    // Le direct rétabli referme le mode dégradé.
+    stream.next({ kind: 'connected' });
+
+    expect(component.streamError()).toBe(false);
   });
 
   function position(latitude: number, longitude: number): GeolocationPosition {

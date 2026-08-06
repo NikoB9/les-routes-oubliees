@@ -402,11 +402,7 @@ class RadarPresenceIntegrationTests {
 
 		private final List<String> events = new ArrayList<>();
 
-		/** Executeur direct : l'enregistrement reste synchrone, donc les tests deterministes. */
-		RecordingBroadcaster() {
-			super(Runnable::run);
-		}
-
+		/** L'enregistrement est synchrone : aucun flux n'est ouvert, donc aucun ecrivain. */
 		@Override
 		void broadcast(String name, Object data) {
 			events.add(name);

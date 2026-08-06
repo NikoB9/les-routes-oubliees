@@ -52,7 +52,11 @@
     </div>
 
     @if (streamError()) {
-      <p class="alert" role="status">Le lien direct vacille. Une actualisation de secours est active.</p>
+      <p class="alert" role="status">Le lien direct vacille. Reconnexion en cours, une actualisation de secours prend le relais.</p>
+    }
+
+    @if (publishError()) {
+      <p class="alert" role="status">Votre position n'atteint plus le serveur : les autres participants risquent de ne plus vous voir.</p>
     }
 
     <div #map class="radar-map" aria-label="Carte du Radar d'Aurelune"></div>

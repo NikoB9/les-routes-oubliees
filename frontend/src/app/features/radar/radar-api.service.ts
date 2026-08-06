@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, NgZone, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { RadarLocationPayload, RadarSnapshot } from './radar.models';
+import { RadarLocationPayload, RadarSnapshot, RadarStreamEvent } from './radar.models';
 
 @Injectable({ providedIn: 'root' })
 export class RadarApiService {
@@ -53,15 +53,33 @@ export class RadarApiService {
     return entry ? decodeURIComponent(entry.slice('XSRF-TOKEN='.length)) : null;
   }
 
-  events(): Observable<RadarSnapshot> {
-    return new Observable<RadarSnapshot>((subscriber) => {
+  /**
+   * Flux d'événements Radar, reconnexion comprise.
+   *
+   * `EventSource` rétablit lui-même la liaison après une coupure — sauf si le code appelle
+   * `close()`, ce qui annule définitivement ses tentatives. La fermeture n'a donc lieu qu'au
+   * désabonnement, à la destruction du composant.
+   *
+   * Une erreur avec `readyState` à `CONNECTING` est une coupure transitoire : le navigateur
+   * réessaie, le flux est seulement dégradé. Seul l'état `CLOSED` — réponse non conforme,
+   * redirection Cloudflare Access — est définitif et termine l'observable en erreur.
+   */
+  events(): Observable<RadarStreamEvent> {
+    return new Observable<RadarStreamEvent>((subscriber) => {
       const source = new EventSource('/api/radar/events');
+      source.addEventListener('open', () => {
+        this.zone.run(() => subscriber.next({ kind: 'connected' }));
+      });
       source.addEventListener('snapshot', (event) => {
-        this.zone.run(() => subscriber.next(JSON.parse(event.data) as RadarSnapshot));
+        const snapshot = JSON.parse(event.data) as RadarSnapshot;
+        this.zone.run(() => subscriber.next({ kind: 'snapshot', snapshot }));
       });
       source.onerror = () => {
-        this.zone.run(() => subscriber.error(new Error('Radar stream disconnected.')));
-        source.close();
+        if (source.readyState === EventSource.CLOSED) {
+          this.zone.run(() => subscriber.error(new Error('Radar stream closed.')));
+          return;
+        }
+        this.zone.run(() => subscriber.next({ kind: 'reconnecting' }));
       };
       return () => source.close();
     });
