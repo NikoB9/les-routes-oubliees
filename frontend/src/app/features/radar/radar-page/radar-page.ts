@@ -1,12 +1,12 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, ElementRef, OnDestroy, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subscription, catchError, finalize, interval, switchMap } from 'rxjs';
+import { EMPTY, Subscription, catchError, finalize, interval, switchMap, timer } from 'rxjs';
 
 import { PortalIdentityStore } from '../../../core/portal/portal-identity.store';
 import { LoadingIndicatorComponent } from '../../../shared/components/loading-indicator/loading-indicator';
 import { RadarApiService } from '../radar-api.service';
-import { RadarLocationPayload, RadarParticipant, RadarSnapshot } from '../radar.models';
+import { RadarLocationPayload, RadarParticipant, RadarSnapshot, RadarStreamEvent } from '../radar.models';
 
 type LeafletModule = typeof import('leaflet');
 type LeafletMap = import('leaflet').Map;
@@ -28,7 +28,10 @@ export class RadarPage implements OnDestroy {
 
   protected readonly snapshot = signal<RadarSnapshot | null>(null);
   protected readonly locationState = signal<'idle' | 'waiting' | 'ready' | 'denied' | 'unavailable' | 'timeout' | 'insecure' | 'error'>('idle');
+  // Deux causes distinctes, donc deux signaux : ne plus recevoir l'état des autres n'est pas
+  // la même chose que ne plus leur transmettre le sien.
   protected readonly streamError = signal(false);
+  protected readonly publishError = signal(false);
   protected readonly selectedParticipant = signal<RadarParticipant | null>(null);
 
   protected readonly portal = computed(() => this.portalStore.portal());
@@ -51,6 +54,10 @@ export class RadarPage implements OnDestroy {
   private locationInterval: ReturnType<typeof window.setInterval> | null = null;
   private lastLocation: RadarLocationPayload | null = null;
   private locationPublishSubscription: Subscription | null = null;
+  private streamSubscription: Subscription | null = null;
+  private streamRetry: Subscription | null = null;
+  private fallbackPolling: Subscription | null = null;
+  private mapInitializing = false;
   private locationPublishInFlight = false;
   private locationPublishPending = false;
   private locationPublished = false;
@@ -77,6 +84,8 @@ export class RadarPage implements OnDestroy {
     this.stopLocationInterval();
     this.stopLocationWatch();
     this.cancelPublications();
+    this.stopFallbackPolling();
+    this.stopStreamRetry();
     this.lastLocation = null;
     this.map?.remove();
     this.map = null;
@@ -144,21 +153,92 @@ export class RadarPage implements OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (snapshot) => this.applySnapshot(snapshot),
-        error: () => this.streamError.set(true),
+        // Le premier état manquant est déjà une réception dégradée : le sondage s'en charge,
+        // et s'arrête de lui-même dès que le flux direct délivre son premier événement.
+        error: () => this.startFallbackPolling(),
       });
   }
 
   private startEvents() {
-    this.radarApi
+    this.streamSubscription?.unsubscribe();
+    this.streamSubscription = this.radarApi
       .events()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (event) => this.handleStreamEvent(event),
+        // Coupure définitive : le navigateur ne réessaiera pas. Le sondage prend le relais et
+        // une reprise est armée, sans quoi la session entière resterait en mode dégradé — le
+        // défaut même que la reconnexion native vient de supprimer.
+        error: () => {
+          this.startFallbackPolling();
+          this.scheduleStreamRetry();
+        },
+      });
+  }
+
+  /**
+   * Réarme le flux direct une minute après une coupure définitive.
+   *
+   * Le garde `destroyed` couvre la destruction en cours, pendant laquelle `DestroyRef` n'est
+   * pas encore marqué détruit : `takeUntilDestroyed` ne coupe alors rien, et une reprise
+   * serait armée sur un composant qui s'en va.
+   */
+  private scheduleStreamRetry() {
+    if (this.streamRetry || this.destroyed) {
+      return;
+    }
+    this.streamRetry = timer(60000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.streamRetry = null;
+        this.startEvents();
+      });
+  }
+
+  private stopStreamRetry() {
+    this.streamRetry?.unsubscribe();
+    this.streamRetry = null;
+  }
+
+  private handleStreamEvent(event: RadarStreamEvent) {
+    if (event.kind === 'reconnecting') {
+      this.startFallbackPolling();
+      return;
+    }
+    // Un événement reçu prouve que la liaison est rétablie : le repli n'a plus lieu d'être.
+    this.stopFallbackPolling();
+    this.streamError.set(false);
+    if (event.kind === 'snapshot') {
+      this.applySnapshot(event.snapshot);
+    }
+  }
+
+  /**
+   * Sondage de secours pendant que la liaison directe est interrompue.
+   *
+   * Un tirage en échec est absorbé sur place : sans cela il terminerait la souscription et
+   * la page resterait figée jusqu'au retour du flux, alors que le sondage est justement le
+   * filet censé couvrir cette période.
+   */
+  private startFallbackPolling() {
+    this.streamError.set(true);
+    if (this.fallbackPolling || this.destroyed) {
+      return;
+    }
+    this.fallbackPolling = interval(10000)
       .pipe(
-        catchError(() => {
+        switchMap(() => this.radarApi.snapshot().pipe(catchError(() => {
           this.streamError.set(true);
-          return interval(10000).pipe(switchMap(() => this.radarApi.snapshot()));
-        }),
+          return EMPTY;
+        }))),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((snapshot) => this.applySnapshot(snapshot));
+  }
+
+  private stopFallbackPolling() {
+    this.fallbackPolling?.unsubscribe();
+    this.fallbackPolling = null;
   }
 
   private async handlePosition(position: GeolocationPosition) {
@@ -203,23 +283,35 @@ export class RadarPage implements OnDestroy {
     }
   }
 
+  /**
+   * Le drapeau est levé avant l'import et non après : deux relevés rapprochés franchiraient
+   * sinon tous deux le garde pendant le chargement de Leaflet, et la seconde initialisation
+   * échouerait sur un conteneur déjà pris. Il retombe dans tous les cas, de sorte qu'un relevé
+   * ultérieur puisse réessayer si l'élément n'était pas encore rendu.
+   */
   private async ensureMap(location: RadarLocationPayload) {
-    if (this.map || this.destroyed) {
+    if (this.map || this.mapInitializing || this.destroyed) {
       return;
     }
-    this.leaflet = await import('leaflet');
-    const element = this.mapElement()?.nativeElement;
-    if (!element || !this.leaflet || this.destroyed) {
-      return;
+    this.mapInitializing = true;
+    try {
+      this.leaflet = await import('leaflet');
+      const element = this.mapElement()?.nativeElement;
+      if (!element || !this.leaflet || this.destroyed) {
+        return;
+      }
+      this.map = this.leaflet.map(element, { zoomControl: true }).setView([location.latitude, location.longitude], 16);
+      this.leaflet.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(this.map);
+      this.layerGroup = this.leaflet.layerGroup().addTo(this.map);
+      this.startEvents();
+      this.renderSnapshot();
     }
-    this.map = this.leaflet.map(element, { zoomControl: true }).setView([location.latitude, location.longitude], 16);
-    this.leaflet.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(this.map);
-    this.layerGroup = this.leaflet.layerGroup().addTo(this.map);
-    this.startEvents();
-    this.renderSnapshot();
+    finally {
+      this.mapInitializing = false;
+    }
   }
 
   private startLocationInterval() {
@@ -262,7 +354,10 @@ export class RadarPage implements OnDestroy {
           }
         }),
       )
-      .subscribe({ error: () => this.streamError.set(true) });
+      .subscribe({
+        next: () => this.publishError.set(false),
+        error: () => this.publishError.set(true),
+      });
   }
 
   private applySnapshot(snapshot: RadarSnapshot) {
