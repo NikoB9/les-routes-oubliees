@@ -21,6 +21,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -31,6 +33,15 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 class HomeAssistantBearerAuthenticationFilter extends OncePerRequestFilter {
+
+	/**
+	 * Journal des refus.
+	 *
+	 * <p>Seul point d'entree non protege par Cloudflare Access : sans trace, une tentative
+	 * repetee resterait invisible. Seule la categorie du motif est journalisee, jamais le
+	 * jeton presente ni le corps recu.
+	 */
+	private static final Logger LOGGER = LoggerFactory.getLogger(HomeAssistantBearerAuthenticationFilter.class);
 
 	static final String TREASURE_POSITION_PATH = "/api/integrations/home-assistant/radar/treasure-position";
 
@@ -60,17 +71,17 @@ class HomeAssistantBearerAuthenticationFilter extends OncePerRequestFilter {
 		}
 		response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
 		if (request.getContentLengthLong() > MAX_BODY_BYTES) {
-			reject(response, HttpStatus.PAYLOAD_TOO_LARGE);
+			reject(response, HttpStatus.PAYLOAD_TOO_LARGE, "taille de corps annoncee au-dela de la limite");
 			return;
 		}
 		var authorizationHeaders = Collections.list(request.getHeaders(HttpHeaders.AUTHORIZATION));
 		if (authorizationHeaders.size() != 1) {
-			reject(response, HttpStatus.UNAUTHORIZED);
+			reject(response, HttpStatus.UNAUTHORIZED, "en-tete Authorization absent ou duplique");
 			return;
 		}
 		var token = extractBearerToken(authorizationHeaders.getFirst());
 		if (!constantTimeEquals(token, properties.token())) {
-			reject(response, HttpStatus.UNAUTHORIZED);
+			reject(response, HttpStatus.UNAUTHORIZED, "jeton Bearer invalide");
 			return;
 		}
 
@@ -79,7 +90,7 @@ class HomeAssistantBearerAuthenticationFilter extends OncePerRequestFilter {
 		// puis rejoue au controleur, sans jamais etre journalise.
 		var body = readBoundedBody(request.getInputStream());
 		if (body == null) {
-			reject(response, HttpStatus.PAYLOAD_TOO_LARGE);
+			reject(response, HttpStatus.PAYLOAD_TOO_LARGE, "corps recu au-dela de la limite");
 			return;
 		}
 
@@ -91,7 +102,8 @@ class HomeAssistantBearerAuthenticationFilter extends OncePerRequestFilter {
 		filterChain.doFilter(new BoundedBodyRequest(request, body), response);
 	}
 
-	private void reject(HttpServletResponse response, HttpStatus status) throws IOException {
+	private void reject(HttpServletResponse response, HttpStatus status, String reason) throws IOException {
+		LOGGER.warn("Publication Home Assistant refusee ({}) : {}.", status.value(), reason);
 		if (status == HttpStatus.UNAUTHORIZED) {
 			response.setHeader(
 				ApplicationAuthenticationEntryPoint.AUTH_ERROR_HEADER,

@@ -79,9 +79,20 @@ describe('PublicHeaderComponent', () => {
     fixture.detectChanges();
 
     expect(button?.getAttribute('aria-expanded')).toBe('true');
-    expect(root.querySelector('#profile-panel')).not.toBeNull();
+    expect(panelHidden()).toBe(false);
     expect(root.querySelector('[role="menu"]')).toBeNull();
     expect(root.querySelector('[role="menuitem"]')).toBeNull();
+  });
+
+  /**
+   * `aria-controls` doit désigner un élément réellement présent : le panneau reste donc dans
+   * le document, masqué par `hidden` tant qu'il est fermé.
+   */
+  it('keeps the controlled panel in the document and hidden while closed', () => {
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(root.querySelector('#profile-panel')).not.toBeNull();
+    expect(panelHidden()).toBe(true);
   });
 
   it('offers a real logout button to a non-administrator', () => {
@@ -115,12 +126,12 @@ describe('PublicHeaderComponent', () => {
     const root = fixture.nativeElement as HTMLElement;
     profileButton()?.click();
     fixture.detectChanges();
-    expect(root.querySelector('#profile-panel')).not.toBeNull();
+    expect(panelHidden()).toBe(false);
 
     root.querySelector<HTMLAnchorElement>('.brand')?.click();
     fixture.detectChanges();
 
-    expect(root.querySelector('#profile-panel')).toBeNull();
+    expect(panelHidden()).toBe(true);
     expect(profileButton()?.getAttribute('aria-expanded')).toBe('false');
   });
 
@@ -132,11 +143,10 @@ describe('PublicHeaderComponent', () => {
     root.querySelector<HTMLElement>('.profile-panel')?.click();
     fixture.detectChanges();
 
-    expect(root.querySelector('#profile-panel')).not.toBeNull();
+    expect(panelHidden()).toBe(false);
   });
 
   it('closes with Escape and restores the focus to the profile button', () => {
-    const root = fixture.nativeElement as HTMLElement;
     const button = profileButton();
     button?.click();
     fixture.detectChanges();
@@ -144,7 +154,7 @@ describe('PublicHeaderComponent', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     fixture.detectChanges();
 
-    expect(root.querySelector('#profile-panel')).toBeNull();
+    expect(panelHidden()).toBe(true);
     expect(button?.getAttribute('aria-expanded')).toBe('false');
     expect(document.activeElement).toBe(button);
   });
@@ -175,5 +185,12 @@ describe('PublicHeaderComponent', () => {
 
   function profileButton(): HTMLButtonElement | null {
     return (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.profile-button');
+  }
+
+  function panelHidden(): boolean {
+    const panel = (fixture.nativeElement as HTMLElement).querySelector('#profile-panel');
+
+    expect(panel).not.toBeNull();
+    return panel?.hasAttribute('hidden') ?? true;
   }
 });

@@ -9,6 +9,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,8 @@ import fr.lesroutesoubliees.routesoubliees.shared.security.CloudflareAccessPrinc
 
 @Service
 class RadarService {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(RadarService.class);
 
 	private static final String TREASURE_BEACON = "tresor-aurelune";
 	private static final long SSE_TIMEOUT_MS = Duration.ofHours(1).toMillis();
@@ -149,6 +153,7 @@ class RadarService {
 	int sweepExpiredPresences() {
 		var removed = presence.pruneExpired();
 		if (removed > 0) {
+			LOGGER.debug("Balayage Radar : {} presence(s) expiree(s) retiree(s).", removed);
 			broadcast();
 		}
 		return removed;

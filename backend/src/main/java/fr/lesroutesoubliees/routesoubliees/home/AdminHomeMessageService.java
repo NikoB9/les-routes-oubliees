@@ -67,7 +67,7 @@ public class AdminHomeMessageService {
 	public AdminHomeMessageResponse activateMessage(UUID id, String actorEmail) {
 		var message = findMessage(id);
 		if (message.status() != EditorialStatus.PUBLISHED) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only a published home message can be active");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seul un message d'accueil publie peut etre actif.");
 		}
 		repository.findByActiveTrue().forEach(HomeMessage::deactivate);
 		repository.flush();
@@ -80,7 +80,7 @@ public class AdminHomeMessageService {
 	public void deleteMessage(UUID id, String actorEmail) {
 		var message = findMessage(id);
 		if (message.active()) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Active home message cannot be deleted");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le message d'accueil actif ne peut pas etre supprime.");
 		}
 		repository.delete(message);
 		audit.record(actorEmail, "HOME_MESSAGE_DELETED", "HOME_MESSAGE", id.toString(), "Parchemin supprimé");
@@ -88,12 +88,12 @@ public class AdminHomeMessageService {
 
 	private HomeMessage findMessage(UUID id) {
 		return repository.findById(id)
-			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Home message does not exist"));
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Message d'accueil introuvable."));
 	}
 
 	private void validateCountdown(AdminHomeMessageUpsertRequest request) {
 		if (request.countdownEnabled() && request.endsAt() == null) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Countdown end date is required");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La date de fin du compte a rebours est obligatoire.");
 		}
 	}
 

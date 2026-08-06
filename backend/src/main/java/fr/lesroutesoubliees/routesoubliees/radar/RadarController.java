@@ -1,5 +1,7 @@
 package fr.lesroutesoubliees.routesoubliees.radar;
 
+import java.util.UUID;
+
 import jakarta.validation.Valid;
 
 import org.springframework.http.CacheControl;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import fr.lesroutesoubliees.routesoubliees.auth.AdminIdentity;
+import fr.lesroutesoubliees.routesoubliees.portal.PortalIdentityService;
 import fr.lesroutesoubliees.routesoubliees.shared.security.CloudflareAccessPrincipal;
 
 @RestController
@@ -108,10 +111,12 @@ class AdminRadarSettingsController {
 
 	private final RadarService radar;
 	private final AdminIdentity identity;
+	private final PortalIdentityService identities;
 
-	AdminRadarSettingsController(RadarService radar, AdminIdentity identity) {
+	AdminRadarSettingsController(RadarService radar, AdminIdentity identity, PortalIdentityService identities) {
 		this.radar = radar;
 		this.identity = identity;
+		this.identities = identities;
 	}
 
 	@GetMapping
@@ -126,7 +131,22 @@ class AdminRadarSettingsController {
 	) {
 		return ResponseEntity.ok()
 			.cacheControl(CacheControl.noStore())
-			.body(radar.updateSettings(request, null, identity.email(authentication)));
+			.body(radar.updateSettings(request, actorIdentityId(authentication), identity.email(authentication)));
+	}
+
+	/**
+	 * Identite portail de l'administrateur agissant.
+	 *
+	 * <p>La colonne {@code treasure_visibility_updated_by} reference
+	 * {@code portal_identities} : elle reste nulle pour un administrateur qui n'a jamais
+	 * choisi de personnage. La trace de reference demeure {@code audit_logs}, qui enregistre
+	 * l'adresse de l'acteur.
+	 */
+	private UUID actorIdentityId(Authentication authentication) {
+		if (authentication == null || !(authentication.getPrincipal() instanceof CloudflareAccessPrincipal principal)) {
+			return null;
+		}
+		return identities.findIdentityId(principal).orElse(null);
 	}
 }
 

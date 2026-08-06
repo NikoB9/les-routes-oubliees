@@ -570,6 +570,8 @@ npm test -- --watch=false
 npm run build
 ```
 
+`strict` et `strictTemplates` sont obligatoires dans `frontend/tsconfig.json` : ne jamais les relâcher pour faire passer un build. Une erreur signalée par l'un des deux se corrige dans le code.
+
 ### Backend
 
 ```bash

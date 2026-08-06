@@ -125,6 +125,11 @@
   -webkit-box-orient: vertical;
 }
 
+/* `display: grid` ci-dessous l'emporterait sur le `display: none` de `hidden`. */
+.profile-panel[hidden] {
+  display: none;
+}
+
 .profile-panel {
   position: absolute;
   inset-block-start: calc(100% + 0.45rem);

@@ -354,6 +354,15 @@ Stratégie cible pour la SPA :
 
 Ne pas désactiver globalement CSRF pour simplifier le développement.
 
+### 6.6 Contrat d'erreur
+
+Toutes les erreurs d'API sont rendues en `application/problem+json` (RFC 9457) : `spring.mvc.problemdetails.enabled` couvre les refus métier et les erreurs de validation, le point d'entrée `401` produit le même format avec son marqueur `X-LRO-Auth-Error: application`, et un gestionnaire de dernier recours traduit toute exception imprévue en `500` au corps générique.
+
+Deux règles à ne pas relâcher :
+
+* le message d'une exception inattendue reste dans les journaux du serveur, jamais dans la réponse : il peut contenir une requête, un chemin ou une valeur de configuration ;
+* ce gestionnaire porte volontairement la priorité la plus basse. Spring retient le premier `@ControllerAdvice` possédant une méthode compatible, sans comparer la précision entre plusieurs advices : un `@ExceptionHandler(Exception.class)` déclaré plus tôt capturerait aussi les erreurs de validation et détruirait leur détail.
+
 ### 6.5 CORS
 
 En production, l’application doit fonctionner sous le même domaine public pour le frontend et l’API.
@@ -628,6 +637,17 @@ Deux invariants protègent ce cycle côté serveur :
 
 Les diffusions SSE déclenchées par une écriture sont reportées après le commit de la transaction : un état construit à partir de données non validées ne doit jamais atteindre les abonnés.
 
+Ces diffusions partent ensuite d'un exécuteur dédié à un seul thread, et non du thread appelant. Une écriture SSE est bloquante : un client qui cesse de lire sans fermer sa connexion remplit le tampon réseau et immobilise le thread qui écrit. Tant que la diffusion partait du planificateur, un seul client dans cet état suspendait le balayage des présences, donc la diffusion des disparitions — exactement ce que le filet de sécurité doit garantir. Un thread unique, volontairement, pour préserver l'ordre des instantanés ; une file bornée à 64 abandonne le plus ancien plutôt que de grossir, chaque instantané étant un état complet que le suivant remplace. Résidu assumé : un client bloqué retarde les instantanés des autres jusqu'à la fin de sa connexion, mais ne peut plus figer ni le balayage ni un thread de requête.
+
 Le releve tresor Home Assistant reste applique par une mise a jour atomique strictement temporelle : `204 No Content` lorsque la mesure est appliquee, `200 OK` avec `{"status":"ignored"}` lorsqu'elle n'est pas strictement plus recente. `202 Accepted` n'est pas utilise, la mise a jour n'etant jamais differee.
 
-Depuis la protection Cloudflare Access globale, le service worker ne sert plus le shell Angular pour les navigations. Les navigations complètes doivent consulter le réseau afin que Cloudflare Access puisse intercepter une session absente ou expirée. Les assets restent pris en charge par la PWA, mais l'affichage hors ligne d'une nouvelle navigation est volontairement dégradé pour éviter qu'une page soit rendue depuis un cache local après déconnexion.
+### Navigations et service worker
+
+Le service worker sert le shell Angular pour les navigations, **sauf** `/radar`, `/admin` et `/admin/**`, et sauf les URL de fichiers. Cet arbitrage remplace une exclusion totale des navigations, qui rendait le mode hors ligne annoncé dans `PLAN_FINAL` entièrement inopérant : sans navigation servie, la coquille applicative ne se chargeait jamais et le snapshot de contenu public mis en cache restait inatteignable.
+
+Ce que l'arbitrage préserve et ce qu'il concède :
+
+* **Préservé** : `/radar` et `/admin` passent toujours par le réseau. Cloudflare Access peut donc intercepter une session absente ou expirée avant qu'une page sensible ne soit rendue, et aucune vue d'administration ni aucune position ne sort d'un cache local.
+* **Concédé** : les pages publiques — accueil, carte, carnet — se rechargent hors ligne, y compris après une déconnexion Cloudflare Access, avec le dernier contenu public synchronisé. Ce contenu est celui que tout aventurier authentifié voit déjà ; il reste néanmoins lisible sur l'appareil jusqu'à l'expiration du cache, fixée à 24 heures.
+
+Les motifs sont figés par un test : voir `frontend/src/app/core/offline/ngsw-config.spec.ts`. Une erreur de motif ne casse aucun autre test et ne se voit qu'en navigateur, réseau coupé.

@@ -76,17 +76,11 @@ export class RadarPage implements OnDestroy {
     this.destroyed = true;
     this.stopLocationInterval();
     this.stopLocationWatch();
-    this.locationPublishSubscription?.unsubscribe();
-    this.locationPublishSubscription = null;
-    this.locationPublishInFlight = false;
-    this.locationPublishPending = false;
+    this.cancelPublications();
     this.lastLocation = null;
     this.map?.remove();
     this.map = null;
-    if (this.locationPublished) {
-      this.locationPublished = false;
-      this.radarApi.announceDeparture();
-    }
+    this.announceDepartureOnce();
   }
 
   protected loadPortal() {
@@ -193,6 +187,10 @@ export class RadarPage implements OnDestroy {
     if (error.code === error.PERMISSION_DENIED) {
       this.stopLocationWatch();
       this.locationState.set('denied');
+      // La permission est définitivement perdue : plus aucune position ne sera publiée. Le
+      // repère doit donc disparaître tout de suite, au lieu d'attendre le TTL serveur.
+      this.cancelPublications();
+      this.announceDepartureOnce();
     }
     else if (error.code === error.POSITION_UNAVAILABLE) {
       this.locationState.set('unavailable');
@@ -416,6 +414,29 @@ export class RadarPage implements OnDestroy {
 
   private escapeAttribute(value: string) {
     return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  }
+
+  /**
+   * Interrompt la publication en cours et interdit toute publication différée.
+   *
+   * La position en vol est annulée côté client ; le serveur complète cette annulation par
+   * une fenêtre de départ, une annulation navigateur ne garantissant pas qu'il n'a pas
+   * déjà commencé à traiter la requête.
+   */
+  private cancelPublications() {
+    this.locationPublishSubscription?.unsubscribe();
+    this.locationPublishSubscription = null;
+    this.locationPublishInFlight = false;
+    this.locationPublishPending = false;
+  }
+
+  /** Annonce le départ une seule fois, et seulement si une position a été publiée. */
+  private announceDepartureOnce() {
+    if (!this.locationPublished) {
+      return;
+    }
+    this.locationPublished = false;
+    this.radarApi.announceDeparture();
   }
 
   private stopLocationWatch() {

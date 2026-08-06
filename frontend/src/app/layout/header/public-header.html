@@ -42,14 +42,17 @@
       <span class="profile-name">{{ profileName() }}</span>
     </button>
 
-    @if (profileMenuOpen()) {
-      <div class="profile-panel" id="profile-panel">
-        @if (portal.canAccessAdmin()) {
-          <a routerLink="/admin" (click)="closeProfileMenu()">Administration</a>
-        }
-        <button type="button" class="profile-logout" (click)="logout()">Se déconnecter</button>
-      </div>
-    }
+    <!--
+      Le panneau reste dans le document, masqué par `hidden` : `aria-controls` doit désigner
+      un élément existant, y compris panneau fermé. `hidden` retire l'élément de l'ordre de
+      tabulation et de l'arbre d'accessibilité.
+    -->
+    <div class="profile-panel" id="profile-panel" [hidden]="!profileMenuOpen()">
+      @if (portal.canAccessAdmin()) {
+        <a routerLink="/admin" (click)="closeProfileMenu()">Administration</a>
+      }
+      <button type="button" class="profile-logout" (click)="logout()">Se déconnecter</button>
+    </div>
   </div>
 </header>
 

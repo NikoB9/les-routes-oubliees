@@ -16,6 +16,17 @@ spring:
       # Refus explicite des proprietes JSON inconnues : la stricte lecture des DTO
       # ne doit pas dependre d'un defaut de la bibliotheque ou du demarreur.
       fail-on-unknown-properties: true
+  mvc:
+    problemdetails:
+      # Contrat d'erreur unique en application/problem+json (RFC 9457), comme le point
+      # d'entree 401. Les refus metier exposent alors leur motif, aujourd'hui perdu.
+      enabled: true
+  task:
+    scheduling:
+      # Le defaut est un thread unique, partage par le heartbeat et le balayage des
+      # presences Radar : une tache lente y suspendrait les autres.
+      pool:
+        size: 4
 
 management:
   endpoints:

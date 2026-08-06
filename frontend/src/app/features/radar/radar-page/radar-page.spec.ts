@@ -269,6 +269,33 @@ describe('RadarPage', () => {
     expect(radarApi.updateLocation).toHaveBeenCalledTimes(1);
   });
 
+  /**
+   * La permission perdue est définitive : attendre le TTL serveur laisserait un repère
+   * immobile pendant 45 secondes alors que le départ est déjà certain.
+   */
+  it('announces the departure as soon as the permission is denied', async () => {
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
+
+    await component.handlePosition(position(46.1, -1.1));
+    component.handleLocationError(locationError(1));
+
+    expect(radarApi.announceDeparture).toHaveBeenCalledTimes(1);
+
+    // La destruction qui suit ne doit pas envoyer un second depart.
+    fixture.destroy();
+
+    expect(radarApi.announceDeparture).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not announce a departure when the permission is denied before any publication', () => {
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+
+    component.handleLocationError(locationError(1));
+
+    expect(radarApi.announceDeparture).not.toHaveBeenCalled();
+  });
+
   function position(latitude: number, longitude: number): GeolocationPosition {
     return {
       coords: {

@@ -89,7 +89,7 @@ public class AdminQuestService {
 
 	private Quest findQuest(String code) {
 		return repository.findByCode(code)
-			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quest does not exist"));
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quete introuvable."));
 	}
 
 	private AdminQuestResponse toResponse(Quest quest) {

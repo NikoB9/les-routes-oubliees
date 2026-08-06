@@ -7,6 +7,7 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -226,6 +227,33 @@ class RadarPresenceIntegrationTests {
 	}
 
 	/**
+	 * Contrat d'erreur unique : un refus metier doit parvenir au client avec son motif, en
+	 * {@code application/problem+json}, et non sous la forme d'un corps d'erreur generique
+	 * dont le motif serait perdu.
+	 */
+	@Test
+	void businessRefusalIsRenderedAsProblemJson() throws Exception {
+		var future = OffsetDateTime.now(CLOCK).plusMinutes(10).withNano(0);
+
+		mvc.perform(put("/api/radar/me/location")
+				.with(authentication(firstUser()))
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "latitude": 46.1,
+					  "longitude": -1.1,
+					  "accuracyM": 6.0,
+					  "observedAt": "%s"
+					}
+					""".formatted(future)))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+			.andExpect(jsonPath("$.status").value(400))
+			.andExpect(jsonPath("$.detail").value("Horodatage futur invalide."));
+	}
+
+	/**
 	 * Une lecture ne doit pas consommer une expiration : sinon le balayage suivant ne
 	 * trouverait plus rien a retirer et ne diffuserait aucune disparition, laissant les
 	 * clients deja connectes avec un ancien repere.
@@ -373,6 +401,11 @@ class RadarPresenceIntegrationTests {
 	static class RecordingBroadcaster extends RadarEventBroadcaster {
 
 		private final List<String> events = new ArrayList<>();
+
+		/** Executeur direct : l'enregistrement reste synchrone, donc les tests deterministes. */
+		RecordingBroadcaster() {
+			super(Runnable::run);
+		}
 
 		@Override
 		void broadcast(String name, Object data) {

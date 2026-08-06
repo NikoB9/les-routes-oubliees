@@ -67,7 +67,7 @@ public class AdminAdventurerService {
 		var adventurers = repository.findAllByOrderByDisplayOrderAsc();
 		var knownIds = adventurers.stream().map(Adventurer::id).toList();
 		if (request.orderedIds().size() != knownIds.size() || !new HashSet<>(request.orderedIds()).containsAll(knownIds)) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reorder payload must contain every adventurer");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le reordonnancement doit contenir tous les aventuriers.");
 		}
 		for (int index = 0; index < request.orderedIds().size(); index++) {
 			findIn(adventurers, request.orderedIds().get(index)).changeDisplayOrder(-(index + 1));
@@ -92,14 +92,14 @@ public class AdminAdventurerService {
 
 	private Adventurer findAdventurer(UUID id) {
 		return repository.findById(id)
-			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Adventurer does not exist"));
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aventurier introuvable."));
 	}
 
 	private Adventurer findIn(List<Adventurer> adventurers, UUID id) {
 		return adventurers.stream()
 			.filter(adventurer -> adventurer.id().equals(id))
 			.findFirst()
-			.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown adventurer"));
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Aventurier inconnu."));
 	}
 
 	private String trimToNull(String value) {
