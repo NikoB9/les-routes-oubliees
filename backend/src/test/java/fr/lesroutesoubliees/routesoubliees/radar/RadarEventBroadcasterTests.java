@@ -61,8 +61,7 @@ class RadarEventBroadcasterTests {
 	 */
 	@Test
 	void neverBlocksTheCallerWhenAStreamStalls() throws Exception {
-		var configuration = new RadarBroadcastConfiguration();
-		var broadcaster = new RadarEventBroadcaster(configuration.radarDeliveryExecutor());
+		var broadcaster = new RadarEventBroadcaster(RadarDeliveryExecutor.create());
 		var writing = new CountDownLatch(1);
 		var release = new CountDownLatch(1);
 		var stalled = mock(SseEmitter.class);

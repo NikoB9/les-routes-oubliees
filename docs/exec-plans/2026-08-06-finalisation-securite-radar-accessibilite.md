@@ -90,6 +90,12 @@ Neuf points traités après l'audit de `471d307`. Aucune dépendance ajoutée.
 
 Validations : 121 tests backend, 95 tests frontend, 3 tests axe, lint, build, `docker compose --profile app config`, `npm audit --omit=dev` à 0, `git diff --check` propre. Manifeste généré vérifié : navigation autorisée hors fichiers, `/radar` et `/admin` exclus, `/index.html` présent dans le cache.
 
+### Régression introduite par le correctif SSE, puis corrigée
+
+L'exécuteur de diffusion avait d'abord été déclaré comme bean de type `Executor`. Or Spring Boot ne crée son `applicationTaskExecutor` que si le contexte n'en déclare aucun : la condition `OnExecutorCondition` combine `@ConditionalOnMissingBean(Executor.class)` et `spring.task.execution.mode=force` — vérifié dans le bytecode de `spring-boot-autoconfigure` 4.1.0. Ce bean supprimait donc silencieusement l'exécuteur de tâches applicatif, et le traitement asynchrone de Spring MVC, dont les flux SSE eux-mêmes, retombait sur un exécuteur créant un thread par requête sans limite.
+
+`RadarEventBroadcaster` possède désormais son exécuteur au lieu de l'injecter, via la fabrique `RadarDeliveryExecutor`, et le libère par `DisposableBean`. Aucun bean `Executor` n'existe plus dans le contexte. `RoutesOublieesApplicationTests` fige le garde-fou en vérifiant la présence d'`applicationTaskExecutor` ; ce test a été constaté en échec sur le commit `bc32474` avant correction.
+
 ## Intégration continue
 
 `.github/workflows/ci.yml` rejoue à chaque `push` et `pull request` : lint, tests et build frontend sur Node 24, puis `./mvnw --batch-mode test` sur Temurin 25 avec Testcontainers. Playwright reste hors CI (téléchargement de navigateur) et documenté pour une exécution locale.

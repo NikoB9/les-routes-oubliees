@@ -7,6 +7,8 @@ import java.util.concurrent.Executor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -19,18 +21,40 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  *
  * <p>Les diffusions sont deleguees a un executeur dedie a un seul thread : une ecriture
  * bloquee sur un client muet ne doit jamais immobiliser le balayage des presences ni un
- * thread de requete. Voir {@link RadarBroadcastConfiguration}.
+ * thread de requete. Voir {@link RadarDeliveryExecutor}, que ce composant possede au lieu
+ * de l'injecter, un bean {@link Executor} desactivant l'executeur de taches de Spring Boot.
  */
 @Component
-class RadarEventBroadcaster {
+class RadarEventBroadcaster implements DisposableBean {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(RadarEventBroadcaster.class);
 
 	private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
 	private final Executor deliveries;
+	private final ThreadPoolTaskExecutor ownedExecutor;
 
-	RadarEventBroadcaster(Executor radarDeliveryExecutor) {
-		this.deliveries = radarDeliveryExecutor;
+	/** Constructeur utilise par Spring : le composant cree et possede son executeur. */
+	RadarEventBroadcaster() {
+		this.ownedExecutor = RadarDeliveryExecutor.create();
+		this.deliveries = this.ownedExecutor;
+	}
+
+	/**
+	 * Constructeur de test : l'executeur fourni n'est pas gere par ce composant.
+	 *
+	 * <p>Spring retient le constructeur sans argument lorsque plusieurs sont declares et
+	 * qu'aucun ne porte {@code @Autowired}.
+	 */
+	RadarEventBroadcaster(Executor deliveries) {
+		this.ownedExecutor = null;
+		this.deliveries = deliveries;
+	}
+
+	@Override
+	public void destroy() {
+		if (this.ownedExecutor != null) {
+			this.ownedExecutor.shutdown();
+		}
 	}
 
 	SseEmitter register(long timeoutMs) {

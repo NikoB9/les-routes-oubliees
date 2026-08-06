@@ -1,15 +1,11 @@
 package fr.lesroutesoubliees.routesoubliees.radar;
 
-import java.util.concurrent.Executor;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
- * Executeur des diffusions SSE.
+ * Fabrique de l'executeur des diffusions SSE.
  *
  * <p>Une ecriture SSE est bloquante : un client qui ne lit plus sans fermer sa connexion
  * remplit le tampon reseau et immobilise le thread appelant. Tant que la diffusion partait
@@ -20,19 +16,24 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * <p>Un seul thread, volontairement : l'ordre des instantanes doit etre conserve, sans quoi
  * un etat ancien pourrait ecraser un etat recent chez les abonnes.
  *
- * <p>Residu assume : un client bloque retarde les instantanes des autres jusqu'a la fin de
- * sa connexion. Le balayage, le heartbeat et les threads de requete ne peuvent plus l'etre.
+ * <p><strong>Volontairement pas un bean.</strong> Spring Boot ne cree son executeur de
+ * taches applicatif que si le contexte ne declare aucun bean de type
+ * {@link java.util.concurrent.Executor}. Exposer celui-ci comme bean supprimerait donc
+ * {@code applicationTaskExecutor}, et le traitement asynchrone de Spring MVC — dont ces
+ * memes flux SSE — retomberait sur un executeur creant un thread par requete, sans limite.
+ * {@link RadarEventBroadcaster} en est donc le seul proprietaire.
  */
-@Configuration(proxyBeanMethods = false)
-class RadarBroadcastConfiguration {
+final class RadarDeliveryExecutor {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(RadarBroadcastConfiguration.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(RadarDeliveryExecutor.class);
 
 	/** Au-dela, les instantanes en attente sont obsoletes : le plus ancien est abandonne. */
 	private static final int QUEUE_CAPACITY = 64;
 
-	@Bean(destroyMethod = "shutdown")
-	Executor radarDeliveryExecutor() {
+	private RadarDeliveryExecutor() {
+	}
+
+	static ThreadPoolTaskExecutor create() {
 		var executor = new ThreadPoolTaskExecutor();
 		executor.setCorePoolSize(1);
 		executor.setMaxPoolSize(1);
