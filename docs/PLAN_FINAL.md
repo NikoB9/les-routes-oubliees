@@ -70,7 +70,7 @@ Le MVP comprend :
 * le socle Spring Boot ;
 * PostgreSQL ;
 * Flyway ;
-* l’authentification Cloudflare Access pour Radar et l'administration ;
+* l’authentification Cloudflare Access protégeant la totalité de l’hôte, Radar et administration inclus ;
 * l’allowlist d’administrateurs ;
 * la page d’accueil ;
 * la page carte ;
@@ -743,9 +743,9 @@ Principes :
 
 ### 18.1 Sécurité
 
-* authentification Cloudflare Access ;
+* authentification Cloudflare Access en amont de l’origine ;
 * allowlist backend ;
-* session serveur ;
+* backend sans session applicative : chaque requête est validée par son JWT Cloudflare ;
 * cookies sécurisés ;
 * CSRF actif ;
 * CORS restrictif ;

@@ -577,6 +577,17 @@ cd backend
 ./mvnw verify
 ```
 
+### Intégration continue
+
+`.github/workflows/ci.yml` rejoue ces validations à chaque `push` et chaque `pull request` :
+
+* job `frontend` sur Node 24 : `npm ci`, `npm run lint`, `npm test -- --watch=false`, `npm run build` ;
+* job `backend` sur Temurin 25 : `./mvnw --batch-mode test`, Testcontainers utilisant le Docker de l'agent.
+
+Prérequis locaux correspondants : Node 22.22.3 ou 24.15.0 au minimum pour la CLI Angular 22, un JDK 25 et un démon Docker pour Testcontainers.
+
+Les tests Playwright d'accessibilité (`npm run test:a11y`) restent volontairement hors CI : ils exigent le téléchargement d'un navigateur de plus de 100 Mio. Les exécuter localement lorsqu'un lot modifie l'interface.
+
 ### Validation globale
 
 Lorsqu’un lot touche plusieurs modules :

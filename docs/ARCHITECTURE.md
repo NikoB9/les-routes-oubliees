@@ -12,7 +12,7 @@ Principes :
 * frontend Angular séparé du backend Spring Boot ;
 * API REST ;
 * base PostgreSQL unique ;
-* session serveur ;
+* backend sans état : session gérée par Cloudflare Access en amont, JWT validé à chaque requête ;
 * fichiers médias sur volume persistant ;
 * pas de microservices ;
 * pas de complexité distribuée ;
@@ -345,9 +345,10 @@ Maintenir la protection CSRF sur les opérations d’écriture.
 
 Stratégie cible pour la SPA :
 
-* session serveur dans un cookie `HttpOnly`;
+* aucune session applicative : l’identité provient du JWT Cloudflare validé à chaque requête, la politique de session Spring est `STATELESS` ;
 * token CSRF transmis dans un cookie `XSRF-TOKEN` lisible par Angular ;
 * envoi du token par le frontend dans l’en-tête `X-XSRF-TOKEN` pour les méthodes d’écriture ;
+* les requêtes émises hors de `HttpClient` doivent poser ce jeton manuellement : c’est le cas du `DELETE` de départ Radar, envoyé par `fetch` pour survivre à la navigation ;
 * renouvellement du token selon la configuration Spring Security ;
 * erreur explicite et non verbeuse en cas de token absent ou invalide.
 
@@ -619,6 +620,13 @@ Retrait de la présence :
 * lors d'une navigation Angular normale hors de Radar, cette notification est envoyée après l'arrêt des publications, par une requête même origine détachée du composant (`keepalive`) ;
 * cette notification n'est jamais garantie : fermeture brutale, perte réseau ou appareil éteint peuvent l'empêcher ;
 * le TTL serveur d'environ 45 secondes est donc le filet de sécurité obligatoire. Un balayage périodique côté serveur retire les présences expirées et diffuse leur disparition, sans dépendre d'une nouvelle publication de position. La latence maximale de disparition est le TTL suivi de l'intervalle de balayage.
+
+Deux invariants protègent ce cycle côté serveur :
+
+* **La lecture n'expire rien.** `snapshot()` exclut les présences expirées de la vue renvoyée mais ne les supprime pas : la suppression et sa diffusion appartiennent au seul balayage périodique. Sans cela, une simple lecture pourrait consommer une expiration que personne n'aurait diffusée, et les clients déjà connectés conserveraient un repère disparu jusqu'à la publication suivante.
+* **Le départ explicite prime pendant cinq secondes.** Le client annule sa publication en vol avant d'envoyer le `DELETE`, mais une annulation navigateur ne garantit pas que le serveur n'a pas déjà commencé à traiter la requête. Un départ mémorisé fait donc ignorer toute publication de la même identité pendant cinq secondes, et une position dont l'horodatage est antérieur à celle déjà connue n'est jamais appliquée. Conséquence assumée : un retour sur Radar dans cette fenêtre reste invisible aux autres participants jusqu'à la publication suivante.
+
+Les diffusions SSE déclenchées par une écriture sont reportées après le commit de la transaction : un état construit à partir de données non validées ne doit jamais atteindre les abonnés.
 
 Le releve tresor Home Assistant reste applique par une mise a jour atomique strictement temporelle : `204 No Content` lorsque la mesure est appliquee, `200 OK` avec `{"status":"ignored"}` lorsqu'elle n'est pas strictement plus recente. `202 Accepted` n'est pas utilise, la mise a jour n'etant jamais differee.
 

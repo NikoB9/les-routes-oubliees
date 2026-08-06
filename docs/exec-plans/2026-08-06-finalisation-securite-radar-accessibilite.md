@@ -45,6 +45,26 @@ Hors périmètre :
 8. Nettoyer les contradictions documentaires. Statut : fait.
 9. Exécuter les validations et relire le diff. Statut : fait.
 
+## Corrections issues de la revue externe
+
+Revue du commit `5d0b320`. Sept écarts confirmés et corrigés, un écart non retenu.
+
+1. **Expiration réellement diffusée.** `RadarPresenceRegistry.snapshot()` devient une lecture sans effet de bord : les présences expirées sont exclues de la vue mais ne sont plus supprimées. `pruneExpired()`, appelé par le seul balayage périodique, reste l'unique point de suppression et compte les retraits par `remove(cle, valeur)` atomique. Une lecture ne peut donc plus consommer une expiration que personne n'aurait diffusée.
+2. **Course `PUT`/`DELETE` fermée côté serveur.** Un départ mémorisé fait ignorer toute publication de la même identité pendant cinq secondes, et une position dont l'horodatage est antérieur à celle déjà connue n'est jamais appliquée. L'égalité d'horodatage reste acceptée, sans quoi le heartbeat de sept secondes — qui republie volontairement la même position — ferait expirer un aventurier immobile. Conséquence assumée : un retour sur Radar dans les cinq secondes reste invisible aux autres jusqu'à la publication suivante.
+3. **Profil et adresse réellement imposés.** `EnvironmentFile=` prime sur `Environment=` en systemd : les deux valeurs passent en arguments de programme dans `ExecStart`, source de propriétés la plus prioritaire de Spring Boot. Le fichier d'environnement ne porte plus que les secrets et la base.
+4. **Diffusion SSE après commit.** `RadarService.broadcast()` reporte la diffusion après le commit lorsqu'une transaction est active : un rollback ne peut plus laisser d'état fantôme chez les abonnés. `RadarPresenceIntegrationTests` perd son `@Transactional` de classe, sans quoi aucune diffusion ne serait observable, et nettoie ses données explicitement.
+5. **Anti-boucle sans `sessionStorage`.** Un verrou mémoire complète le verrou `sessionStorage` : si le stockage est indisponible, un seul rechargement reste tenté avant l'affichage de l'action de reconnexion.
+6. **Identité de développement utilisable.** Le stub reprend la première adresse d'amorçage administrateur, donc l'administration est accessible en local. C'est toujours l'allowlist qui décide du rôle, ce que couvre un test dédié.
+7. **Sources de vérité.** `docs/PLAN_FINAL.md` et `docs/ARCHITECTURE.md` ne mentionnent plus de session serveur ni un périmètre Access limité à Radar et à l'administration.
+
+Écart non retenu : « tests backend critiques non confirmés ». Les 106 tests backend et les 68 tests frontend ont bien été exécutés et sont verts sur le poste de développement. Le manque réel était l'absence de preuve reproductible, comblé par l'ajout de `.github/workflows/ci.yml`.
+
+Les quatre tests de régression ajoutés ont été vérifiés en échec sur les sources du commit `5d0b320` avant correction, les neuf tests de présence préexistants restant verts.
+
+## Intégration continue
+
+`.github/workflows/ci.yml` rejoue à chaque `push` et `pull request` : lint, tests et build frontend sur Node 24, puis `./mvnw --batch-mode test` sur Temurin 25 avec Testcontainers. Playwright reste hors CI (téléchargement de navigateur) et documenté pour une exécution locale.
+
 ## Limites d'environnement rencontrées
 
 * Le miroir Maven configuré dans `~/.m2/settings.xml` (`kleeIntegration`) est injoignable hors réseau d'entreprise et mirroir `central`. Les tests backend ont donc été exécutés avec un fichier `settings.xml` temporaire sans miroir, hors dépôt. Aucun fichier du projet n'a été modifié pour cela.

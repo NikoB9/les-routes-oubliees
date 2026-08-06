@@ -16,9 +16,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import fr.lesroutesoubliees.routesoubliees.auth.AdminAllowlistService;
+import fr.lesroutesoubliees.routesoubliees.shared.config.SiteProperties;
 
 /**
  * Identite locale de developpement.
@@ -37,18 +39,40 @@ class DevelopmentIdentityFilter extends OncePerRequestFilter {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(DevelopmentIdentityFilter.class);
 	private static final String LOCAL_SUBJECT = "dev-local-subject";
-	private static final String LOCAL_EMAIL = "dev-local@example.invalid";
+	private static final String FALLBACK_EMAIL = "dev-local@example.invalid";
 
 	private final AdminAllowlistService adminAllowlist;
+	private final String localEmail;
 
-	DevelopmentIdentityFilter(AdminAllowlistService adminAllowlist) {
+	DevelopmentIdentityFilter(AdminAllowlistService adminAllowlist, SiteProperties siteProperties) {
 		this.adminAllowlist = adminAllowlist;
+		this.localEmail = localEmail(siteProperties);
+	}
+
+	/**
+	 * Adresse de l'identite locale.
+	 *
+	 * <p>La premiere adresse d'amorcage administrateur est reutilisee afin que
+	 * l'administration soit reellement accessible en developpement : une adresse absente de
+	 * l'allowlist rendrait {@code /admin} inatteignable sans intervention manuelle.
+	 */
+	private static String localEmail(SiteProperties siteProperties) {
+		var bootstrapEmails = siteProperties.adminBootstrapEmails();
+		if (bootstrapEmails == null) {
+			return FALLBACK_EMAIL;
+		}
+		return bootstrapEmails.stream()
+			.filter(StringUtils::hasText)
+			.map(String::trim)
+			.findFirst()
+			.orElse(FALLBACK_EMAIL);
 	}
 
 	@PostConstruct
 	void warnAboutDevelopmentIdentity() {
 		LOGGER.warn(
-			"Profil dev actif : une identite locale factice remplace Cloudflare Access. Ne jamais utiliser ce profil sur un serveur.");
+			"Profil dev actif : l'identite locale {} remplace Cloudflare Access. Ne jamais utiliser ce profil sur un serveur.",
+			this.localEmail);
 	}
 
 	@Override
@@ -65,10 +89,10 @@ class DevelopmentIdentityFilter extends OncePerRequestFilter {
 		if (SecurityContextHolder.getContext().getAuthentication() == null) {
 			var authorities = new ArrayList<SimpleGrantedAuthority>();
 			authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-			if (adminAllowlist.isAllowed(LOCAL_EMAIL)) {
+			if (adminAllowlist.isAllowed(this.localEmail)) {
 				authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
 			}
-			var principal = new CloudflareAccessPrincipal(LOCAL_SUBJECT, LOCAL_EMAIL);
+			var principal = new CloudflareAccessPrincipal(LOCAL_SUBJECT, this.localEmail);
 			SecurityContextHolder.getContext()
 				.setAuthentication(new UsernamePasswordAuthenticationToken(principal, null, authorities));
 		}

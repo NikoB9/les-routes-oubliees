@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +39,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.WebApplicationContext;
 
 import fr.lesroutesoubliees.routesoubliees.TestcontainersConfiguration;
@@ -49,11 +50,14 @@ import fr.lesroutesoubliees.routesoubliees.shared.security.CloudflareAccessPrinc
  *
  * <p>L'expiration est verifiee avec une horloge simulee : aucune attente reelle de 45
  * secondes n'est necessaire.
+ *
+ * <p>Volontairement sans {@code @Transactional} de classe : les diffusions SSE sont
+ * reportees apres le commit, donc un test enveloppe dans une transaction annulee n'en
+ * verrait aucune. Les donnees de test sont nettoyees explicitement.
  */
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
 @SpringBootTest
-@Transactional
 class RadarPresenceIntegrationTests {
 
 	private static final MutableClock CLOCK = new MutableClock(Instant.parse("2026-08-06T10:00:00Z"));
@@ -94,6 +98,9 @@ class RadarPresenceIntegrationTests {
 	@Autowired
 	private RadarPresenceRegistry presence;
 
+	@Autowired
+	private TransactionTemplate transactions;
+
 	private MockMvc mvc;
 	private UUID firstIdentityId;
 	private UUID secondIdentityId;
@@ -102,8 +109,8 @@ class RadarPresenceIntegrationTests {
 
 	@BeforeEach
 	void setUp() {
-		// Le registre de presences est en memoire : il survit au rollback de la base.
-		// Un saut d'horloge au-dela du TTL le vide avant chaque test.
+		// Le registre de presences est en memoire : un saut d'horloge au-dela du TTL le vide
+		// et purge les departs memorises avant chaque test.
 		CLOCK.set(BASE_INSTANT.plus(Duration.ofDays(1)));
 		presence.pruneExpired();
 		CLOCK.set(BASE_INSTANT);
@@ -112,6 +119,11 @@ class RadarPresenceIntegrationTests {
 		jdbc.update("delete from portal_identities where normalized_email like 'presence-test-%@example.invalid'");
 		firstIdentityId = insertIdentity("subject-presence-1", "presence-test-1@example.invalid");
 		secondIdentityId = insertIdentity("subject-presence-2", "presence-test-2@example.invalid");
+	}
+
+	@AfterEach
+	void tearDown() {
+		jdbc.update("delete from portal_identities where normalized_email like 'presence-test-%@example.invalid'");
 	}
 
 	@Test
@@ -213,8 +225,109 @@ class RadarPresenceIntegrationTests {
 			.andExpect(status().isUnauthorized());
 	}
 
+	/**
+	 * Une lecture ne doit pas consommer une expiration : sinon le balayage suivant ne
+	 * trouverait plus rien a retirer et ne diffuserait aucune disparition, laissant les
+	 * clients deja connectes avec un ancien repere.
+	 */
+	@Test
+	void snapshotNeverConsumesAnExpirationBeforeTheSweep() throws Exception {
+		publish(firstUser(), 46.1, -1.1);
+		CLOCK.advance(Duration.ofSeconds(TTL_MARGIN_SECONDS));
+		broadcaster.clear();
+
+		mvc.perform(get("/api/radar/snapshot").with(authentication(secondUser())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.participants", Matchers.hasSize(0)));
+
+		assertThat(broadcaster.broadcastEvents()).isEmpty();
+
+		var removed = radar.sweepExpiredPresences();
+
+		assertThat(removed).isEqualTo(1);
+		assertThat(broadcaster.broadcastEvents()).contains("snapshot");
+	}
+
+	/**
+	 * Le client annule son {@code PUT} avant d'envoyer le {@code DELETE}, mais le serveur
+	 * peut avoir deja commence a traiter la publication : elle ne doit pas recreer le
+	 * repere.
+	 */
+	@Test
+	void inFlightPublicationAfterDepartureNeverResurrectsTheMarker() throws Exception {
+		publish(firstUser(), 46.1, -1.1);
+
+		mvc.perform(delete("/api/radar/me/location").with(authentication(firstUser())).with(csrf()))
+			.andExpect(status().isNoContent());
+		broadcaster.clear();
+
+		// Publication en vol qui atteint le serveur juste apres le depart.
+		publish(firstUser(), 46.1, -1.1);
+
+		mvc.perform(get("/api/radar/snapshot").with(authentication(secondUser())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.participants", Matchers.hasSize(0)));
+		assertThat(broadcaster.broadcastEvents()).isEmpty();
+	}
+
+	@Test
+	void presenceReappearsAfterTheDepartureGraceWindow() throws Exception {
+		publish(firstUser(), 46.1, -1.1);
+		mvc.perform(delete("/api/radar/me/location").with(authentication(firstUser())).with(csrf()))
+			.andExpect(status().isNoContent());
+
+		CLOCK.advance(Duration.ofSeconds(6));
+		publish(firstUser(), 46.4, -1.4);
+
+		mvc.perform(get("/api/radar/snapshot").with(authentication(secondUser())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.participants", Matchers.hasSize(1)))
+			.andExpect(jsonPath("$.participants[0].latitude").value(46.4));
+	}
+
+	@Test
+	void olderObservedAtNeverRewindsThePosition() throws Exception {
+		var current = OffsetDateTime.now(CLOCK).withNano(0);
+		publishAt(firstUser(), 46.5, -1.5, current);
+
+		publishAt(firstUser(), 40.0, -2.0, current.minusSeconds(30));
+
+		mvc.perform(get("/api/radar/snapshot").with(authentication(secondUser())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.participants", Matchers.hasSize(1)))
+			.andExpect(jsonPath("$.participants[0].latitude").value(46.5));
+	}
+
+	/**
+	 * Une diffusion construite a partir de donnees non validees ne doit jamais atteindre les
+	 * abonnes : la publication est reportee apres le commit.
+	 */
+	@Test
+	void rolledBackPublicationIsNeverBroadcast() {
+		broadcaster.clear();
+
+		transactions.execute((transactionStatus) -> {
+			radar.updateMyLocation(
+				new CloudflareAccessPrincipal("subject-presence-1", "presence-test-1@example.invalid"),
+				new RadarLocationRequest(46.9, -1.9, 6.0, OffsetDateTime.now(CLOCK).withNano(0)));
+			transactionStatus.setRollbackOnly();
+			return null;
+		});
+
+		assertThat(broadcaster.broadcastEvents()).isEmpty();
+	}
+
 	private void publish(UsernamePasswordAuthenticationToken user, double latitude, double longitude)
 		throws Exception {
+		publishAt(user, latitude, longitude, OffsetDateTime.now(CLOCK).withNano(0));
+	}
+
+	private void publishAt(
+		UsernamePasswordAuthenticationToken user,
+		double latitude,
+		double longitude,
+		OffsetDateTime observedAt
+	) throws Exception {
 		mvc.perform(put("/api/radar/me/location")
 				.with(authentication(user))
 				.with(csrf())
@@ -226,7 +339,7 @@ class RadarPresenceIntegrationTests {
 					  "accuracyM": 6.0,
 					  "observedAt": "%s"
 					}
-					""".formatted(latitude, longitude, OffsetDateTime.now(CLOCK).withNano(0))))
+					""".formatted(latitude, longitude, observedAt)))
 			.andExpect(status().isNoContent());
 	}
 

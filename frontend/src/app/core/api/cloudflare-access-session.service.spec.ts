@@ -65,6 +65,29 @@ describe('CloudflareAccessSessionService', () => {
     expect(assign).toHaveBeenCalledTimes(2);
   });
 
+  it('still prevents a loop when sessionStorage is unavailable', () => {
+    // Stockage refusé : seul le verrou mémoire peut empêcher la boucle.
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage disabled');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage disabled');
+    });
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    const restricted = TestBed.inject(CloudflareAccessSessionService);
+
+    restricted.reauthenticate();
+    restricted.reauthenticate();
+    restricted.reauthenticate();
+
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(restricted.reconnectRequired()).toBe(true);
+
+    vi.restoreAllMocks();
+  });
+
   it('retries the Cloudflare journey on explicit user request', () => {
     service.reauthenticate();
     service.reauthenticate();

@@ -9,12 +9,18 @@ Type=simple
 User=routesoubliees
 Group=routesoubliees
 WorkingDirectory=/var/lib/les-routes-oubliees
+# Le fichier d'environnement ne porte que les secrets et la base de donnees.
 EnvironmentFile=/etc/les-routes-oubliees/application.env
+# Le profil et l'adresse d'ecoute sont passes en arguments de programme, et non par
+# Environment= : systemd donne la priorite au contenu de EnvironmentFile= sur Environment=,
+# donc une ligne oubliee dans le fichier d'environnement pourrait reactiver le profil dev ou
+# une ecoute sur toutes les interfaces. Les arguments de programme sont la source de
+# proprietes la plus prioritaire de Spring Boot : rien ne peut les ecraser.
 # Deploiement sur l'hote : Spring n'ecoute que sur le loopback, Nginx reste le seul point
-# d'entree. En conteneur, cette valeur doit etre 0.0.0.0 (voir infra/compose.yml).
-Environment=SERVER_ADDRESS=127.0.0.1
-Environment=SPRING_PROFILES_ACTIVE=prod
-ExecStart=/usr/bin/java -jar /opt/les-routes-oubliees/current/backend/app.jar
+# d'entree. En conteneur, l'adresse doit etre 0.0.0.0 (voir infra/compose.yml).
+ExecStart=/usr/bin/java -jar /opt/les-routes-oubliees/current/backend/app.jar \
+  --spring.profiles.active=prod \
+  --server.address=127.0.0.1
 Restart=on-failure
 RestartSec=10
 

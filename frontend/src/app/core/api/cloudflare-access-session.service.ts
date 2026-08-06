@@ -16,6 +16,15 @@ export class CloudflareAccessSessionService {
   /** Vrai lorsqu'un rechargement a déjà été tenté sans rétablir la session. */
   readonly reconnectRequired = signal(false);
 
+  /**
+   * Verrou mémoire de secours.
+   *
+   * `sessionStorage` peut être indisponible (navigation restreinte, stockage désactivé) :
+   * sans ce drapeau, chaque `401` relancerait un rechargement et créerait la boucle que le
+   * verrou doit empêcher.
+   */
+  private pendingInMemory = false;
+
   reauthenticate(): void {
     if (this.isPending()) {
       // Deuxième expiration alors que le verrou est actif : proposer une action stable
@@ -35,11 +44,12 @@ export class CloudflareAccessSessionService {
    */
   confirmValidSession(): void {
     this.reconnectRequired.set(false);
+    this.pendingInMemory = false;
     try {
       sessionStorage.removeItem(this.reauthKey);
     }
     catch {
-      // Stockage indisponible : la protection anti-boucle reste assurée par le signal.
+      // Stockage indisponible : le verrou mémoire suffit pour ce chargement de page.
     }
   }
 
@@ -51,7 +61,7 @@ export class CloudflareAccessSessionService {
   }
 
   private isPending(): boolean {
-    if (this.reconnectRequired()) {
+    if (this.reconnectRequired() || this.pendingInMemory) {
       return true;
     }
     try {
@@ -63,6 +73,7 @@ export class CloudflareAccessSessionService {
   }
 
   private markPending(): void {
+    this.pendingInMemory = true;
     try {
       sessionStorage.setItem(this.reauthKey, 'pending');
     }

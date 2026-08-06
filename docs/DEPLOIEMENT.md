@@ -111,14 +111,18 @@ Cloudflare Tunnel pointe vers le reverse proxy local.
 
 ### 6.1 Adresse d’écoute Spring
 
-L’adresse d’écoute est pilotée par la variable `SERVER_ADDRESS` (`server.address` côté Spring). Les deux topologies du dépôt sont différentes et ne doivent pas être confondues.
+L’adresse d’écoute est pilotée par `server.address`, alimentée par défaut par la variable `SERVER_ADDRESS`. Les deux topologies du dépôt sont différentes et ne doivent pas être confondues.
 
 **Déploiement systemd sur l’hôte (production LXC)**
 
-* `SERVER_ADDRESS=127.0.0.1`, valeur déjà présente dans `infra/systemd/les-routes-oubliees.service.example` ;
+* le profil et l’adresse sont passés en **arguments de programme** dans `ExecStart`, et non par `Environment=` :
+  `--spring.profiles.active=prod --server.address=127.0.0.1` ;
+* raison : systemd donne la priorité au contenu de `EnvironmentFile=` sur les directives `Environment=`. Une ligne oubliée dans `/etc/les-routes-oubliees/application.env` pourrait donc réactiver le profil `dev` — donc l’identité locale factice — ou une écoute sur toutes les interfaces. Les arguments de programme sont la source de propriétés la plus prioritaire de Spring Boot et ne peuvent pas être écrasés par un fichier d’environnement ;
+* le fichier d’environnement ne porte donc que les secrets et la connexion à la base ;
 * Spring n’est joignable que depuis l’hôte ;
 * Nginx, sur la même machine, est le seul point d’entrée ;
-* aucun port Spring n’est ouvert sur les autres interfaces.
+* aucun port Spring n’est ouvert sur les autres interfaces ;
+* garde-fou complémentaire : le démarrage du profil `prod` échoue si le profil `dev` est actif simultanément.
 
 **Déploiement en conteneurs (profil Compose `app`)**
 
@@ -254,11 +258,11 @@ Fichier :
 /etc/les-routes-oubliees/application.env
 ```
 
+Le profil actif et l’adresse d’écoute ne sont **pas** définis ici : ils sont épinglés en arguments de programme dans l’unité systemd (voir §6.1), car le contenu de `EnvironmentFile=` prime sur les directives `Environment=`.
+
 Variables minimales :
 
 ```text
-SPRING_PROFILES_ACTIVE=prod
-
 DATABASE_URL=jdbc:postgresql://127.0.0.1:5432/routes_oubliees
 DATABASE_USERNAME=routes_oubliees
 DATABASE_PASSWORD=CHANGE_ME
@@ -700,9 +704,9 @@ CF_ACCESS_ISSUER=https://TEAM.cloudflareaccess.com
 CF_ACCESS_AUDIENCE=AUD_TAG_APPLICATION_HUMAINE
 CF_ACCESS_CERTS_URL=https://TEAM.cloudflareaccess.com/cdn-cgi/access/certs
 RADAR_HOME_ASSISTANT_TOKEN=32_OCTETS_ALEATOIRES_EN_BASE64URL
-SERVER_ADDRESS=127.0.0.1
-SPRING_PROFILES_ACTIVE=prod
 ```
+
+Le profil `prod` et l'adresse `127.0.0.1` ne figurent volontairement pas dans ce fichier : ils sont épinglés en arguments de programme dans l'unité systemd, hors de portée d'une ligne oubliée dans le fichier d'environnement (voir §6.1).
 
 Cloudflare Zero Trust :
 

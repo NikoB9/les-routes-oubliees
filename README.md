@@ -58,10 +58,12 @@ Les contenus en cours de préparation resteront invisibles jusqu’à leur publi
 
 Les lots de socle devront fournir les projets exécutables, mais les versions cibles sont déjà fixées :
 
-* Node.js LTS compatible Angular 22 et npm ;
+* Node.js 22.22.3 ou 24.15.0 au minimum, exigence de la CLI Angular 22, et npm ;
 * Java 25 LTS ;
-* Docker Compose ou équivalent pour PostgreSQL local ;
+* Docker Compose ou équivalent pour PostgreSQL local, et un démon Docker pour les tests Testcontainers ;
 * Maven Wrapper côté backend une fois le socle créé.
+
+Ces mêmes validations sont rejouées automatiquement par `.github/workflows/ci.yml` à chaque `push` et chaque `pull request`.
 
 ## Lancement local
 

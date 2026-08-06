@@ -37,6 +37,9 @@ class DevelopmentIdentityFilterTests {
 	@Autowired
 	private WebApplicationContext context;
 
+	@Autowired
+	private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
 	private MockMvc mvc;
 
 	@BeforeEach
@@ -69,8 +72,21 @@ class DevelopmentIdentityFilterTests {
 			.andExpect(status().isUnauthorized());
 	}
 
+	/**
+	 * L'identite locale reprend la premiere adresse d'amorcage administrateur, sinon
+	 * l'administration serait inaccessible en developpement.
+	 */
 	@Test
-	void neverGrantsAdministrationToAnUnlistedLocalIdentity() throws Exception {
+	void grantsAdministrationWhenTheLocalIdentityIsAllowlisted() throws Exception {
+		mvc.perform(get("/api/admin/settings"))
+			.andExpect(status().isOk());
+	}
+
+	/** C'est bien l'allowlist qui decide : le filtre n'accorde jamais le role par lui-meme. */
+	@Test
+	void keepsAdministrationClosedWhenTheLocalIdentityIsNotAllowlisted() throws Exception {
+		jdbc.update("update admin_allowed_emails set active = false");
+
 		mvc.perform(get("/api/admin/settings"))
 			.andExpect(status().isForbidden());
 	}

@@ -13,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -62,8 +64,9 @@ class RadarService {
 		validateObservedAt(request.observedAt());
 		var identity = identities.requireAssignedIdentity(principal);
 		var display = identityDisplay(identity);
-		presence.update(identity, display, request);
-		broadcast();
+		if (presence.update(identity, display, request)) {
+			broadcast();
+		}
 	}
 
 	/**
@@ -151,7 +154,24 @@ class RadarService {
 		return removed;
 	}
 
+	/**
+	 * Diffuse le nouvel etat aux flux ouverts.
+	 *
+	 * <p>Lorsqu'une transaction est en cours, la diffusion est reportee apres le commit :
+	 * un etat construit a partir de donnees non encore validees ne doit jamais atteindre les
+	 * abonnes, sous peine de laisser un repere fantome si la transaction est annulee.
+	 */
 	private void broadcast() {
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+
+				@Override
+				public void afterCommit() {
+					events.broadcast("snapshot", buildAnonymousSnapshot());
+				}
+			});
+			return;
+		}
 		events.broadcast("snapshot", buildAnonymousSnapshot());
 	}
 
