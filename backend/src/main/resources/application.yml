@@ -11,6 +11,22 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  jackson:
+    deserialization:
+      # Refus explicite des proprietes JSON inconnues : la stricte lecture des DTO
+      # ne doit pas dependre d'un defaut de la bibliotheque ou du demarreur.
+      fail-on-unknown-properties: true
+  mvc:
+    problemdetails:
+      # Contrat d'erreur unique en application/problem+json (RFC 9457), comme le point
+      # d'entree 401. Les refus metier exposent alors leur motif, aujourd'hui perdu.
+      enabled: true
+  task:
+    scheduling:
+      # Le defaut est un thread unique, partage par le heartbeat et le balayage des
+      # presences Radar : une tache lente y suspendrait les autres.
+      pool:
+        size: 4
 
 management:
   endpoints:
@@ -22,6 +38,10 @@ management:
       show-details: never
 
 server:
+  # Adresse d'ecoute configurable : voir docs/DEPLOIEMENT.md.
+  # Deploiement systemd sur l'hote : SERVER_ADDRESS=127.0.0.1.
+  # Deploiement en conteneur : 0.0.0.0 dans le conteneur, publication limitee au loopback de l'hote.
+  address: ${SERVER_ADDRESS:0.0.0.0}
   forward-headers-strategy: framework
 
 routes-oubliees:
@@ -34,4 +54,8 @@ routes-oubliees:
     issuer: ${CF_ACCESS_ISSUER:https://example.cloudflareaccess.com}
     audience: ${CF_ACCESS_AUDIENCE:example-audience-tag}
     certs-url: ${CF_ACCESS_CERTS_URL:https://example.cloudflareaccess.com/cdn-cgi/access/certs}
-    home-assistant-subject: ${CF_ACCESS_HOME_ASSISTANT_SUBJECT:}
+  radar:
+    home-assistant:
+      # Aucun secret de secours : un token vide fait echouer toute authentification
+      # Home Assistant. Le profil prod exige explicitement la variable d'environnement.
+      token: ${RADAR_HOME_ASSISTANT_TOKEN:}

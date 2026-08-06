@@ -23,7 +23,7 @@ Le projet doit fournir :
 * une navigation simple sur ordinateur et mobile ;
 * une gestion progressive des révélations ;
 * une séparation stricte entre brouillons et contenus publics ;
-* une administration sécurisée par Google OpenID Connect ;
+* une administration sécurisée par Cloudflare Access ;
 * une interface accessible ;
 * une architecture simple à maintenir ;
 * un déploiement léger dans un conteneur Proxmox LXC.
@@ -34,9 +34,9 @@ Le projet doit fournir :
 
 Peut :
 
-* consulter les pages publiques ;
+* consulter les pages de contenu ;
 * voir uniquement les contenus publiés et révélés ;
-* naviguer sans compte ;
+* naviguer sans compte applicatif : aucune inscription ni mot de passe n’existe, l’accès au site est ouvert par Cloudflare Access qui protège la totalité de l’hôte ;
 * consulter le site sur ordinateur, tablette ou téléphone.
 
 Ne peut pas :
@@ -51,7 +51,7 @@ Ne peut pas :
 
 Peut :
 
-* se connecter avec Google ;
+* se connecter avec Cloudflare Access ;
 * accéder à l’administration si son email est autorisé ;
 * gérer les contenus ;
 * publier ou masquer les quêtes ;
@@ -70,7 +70,7 @@ Le MVP comprend :
 * le socle Spring Boot ;
 * PostgreSQL ;
 * Flyway ;
-* l’authentification Cloudflare Access pour Radar et l'administration ;
+* l’authentification Cloudflare Access protégeant la totalité de l’hôte, Radar et administration inclus ;
 * l’allowlist d’administrateurs ;
 * la page d’accueil ;
 * la page carte ;
@@ -78,7 +78,7 @@ Le MVP comprend :
 * l’administration ;
 * la gestion des médias hors cartes ;
 * la prévisualisation ;
-* l'installation PWA des pages publiques ;
+* l'installation PWA des pages de contenu ;
 * la consultation hors ligne du dernier contenu public synchronise ;
 * le responsive ;
 * les exigences d’accessibilité ;
@@ -403,14 +403,14 @@ Le geste exact de l’easter egg sera choisi lors du lot 9. Cette décision n’
 
 Flux attendu :
 
-1. l’utilisateur ouvre la connexion ;
-2. il choisit « Se connecter avec Google » ;
-3. Google authentifie l’utilisateur ;
-4. le backend reçoit et valide l’identité OpenID Connect ;
-5. le backend vérifie que l’email est confirmé ;
-6. le backend normalise l’adresse ;
-7. le backend vérifie l’allowlist ;
-8. une session admin est créée si l’accès est autorisé ;
+1. l’utilisateur ouvre une URL du site ;
+2. Cloudflare Access intercepte la requête avant l’origine, aucun écran de connexion applicatif n’existe ;
+3. Cloudflare Access authentifie l’utilisateur et injecte son assertion sur chaque requête proxifiée ;
+4. le backend valide le JWT Cloudflare : signature, `iss`, `aud` et horodatages ;
+5. le backend normalise l’adresse email portée par le jeton ;
+6. le backend vérifie l’allowlist administrateur pour les routes `/api/admin/**` ;
+7. aucune session applicative n’est créée : chaque requête est validée indépendamment ;
+8. la déconnexion passe par `/cdn-cgi/access/logout` ;
 9. sinon, l’accès est refusé.
 
 Message de refus :
@@ -580,7 +580,7 @@ Actions minimales :
 
 Ne pas enregistrer :
 
-* les tokens Google ;
+* les tokens Cloudflare Access ;
 * les cookies ;
 * les secrets ;
 * l’intégralité de chaque contenu avant/après ;
@@ -633,7 +633,6 @@ Les réponses publiques ne doivent jamais contenir :
 
 ```text
 GET  /api/admin/me
-POST /api/admin/logout
 ```
 
 ### Parchemins
@@ -744,9 +743,9 @@ Principes :
 
 ### 18.1 Sécurité
 
-* authentification Cloudflare Access ;
+* authentification Cloudflare Access en amont de l’origine ;
 * allowlist backend ;
-* session serveur ;
+* backend sans session applicative : chaque requête est validée par son JWT Cloudflare ;
 * cookies sécurisés ;
 * CSRF actif ;
 * CORS restrictif ;
@@ -882,7 +881,7 @@ Les données de démonstration doivent être fictives.
 * assets ;
 * modèle ;
 * sélection active ;
-* page publique ;
+* page de contenu ;
 * description accessible ;
 * administration.
 
@@ -892,7 +891,7 @@ Les données de démonstration doivent être fictives.
 * Markdown ;
 * visibilité ;
 * publication ;
-* page publique ;
+* page de contenu ;
 * administration ;
 * sanitation.
 
@@ -978,7 +977,7 @@ Ce lot est un audit final et une consolidation. Les vérifications d’accessibi
 
 Le MVP est accepté lorsque :
 
-* les trois pages publiques sont disponibles ;
+* les trois pages de contenu sont disponibles ;
 * le menu est adapté au desktop et au mobile ;
 * l’accueil affiche le message actif ;
 * le compte à rebours fonctionne ;
@@ -993,7 +992,7 @@ Le MVP est accepté lorsque :
 * le bloc-notes propose un éditeur Markdown enrichi avec prévisualisation ;
 * le Markdown est nettoyé ;
 * les médias sont validés ;
-* la connexion Google fonctionne ;
+* la connexion Cloudflare Access fonctionne ;
 * les emails non autorisés sont refusés ;
 * le dernier administrateur actif ne peut pas être supprimé ;
 * toutes les routes admin sont protégées côté backend ;
@@ -1036,7 +1035,7 @@ Aucun de ces éléments ne doit être anticipé dans le MVP au prix d’une comp
 
 Le MVP inclut désormais un module connecté `Radar`, accessible depuis l'entrée de menu `Radar` et la route `/radar`.
 
-La page publique protégée s'intitule `Le Radar d'Aurelune`.
+La page authentifiée s'intitule `Le Radar d'Aurelune`.
 
 Fonctions :
 
@@ -1055,7 +1054,7 @@ Règles :
 * un utilisateur ordinaire ne peut pas modifier son choix après confirmation ;
 * seul l'administrateur peut corriger une attribution ;
 * les positions des participants ne sont pas persistées ;
-* le trésor masqué n'est pas exposé par les API publiques ;
+* le trésor masqué n'est pas exposé par les API Radar ;
 * Radar n'est pas disponible hors ligne et n'est pas inclus dans le snapshot PWA.
 
 La navigation mobile comporte désormais quatre entrées : Accueil, Carte, Carnet et Radar.

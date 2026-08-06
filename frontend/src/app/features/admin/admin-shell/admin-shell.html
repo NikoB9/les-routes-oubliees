@@ -1,10 +1,9 @@
 <section class="page-intro" aria-labelledby="admin-title">
   <h1 id="admin-title">Tableau de bord</h1>
   @if (error()) {
-    <p class="alert" role="alert">La session administrateur ne peut pas être vérifiée.</p>
+    <p class="alert" role="alert">Vos droits d'éclaireur ne peuvent pas être vérifiés.</p>
   } @else if (session(); as adminSession) {
-    <p>Session ouverte pour {{ adminSession.email }}.</p>
-    <button type="button" class="logout-button" (click)="logout()">Se déconnecter</button>
+    <p>Accès éclaireur confirmé pour {{ adminSession.email }}.</p>
     <nav class="admin-navigation" aria-label="Navigation administration">
       <a routerLink="/admin/dashboard" [class.active]="section() === 'dashboard'">Tableau de bord</a>
       <a routerLink="/admin/notebook" [class.active]="section() === 'notebook'">Quêtes</a>
@@ -20,7 +19,7 @@
       <a routerLink="/admin/settings" [class.active]="section() === 'settings'">Paramètres</a>
     </nav>
   } @else {
-    <p>Vérification de la session administrateur.</p>
+    <p>Vérification de vos droits d'éclaireur.</p>
   }
 </section>
 
@@ -939,7 +938,7 @@
     <form class="allowed-form" (ngSubmit)="createAllowedEmail()" aria-labelledby="allowed-create-title">
       <h3 id="allowed-create-title">Ajouter un administrateur</h3>
 
-      <label for="allowed-email">Email verifie Google</label>
+      <label for="allowed-email">Email administrateur vérifié</label>
       <input
         id="allowed-email"
         type="email"

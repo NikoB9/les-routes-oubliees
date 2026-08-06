@@ -40,7 +40,6 @@ describe('AdminShell', () => {
           provide: AdminAuthService,
           useValue: {
             currentSession: () => of({ authenticated: true, email: 'admin@example.test' }),
-            logout: () => of(void 0),
           },
         },
         {
@@ -183,5 +182,15 @@ describe('AdminShell', () => {
       'RIGHT',
     ]);
     expect(offsetInput?.value).toBe('22');
+  });
+
+  it('does not expose a separate admin logout action', () => {
+    const fixture = TestBed.createComponent(AdminShell);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const logoutLink = compiled.querySelector<HTMLAnchorElement>('.logout-button');
+
+    expect(logoutLink).toBeNull();
   });
 });

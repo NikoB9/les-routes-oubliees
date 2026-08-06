@@ -23,20 +23,16 @@ import fr.lesroutesoubliees.routesoubliees.auth.AdminAllowlistService;
 class CloudflareAccessAuthenticationFilter extends OncePerRequestFilter {
 
 	private static final String ACCESS_JWT_HEADER = "Cf-Access-Jwt-Assertion";
-	private static final String INTEGRATION_PREFIX = "/api/integrations/home-assistant/";
 
 	private final JwtDecoder jwtDecoder;
 	private final AdminAllowlistService adminAllowlist;
-	private final CloudflareAccessProperties properties;
 
 	CloudflareAccessAuthenticationFilter(
 		JwtDecoder jwtDecoder,
-		AdminAllowlistService adminAllowlist,
-		CloudflareAccessProperties properties
+		AdminAllowlistService adminAllowlist
 	) {
 		this.jwtDecoder = jwtDecoder;
 		this.adminAllowlist = adminAllowlist;
-		this.properties = properties;
 	}
 
 	@Override
@@ -63,9 +59,6 @@ class CloudflareAccessAuthenticationFilter extends OncePerRequestFilter {
 					authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
 				}
 			}
-			else if (isHomeAssistantRequest(request, subject)) {
-				authorities.add(new SimpleGrantedAuthority("ROLE_HOME_ASSISTANT"));
-			}
 
 			if (!authorities.isEmpty()) {
 				var principal = new CloudflareAccessPrincipal(subject, email);
@@ -82,11 +75,5 @@ class CloudflareAccessAuthenticationFilter extends OncePerRequestFilter {
 
 	private String normalizedEmail(String email) {
 		return adminAllowlist.normalizeEmail(email).orElse(null);
-	}
-
-	private boolean isHomeAssistantRequest(HttpServletRequest request, String subject) {
-		return request.getRequestURI().startsWith(INTEGRATION_PREFIX)
-			&& StringUtils.hasText(properties.homeAssistantSubject())
-			&& properties.homeAssistantSubject().equals(subject);
 	}
 }

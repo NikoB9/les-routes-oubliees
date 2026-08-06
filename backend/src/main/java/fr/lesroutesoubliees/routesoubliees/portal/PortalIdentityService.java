@@ -6,8 +6,11 @@ import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -21,6 +24,14 @@ import fr.lesroutesoubliees.routesoubliees.shared.security.CloudflareAccessPrinc
 @Service
 public class PortalIdentityService {
 
+	/**
+	 * Journal des attributions.
+	 *
+	 * <p>Seuls l'identifiant technique et le mode d'acces sont journalises : l'adresse
+	 * Cloudflare Access n'a pas a figurer dans les journaux.
+	 */
+	private static final Logger LOGGER = LoggerFactory.getLogger(PortalIdentityService.class);
+
 	private final JdbcTemplate jdbc;
 	private final AuditService audit;
 
@@ -32,7 +43,7 @@ public class PortalIdentityService {
 	@Transactional
 	PortalMeResponse me(CloudflareAccessPrincipal principal) {
 		var identity = ensureIdentity(principal);
-		return new PortalMeResponse(toPublicIdentity(identity), availableAdventurers(), guestAvailable());
+		return new PortalMeResponse(toPublicIdentity(identity), availableAdventurers(), guestAvailable(), false);
 	}
 
 	@Transactional
@@ -54,6 +65,7 @@ public class PortalIdentityService {
 		catch (DataIntegrityViolationException exception) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "Cet aventurier vient d'etre choisi.", exception);
 		}
+		LOGGER.info("Identite portail {} attribuee en mode {}.", identity.id(), PortalAccessMode.ADVENTURER);
 		return me(principal);
 	}
 
@@ -71,6 +83,7 @@ public class PortalIdentityService {
 			set adventurer_id = null, access_mode = 'GUEST', selected_at = ?, updated_at = ?
 			where id = ? and access_mode = 'UNASSIGNED'
 			""", now(), now(), identity.id());
+		LOGGER.info("Identite portail {} attribuee en mode {}.", identity.id(), PortalAccessMode.GUEST);
 		return me(principal);
 	}
 
@@ -82,6 +95,18 @@ public class PortalIdentityService {
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Selection de personnage requise.");
 		}
 		return identity;
+	}
+
+	/**
+	 * Identifiant de l'identite portail d'un principal, si elle existe.
+	 *
+	 * <p>Tolerante, contrairement a {@link #requireAssignedIdentity} : un administrateur
+	 * n'a pas forcement choisi de personnage, et cela ne doit pas empecher une action
+	 * d'administration. Le resultat est vide dans ce cas.
+	 */
+	@Transactional(readOnly = true)
+	public Optional<UUID> findIdentityId(CloudflareAccessPrincipal principal) {
+		return findBySubject(principal.subject()).map(PortalIdentity::id);
 	}
 
 	@Transactional(readOnly = true)
@@ -167,7 +192,7 @@ public class PortalIdentityService {
 		return findById(id).orElseThrow();
 	}
 
-	private java.util.Optional<PortalIdentity> findBySubject(String subject) {
+	private Optional<PortalIdentity> findBySubject(String subject) {
 		var identities = jdbc.query("""
 			select id, cloudflare_subject, normalized_email, adventurer_id, access_mode, selected_at, created_at, updated_at
 			from portal_identities
@@ -176,7 +201,7 @@ public class PortalIdentityService {
 		return identities.stream().findFirst();
 	}
 
-	private java.util.Optional<PortalIdentity> findById(UUID id) {
+	private Optional<PortalIdentity> findById(UUID id) {
 		var identities = jdbc.query("""
 			select id, cloudflare_subject, normalized_email, adventurer_id, access_mode, selected_at, created_at, updated_at
 			from portal_identities

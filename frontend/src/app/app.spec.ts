@@ -1,7 +1,8 @@
-import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+
 import { App } from './app';
 import { routes } from './app.routes';
 import { PublicContentCacheService } from './core/offline/public-content-cache.service';
@@ -55,9 +56,26 @@ describe('App', () => {
     });
   }
 
+  function flushPortal(canAccessAdmin = false) {
+    http.expectOne('/api/portal/me').flush({
+      identity: {
+        id: 'identity-1',
+        accessMode: 'ADVENTURER',
+        adventurerId: 'adventurer-1',
+        displayName: 'Aurelune la Gardienne des Secrets',
+        avatarPath: '/assets/adventurers/aurelune.webp',
+        selectedAt: '2026-08-05T12:00:00Z',
+      },
+      availableAdventurers: [],
+      guestAvailable: false,
+      canAccessAdmin,
+    });
+  }
+
   it('should create the app', () => {
     const fixture = TestBed.createComponent(App);
     flushSettings();
+    flushPortal();
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();
   });
@@ -65,14 +83,16 @@ describe('App', () => {
   it('should render the application brand', async () => {
     const fixture = TestBed.createComponent(App);
     flushSettings();
+    flushPortal();
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.brand-title')?.textContent).toContain('Les Routes');
   });
 
-  it('should expose accessible public navigation landmarks', async () => {
+  it('should expose accessible navigation landmarks', async () => {
     const fixture = TestBed.createComponent(App);
     flushSettings();
+    flushPortal();
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
 
@@ -86,9 +106,10 @@ describe('App', () => {
     );
   });
 
-  it('should render the public navigation links once per navigation surface', async () => {
+  it('should render the navigation links once per navigation surface', async () => {
     const fixture = TestBed.createComponent(App);
     flushSettings();
+    flushPortal();
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
 
@@ -101,24 +122,31 @@ describe('App', () => {
 
     expect(desktopLinks).toEqual(['Accueil', 'Carte', 'Carnet', 'Radar']);
     expect(mobileLinks).toEqual(['Accueil', 'Carte', 'Carnet', 'Radar']);
+    expect(compiled.querySelectorAll('.desktop-nav a').length).toBe(4);
+    expect(compiled.querySelectorAll('.mobile-nav a').length).toBe(4);
   });
 
-  it('should expose a direct accessible admin portal link', async () => {
+  it('should expose the current adventurer profile in the header', async () => {
     const fixture = TestBed.createComponent(App);
     flushSettings();
+    flushPortal();
     await fixture.whenStable();
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const adminLink = compiled.querySelector<HTMLAnchorElement>('.admin-gate-link');
+    const profileButton = compiled.querySelector<HTMLButtonElement>('.profile-button');
 
-    expect(adminLink?.textContent).toContain('Accès admin');
-    expect(adminLink?.getAttribute('href')).toBe('/admin');
+    expect(profileButton?.textContent).toContain('Aurelune');
+    // Panneau de divulgation : aucun modèle ARIA « menu » n'est annoncé.
+    expect(profileButton?.getAttribute('aria-expanded')).toBe('false');
+    expect(profileButton?.getAttribute('aria-controls')).toBe('profile-panel');
+    expect(profileButton?.hasAttribute('aria-haspopup')).toBe(false);
   });
 
-  it('should render the public maintenance banner', async () => {
+  it('should render the maintenance banner', async () => {
     const fixture = TestBed.createComponent(App);
     flushSettings('MAINTENANCE');
+    flushPortal();
     await fixture.whenStable();
     fixture.detectChanges();
 

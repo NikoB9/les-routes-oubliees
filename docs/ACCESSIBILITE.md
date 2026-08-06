@@ -6,7 +6,7 @@ L’application vise une conformité sérieuse au RGAA 4.1.2, avec WCAG 2.2 nive
 
 L’accessibilité concerne :
 
-* le site public ;
+* les pages de contenu accessibles aux aventuriers, derrière Cloudflare Access ;
 * l’administration ;
 * les formulaires ;
 * les cartes ;
@@ -391,7 +391,7 @@ Une fonctionnalité visuelle n’est pas terminée tant que :
 
 ## 22. Page d’accessibilité
 
-Prévoir avant la mise en production une page publique indiquant :
+Prévoir avant la mise en production une page d'information indiquant :
 
 * le niveau de conformité évalué ;
 * les éventuelles non-conformités ;
@@ -413,3 +413,45 @@ Exigences spécifiques :
 * les positions anciennes sont signalées autrement que par la couleur ;
 * les mises à jour temps réel ne doivent pas provoquer d'annonce vocale continue ;
 * les coordonnées, précisions et heures doivent être disponibles hors interaction visuelle avec la carte.
+
+## Addendum 2026-08-06 - Menu de profil et dialogues d'identité
+
+### Menu de profil
+
+Le menu de profil de l'en-tête contient au plus deux actions. Il est donc implémenté comme un **panneau de divulgation** et non avec le modèle ARIA `menu` : réimplémenter intégralement le modèle clavier correspondant n'apporterait rien ici.
+
+Exigences :
+
+* l'avatar est un véritable `<button type="button">` ;
+* `Entrée` et `Espace` ouvrent le panneau par le comportement natif du bouton ;
+* `aria-expanded` reflète l'état du panneau ;
+* `aria-controls` désigne le panneau (`profile-panel`) ;
+* aucun `role="menu"` ni `role="menuitem"` n'est utilisé ;
+* Administration est un véritable lien, absent du DOM pour un non-administrateur ;
+* la déconnexion est un véritable bouton : c'est une action qui termine la session Cloudflare Access via `/cdn-cgi/access/logout` ;
+* `Échap` ferme le panneau et restitue le focus au bouton avatar ;
+* un clic réellement extérieur au conteneur du profil ferme le panneau, y compris un clic sur le logo ;
+* le focus reste visible et l'ordre de tabulation naturel, sur mobile comme sur ordinateur.
+
+Référence : https://www.w3.org/WAI/ARIA/apg/patterns/menu-button/
+
+### Dialogues d'identité
+
+Les deux dialogues de sélection utilisent l'élément HTML `<dialog>` natif ouvert par `showModal()`. Le piège de focus, l'inertie de l'arrière-plan et la gestion de `Échap` sont ainsi fournis par la plateforme, sans bibliothèque supplémentaire.
+
+Exigences communes :
+
+* focus initial placé à l'intérieur du dialogue ;
+* `Tab` et `Maj+Tab` confinés dans le dialogue ;
+* arrière-plan inerte ;
+* titre relié par `aria-labelledby` ;
+* aucun `tabindex` positif ; seul `tabindex="-1"` est utilisé sur le dialogue lui-même, pour le cas où il ne contient encore aucun élément focusable ;
+* focus restitué à l'élément déclencheur à la fermeture.
+
+Dérogation motivée : le dialogue de **choix du reflet** est obligatoire. Aucun bouton de fermeture n'est proposé et la fermeture par `Échap` est refusée, car aucune suite du parcours n'est possible sans identité choisie. Le dialogue de **confirmation**, lui, est refermable par `Échap` et par son bouton « Annuler », qui restitue le focus au bouton de choix d'origine.
+
+Référence : https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/
+
+### Reconnexion Cloudflare Access
+
+Lorsqu'une session Cloudflare Access expire deux fois de suite, l'application affiche un message `role="alert"` accompagné d'un bouton « Se reconnecter » stable, plutôt que de recharger la page en boucle.

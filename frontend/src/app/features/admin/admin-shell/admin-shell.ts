@@ -251,10 +251,6 @@ export class AdminShell {
     }
   }
 
-  protected logout() {
-    window.location.assign('/cdn-cgi/access/logout');
-  }
-
   protected selectHomeMessage(message: AdminHomeMessage | null) {
     this.selectedHomeMessage.set(message);
     this.homeMessageSaved.set(false);

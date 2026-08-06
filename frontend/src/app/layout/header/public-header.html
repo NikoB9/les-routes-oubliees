@@ -14,25 +14,46 @@
     </span>
   </a>
 
-  <a class="admin-gate-link" routerLink="/admin" title="Accès admin">
-    <span class="sr-only">Accès admin</span>
-    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-      <path
-        d="M12 3l7 3v5c0 4.6-2.8 8.7-7 10-4.2-1.3-7-5.4-7-10V6l7-3z"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.8"
-        stroke-linejoin="round"
-      />
-      <path
-        d="M9 12c.5-1 1.5-1.6 3-1.6s2.5.6 3 1.6M8.5 15c1 1 2.2 1.5 3.5 1.5s2.5-.5 3.5-1.5"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"
-      />
-    </svg>
-  </a>
+  <!--
+    Panneau de divulgation et non modèle ARIA « menu » : deux actions au plus, donc du HTML
+    natif (bouton, lien, bouton) plutôt qu'un modèle clavier complet à réimplémenter.
+  -->
+  <div class="profile-menu" #profileMenu>
+    <button
+      #profileButton
+      type="button"
+      class="profile-button"
+      [attr.aria-expanded]="profileMenuOpen()"
+      aria-controls="profile-panel"
+      [attr.aria-label]="profileLabel()"
+      (click)="toggleProfileMenu()"
+    >
+      <span class="profile-avatar" [class.guest]="portal.identity()?.accessMode === 'GUEST'">
+        @if (portal.identity()?.avatarPath; as avatarPath) {
+          <img [src]="avatarPath" alt="" />
+        }
+        @else if (portal.identity()?.accessMode === 'GUEST') {
+          <span aria-hidden="true">?</span>
+        }
+        @else {
+          <span aria-hidden="true">{{ profileInitials() }}</span>
+        }
+      </span>
+      <span class="profile-name">{{ profileName() }}</span>
+    </button>
+
+    <!--
+      Le panneau reste dans le document, masqué par `hidden` : `aria-controls` doit désigner
+      un élément existant, y compris panneau fermé. `hidden` retire l'élément de l'ordre de
+      tabulation et de l'arbre d'accessibilité.
+    -->
+    <div class="profile-panel" id="profile-panel" [hidden]="!profileMenuOpen()">
+      @if (portal.canAccessAdmin()) {
+        <a routerLink="/admin" (click)="closeProfileMenu()">Administration</a>
+      }
+      <button type="button" class="profile-logout" (click)="logout()">Se déconnecter</button>
+    </div>
+  </div>
 </header>
 
 @if (settings().status === 'MAINTENANCE') {

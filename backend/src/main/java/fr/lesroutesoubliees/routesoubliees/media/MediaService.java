@@ -13,6 +13,7 @@ import javax.imageio.ImageIO;
 
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,7 +56,7 @@ class MediaService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le fichier est obligatoire.");
 		}
 		if (file.getSize() > maxUploadBytes) {
-			throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Le fichier depasse la taille autorisee.");
+			throw new ResponseStatusException(HttpStatusCode.valueOf(413), "Le fichier depasse la taille autorisee.");
 		}
 		var normalizedAlt = normalizeAltText(altText);
 		var mimeType = normalizeMimeType(file.getContentType());

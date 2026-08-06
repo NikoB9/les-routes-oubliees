@@ -78,7 +78,7 @@ class AdminMapService {
 	AdminMapVisionResponse activateVision(UUID id, String actorEmail) {
 		var vision = findVision(id);
 		if (vision.status() != EditorialStatus.PUBLISHED) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only a published map vision can be active");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Seule une vision de carte publiee peut etre active.");
 		}
 		visions.findByActiveTrue().forEach(MapVision::deactivate);
 		visions.flush();
@@ -91,7 +91,7 @@ class AdminMapService {
 	void deleteVision(UUID id, String actorEmail) {
 		var vision = findVision(id);
 		if (vision.active()) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Active map vision cannot be deleted");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La vision de carte active ne peut pas etre supprimee.");
 		}
 		visions.delete(vision);
 		audit.record(actorEmail, "MAP_VISION_DELETED", "MAP_VISION", id.toString(), "Vision de carte supprimée");
@@ -152,23 +152,23 @@ class AdminMapService {
 
 	private MapVision findVision(UUID id) {
 		return visions.findById(id)
-			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Map vision does not exist"));
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vision de carte introuvable."));
 	}
 
 	private MapMarker findMarker(UUID id) {
 		return markers.findById(id)
-			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Map marker does not exist"));
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Marqueur de carte introuvable."));
 	}
 
 	private UUID findQuestId(String questCode) {
 		return markers.findQuestIdByCode(questCode)
-			.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Quest code does not exist"));
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Code de quete inconnu."));
 	}
 
 	private void validateAssetPath(String assetPath) {
 		var value = assetPath == null ? "" : assetPath.trim();
 		if (!VERSIONED_MAP_ASSET.matcher(value).matches() && !MEDIA_ASSET.matcher(value).matches()) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Map asset must be a versioned map asset or media URL");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La ressource de carte doit etre une carte versionnee ou une URL de media.");
 		}
 	}
 

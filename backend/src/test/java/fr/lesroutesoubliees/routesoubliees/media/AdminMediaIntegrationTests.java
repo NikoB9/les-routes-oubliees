@@ -75,7 +75,17 @@ class AdminMediaIntegrationTests {
 	@Test
 	void requiresAuthenticationForAdminMediaList() throws Exception {
 		mvc.perform(get("/api/admin/media"))
-			.andExpect(status().isForbidden());
+			.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void requiresCloudflareIdentityForMediaDelivery() throws Exception {
+		var result = uploadPng("Indice illustre").andExpect(status().isCreated()).andReturn();
+		var id = idFrom(result);
+		publishQuestWithMediaReference(id);
+
+		mvc.perform(get("/media/" + id))
+			.andExpect(status().isUnauthorized());
 	}
 
 	@Test
@@ -90,7 +100,7 @@ class AdminMediaIntegrationTests {
 			.andReturn();
 
 		var id = idFrom(result);
-		mvc.perform(get("/media/" + id))
+		mvc.perform(get("/media/" + id).with(user("aventurier@example.invalid").roles("USER")))
 			.andExpect(status().isNotFound());
 	}
 
@@ -101,7 +111,7 @@ class AdminMediaIntegrationTests {
 
 		publishQuestWithMediaReference(id);
 
-		mvc.perform(get("/media/" + id))
+		mvc.perform(get("/media/" + id).with(user("aventurier@example.invalid").roles("USER")))
 			.andExpect(status().isOk())
 			.andExpect(header().string("Content-Type", containsString("image/png")))
 			.andExpect(header().string("X-Content-Type-Options", "nosniff"));

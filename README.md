@@ -15,9 +15,9 @@ Le site permettra aux aventuriers de suivre la progression de leurs quêtes, de 
 * carte de l’aventure révélée progressivement ;
 * carnet regroupant les quatre quêtes et le Val d’Aurelune ;
 * interface d’administration permettant de gérer les contenus ;
-* authentification des administrateurs avec Google ;
+* authentification des administrateurs avec Cloudflare Access ;
 * affichage responsive sur ordinateur, tablette et mobile ;
-* installation PWA des pages publiques ;
+* installation PWA des pages de contenu ;
 * consultation hors ligne du dernier contenu public synchronise ;
 * prise en compte des exigences d’accessibilité.
 
@@ -46,7 +46,7 @@ Les contenus en cours de préparation resteront invisibles jusqu’à leur publi
 * Spring Boot 4.1.x ;
 * Spring Security ;
 * API REST ;
-* authentification Google OpenID Connect.
+* validation JWT Cloudflare Access pour les routes humaines protegees.
 
 ### Données
 
@@ -58,10 +58,12 @@ Les contenus en cours de préparation resteront invisibles jusqu’à leur publi
 
 Les lots de socle devront fournir les projets exécutables, mais les versions cibles sont déjà fixées :
 
-* Node.js LTS compatible Angular 22 et npm ;
+* Node.js 22.22.3 ou 24.15.0 au minimum, exigence de la CLI Angular 22, et npm ;
 * Java 25 LTS ;
-* Docker Compose ou équivalent pour PostgreSQL local ;
+* Docker Compose ou équivalent pour PostgreSQL local, et un démon Docker pour les tests Testcontainers ;
 * Maven Wrapper côté backend une fois le socle créé.
+
+Ces mêmes validations sont rejouées automatiquement par `.github/workflows/ci.yml` à chaque `push` et chaque `pull request`.
 
 ## Lancement local
 
@@ -122,7 +124,7 @@ La procedure de copie et de deploiement serveur est decrite dans `docs/DEPLOIEME
 
 L’accès à la connexion administrateur sera révélé par un easter egg.
 
-Cet easter egg constitue uniquement un élément d’interface. L’accès réel à l’administration sera protégé par une authentification Google et par une liste d’adresses électroniques autorisées vérifiée côté serveur.
+Cet easter egg constitue uniquement un élément d’interface. L’accès réel à l’administration sera protégé par une authentification Cloudflare Access et par une liste d’adresses électroniques autorisées vérifiée côté serveur.
 
 L’administration permettra notamment de gérer :
 
@@ -157,7 +159,7 @@ Les premières étapes concernent :
 
 1. la création du socle Angular et Spring Boot ;
 2. la configuration de PostgreSQL ;
-3. la mise en place de l’authentification Google ;
+3. la mise en place de l’authentification Cloudflare Access ;
 4. le développement de l’interface publique ;
 5. le développement de l’administration.
 
@@ -170,7 +172,7 @@ Les cartes, illustrations, logos, textes narratifs et autres ressources créativ
 Consulter les fichiers `LICENSE` et `ASSETS-LICENSE.md` pour plus de détails.
 ## Radar d'Aurelune
 
-Le module `Radar` ajoute une route `/radar` protégée par Cloudflare Access.
+Le site complet est protégé par Cloudflare Access sur l'hôte de production. Le module `Radar` ajoute la route `/radar` dans cette application authentifiée.
 
 Configuration minimale :
 
@@ -178,9 +180,13 @@ Configuration minimale :
 CF_ACCESS_ISSUER=https://example.cloudflareaccess.com
 CF_ACCESS_AUDIENCE=example-audience-tag
 CF_ACCESS_CERTS_URL=https://example.cloudflareaccess.com/cdn-cgi/access/certs
-CF_ACCESS_HOME_ASSISTANT_SUBJECT=example-home-assistant-service-token-subject
+RADAR_HOME_ASSISTANT_TOKEN=
 ```
 
+`RADAR_HOME_ASSISTANT_TOKEN` n'a aucune valeur de secours : il doit contenir 32 octets aléatoires encodés en base64url et devient obligatoire en production, où le démarrage échoue si la variable est absente, vide, factice ou trop courte.
+
 Le reverse proxy doit transmettre `Cf-Access-Jwt-Assertion` au backend et autoriser la géolocalisation via `Permissions-Policy`.
+
+La localisation n'est active que pendant l'affichage de la page Radar : le suivi démarre à l'ouverture, la dernière position connue est republiée toutes les sept secondes, et tout s'arrête à la sortie. Une sortie normale tente un retrait immédiat du repère ; en cas d'interruption non signalée, l'expiration serveur d'environ 45 secondes reste le filet de sécurité.
 
 Radar utilise Leaflet 1.9.4 et les tuiles OpenStreetMap standard dans la configuration versionnée. Les positions des participants ne sont pas persistées ; seul le dernier relevé de la balise trésor est stocké, et il reste masqué côté API lorsque l'administration désactive son affichage.

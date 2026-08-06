@@ -43,7 +43,7 @@ class AdminQuestIntegrationTests {
 	@Test
 	void requiresAuthenticationForAdminQuestList() throws Exception {
 		mvc.perform(get("/api/admin/quest-tabs"))
-			.andExpect(status().isForbidden());
+			.andExpect(status().isUnauthorized());
 	}
 
 	@Test
@@ -86,7 +86,7 @@ class AdminQuestIntegrationTests {
 			.andExpect(jsonPath("$.importantEventsHtml").value("<p>alert(1)</p>"))
 			.andExpect(jsonPath("$.discoveredCluesHtml").value("<p>piege</p>"));
 
-		mvc.perform(get("/api/public/quests/QUEST_3"))
+		mvc.perform(get("/api/public/quests/QUEST_3").with(user("aventurier@example.invalid").roles("USER")))
 			.andExpect(status().isNotFound());
 	}
 
@@ -132,7 +132,7 @@ class AdminQuestIntegrationTests {
 			.andExpect(jsonPath("$.status").value("PUBLISHED"))
 			.andExpect(jsonPath("$.visibleToPlayers").value(true));
 
-		mvc.perform(get("/api/public/quests/QUEST_3"))
+		mvc.perform(get("/api/public/quests/QUEST_3").with(user("aventurier@example.invalid").roles("USER")))
 			.andExpect(status().isOk());
 
 		mvc.perform(post("/api/admin/quest-tabs/QUEST_3/hide")
@@ -141,7 +141,7 @@ class AdminQuestIntegrationTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.visibleToPlayers").value(false));
 
-		mvc.perform(get("/api/public/quests/QUEST_3"))
+		mvc.perform(get("/api/public/quests/QUEST_3").with(user("aventurier@example.invalid").roles("USER")))
 			.andExpect(status().isNotFound());
 	}
 }

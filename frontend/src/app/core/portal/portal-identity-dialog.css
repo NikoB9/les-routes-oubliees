@@ -1,0 +1,133 @@
+.identity-dialog::backdrop,
+.confirm-dialog::backdrop {
+  background: rgb(0 0 0 / 58%);
+}
+
+/* Un <dialog> fermé ne doit rien afficher, y compris lorsque `display: grid` s'applique. */
+.identity-dialog:not([open]),
+.confirm-dialog:not([open]) {
+  display: none;
+}
+
+.identity-dialog,
+.confirm-dialog {
+  display: grid;
+  width: min(100% - 2rem, 46rem);
+  max-height: calc(100dvh - 2rem);
+  gap: 1rem;
+  overflow: auto;
+  padding: 1rem;
+  color: #2d2017;
+  background: #f8f0df;
+  border: 1px solid #c8a96c;
+  border-radius: 8px;
+  box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 38%);
+}
+
+.identity-dialog h2,
+.identity-dialog p,
+.confirm-dialog h2,
+.confirm-dialog p {
+  margin: 0;
+}
+
+.identity-dialog p,
+.confirm-dialog p {
+  color: #4d3928;
+}
+
+.choice-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.choice-button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  color: #2d2017;
+  text-align: start;
+  background: #fff8e8;
+}
+
+.choice-button img,
+.choice-fallback {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #5b3d24;
+  color: #f8f0df;
+}
+
+.choice-fallback {
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+}
+
+.choice-button small,
+.choice-button strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+button {
+  min-height: 2.75rem;
+  justify-self: start;
+  padding: 0.65rem 1rem;
+  color: #f8f0df;
+  font-weight: 800;
+  background: #5b3d24;
+  border: 2px solid #2d2017;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover,
+button:focus-visible {
+  background: #784f2b;
+}
+
+button.secondary {
+  color: #2d2017;
+  background: #ead7ab;
+}
+
+.guest-button,
+.confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.guest-button span {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #f8f0df;
+  color: #5b3d24;
+}
+
+.alert {
+  margin: 0;
+  padding: 0.75rem;
+  color: #3a220c;
+  background: #ffe4a8;
+  border-left: 4px solid #b66d00;
+}
+
+@media (max-width: 520px) {
+  .choice-list {
+    grid-template-columns: 1fr;
+  }
+}

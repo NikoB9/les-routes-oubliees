@@ -48,7 +48,7 @@ class AdminMapAdministrationIntegrationTests {
 	@Test
 	void requiresAuthenticationForMapAdministration() throws Exception {
 		mvc.perform(get("/api/admin/map-views"))
-			.andExpect(status().isForbidden());
+			.andExpect(status().isUnauthorized());
 	}
 
 	@Test
@@ -88,7 +88,7 @@ class AdminMapAdministrationIntegrationTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.active").value(true));
 
-		mvc.perform(get("/api/public/map"))
+		mvc.perform(get("/api/public/map").with(user("aventurier@example.invalid").roles("USER")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.vision.name").value("Carte finale admin"))
 			.andExpect(jsonPath("$.vision.descriptionHtml").value(containsString("<strong>preparee</strong>")))
@@ -169,7 +169,7 @@ class AdminMapAdministrationIntegrationTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$[*].title", hasItem("Premier appel deplace")));
 
-		mvc.perform(get("/api/public/map"))
+		mvc.perform(get("/api/public/map").with(user("aventurier@example.invalid").roles("USER")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.markers[*].title").value(hasItem("Chemin secondaire")));
 	}

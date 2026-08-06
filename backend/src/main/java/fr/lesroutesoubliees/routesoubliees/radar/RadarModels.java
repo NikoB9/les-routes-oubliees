@@ -6,26 +6,50 @@ import java.util.UUID;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import fr.lesroutesoubliees.routesoubliees.portal.PortalAccessMode;
 
+@JsonIgnoreProperties(ignoreUnknown = false)
 record RadarLocationRequest(
-	@DecimalMin("-90.0") @DecimalMax("90.0") double latitude,
-	@DecimalMin("-180.0") @DecimalMax("180.0") double longitude,
-	@DecimalMin("0.1") @DecimalMax("10000.0") double accuracyM,
+	@NotNull @DecimalMin("-90.0") @DecimalMax("90.0") Double latitude,
+	@NotNull @DecimalMin("-180.0") @DecimalMax("180.0") Double longitude,
+	@NotNull @DecimalMin("0.1") @DecimalMax("10000.0") Double accuracyM,
 	@NotNull OffsetDateTime observedAt
 ) {
 }
 
+@JsonIgnoreProperties(ignoreUnknown = false)
 record TreasurePositionRequest(
-	int schemaVersion,
-	String beacon,
-	@DecimalMin("-90.0") @DecimalMax("90.0") double latitude,
-	@DecimalMin("-180.0") @DecimalMax("180.0") double longitude,
-	@DecimalMin("0.1") @DecimalMax("10000.0") double accuracyM,
+	@NotNull @Min(1) Integer schemaVersion,
+	@NotBlank String beacon,
+	@NotNull @DecimalMin("-90.0") @DecimalMax("90.0") Double latitude,
+	@NotNull @DecimalMin("-180.0") @DecimalMax("180.0") Double longitude,
+	@NotNull @DecimalMin("0.1") @DecimalMax("10000.0") Double accuracyM,
 	@NotNull OffsetDateTime observedAt
 ) {
+}
+
+/** Resultat d'un releve tresor : mise a jour appliquee ou mesure ignoree. */
+enum TreasureUpdateOutcome {
+	APPLIED,
+	IGNORED
+}
+
+/**
+ * Statut minimal renvoye lorsqu'un releve n'est pas strictement plus recent.
+ *
+ * <p>Ne contient jamais la position enregistree.
+ */
+record TreasureUpdateStatusResponse(String status) {
+
+	static TreasureUpdateStatusResponse ignored() {
+		return new TreasureUpdateStatusResponse("ignored");
+	}
 }
 
 record RadarSnapshotResponse(
@@ -76,5 +100,6 @@ record AdminRadarSettingsResponse(
 ) {
 }
 
+@JsonIgnoreProperties(ignoreUnknown = false)
 record AdminRadarSettingsUpdateRequest(boolean treasureVisible) {
 }

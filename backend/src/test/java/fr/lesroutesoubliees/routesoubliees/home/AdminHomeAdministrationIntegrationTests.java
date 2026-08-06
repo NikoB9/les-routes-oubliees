@@ -44,7 +44,7 @@ class AdminHomeAdministrationIntegrationTests {
 	@Test
 	void requiresAuthenticationForHomeAdministration() throws Exception {
 		mvc.perform(get("/api/admin/home/messages"))
-			.andExpect(status().isForbidden());
+			.andExpect(status().isUnauthorized());
 	}
 
 	@Test
@@ -78,7 +78,7 @@ class AdminHomeAdministrationIntegrationTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.active").value(true));
 
-		mvc.perform(get("/api/public/home"))
+		mvc.perform(get("/api/public/home").with(user("aventurier@example.invalid").roles("USER")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.message.title").value("Parchemin admin"))
 			.andExpect(jsonPath("$.message.contentHtml").value(containsString("<strong>publie</strong>")))
@@ -128,7 +128,7 @@ class AdminHomeAdministrationIntegrationTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$[*].name", hasItem("Aventurier admin")));
 
-		mvc.perform(get("/api/public/home"))
+		mvc.perform(get("/api/public/home").with(user("aventurier@example.invalid").roles("USER")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.company.name").value("Compagnie admin"))
 			.andExpect(jsonPath("$.company.longDescriptionHtml").value(containsString("<strong>longue</strong>")))

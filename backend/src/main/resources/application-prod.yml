@@ -10,3 +10,10 @@ server:
         http-only: true
         secure: true
         same-site: lax
+
+routes-oubliees:
+  radar:
+    home-assistant:
+      # Variable obligatoire : sans valeur de repli, la resolution echoue et le
+      # demarrage est interrompu avant toute exposition d'endpoint.
+      token: ${RADAR_HOME_ASSISTANT_TOKEN}

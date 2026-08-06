@@ -14,15 +14,6 @@
   outline-offset: 2px;
 }
 
-.logout-button {
-  margin-top: 1rem;
-  padding: 0.75rem 1rem;
-  border: 0;
-  background: #211914;
-  color: #f8f0df;
-  cursor: pointer;
-}
-
 .admin-navigation {
   display: flex;
   flex-wrap: wrap;
@@ -289,8 +280,7 @@
 .media-grid button:focus-visible,
 .allowed-form :where(input, button):focus-visible,
 .allowed-list :where(input, button):focus-visible,
-.admin-navigation a:focus-visible,
-.logout-button:focus-visible {
+.admin-navigation a:focus-visible {
   outline: 3px solid #7a261d;
   outline-offset: 2px;
 }

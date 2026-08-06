@@ -1,5 +1,7 @@
 # Lot 2 - Authentification
 
+> Note 2026-08-06 : ce plan historique a ete remplace par l'architecture Cloudflare Access du lot Radar. Les flux Spring OAuth2 internes et la deconnexion admin applicative ne font plus partie de la cible.
+
 ## Objectif
 
 Brancher l'administration sur Google OpenID Connect avec une allowlist backend persistée en PostgreSQL.
@@ -13,7 +15,6 @@ Le lot couvre :
 * session serveur ;
 * protection backend des routes admin ;
 * endpoint de session admin ;
-* logout admin ;
 * route Angular admin exploitable.
 
 ## Decisions
@@ -33,7 +34,6 @@ Backend :
 * entité, repository, service d'allowlist et bootstrap ;
 * validation OIDC refusant email absent, non vérifié ou non autorisé ;
 * `/api/admin/me` ;
-* `/api/admin/logout` ;
 * configuration Spring Security branchée sur le service OIDC admin.
 
 Frontend :
@@ -41,7 +41,7 @@ Frontend :
 * `AdminAuthService` ;
 * guard admin ;
 * page login avec message d'accès refusé ;
-* shell admin affichant la session et un bouton de déconnexion ;
+* shell admin affichant la session ;
 * configuration Angular XSRF alignée sur le cookie `XSRF-TOKEN`.
 
 ## Validations

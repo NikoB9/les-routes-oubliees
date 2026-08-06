@@ -2,11 +2,18 @@
 
 <a class="skip-link" href="#main-content">Aller au contenu principal</a>
 
+@if (accessSession.reconnectRequired()) {
+  <div class="access-reconnect" role="alert">
+    <p>Votre session sécurisée a expiré.</p>
+    <button type="button" (click)="accessSession.retryNow()">Se reconnecter</button>
+  </div>
+}
+
 <app-public-header />
 
 <div class="app-shell">
   <aside class="sidebar" aria-labelledby="primary-navigation-title">
-    <h2 id="primary-navigation-title">Routes publiques</h2>
+    <h2 id="primary-navigation-title">Navigation</h2>
     <app-desktop-navigation labelledBy="primary-navigation-title" />
   </aside>
 
@@ -20,3 +27,4 @@
 
 <app-mobile-navigation />
 <app-pwa-install-prompt />
+<app-portal-identity-dialog />

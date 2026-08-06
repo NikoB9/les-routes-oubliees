@@ -109,6 +109,29 @@ PostgreSQL    : 127.0.0.1:5432
 
 Cloudflare Tunnel pointe vers le reverse proxy local.
 
+### 6.1 Adresse d’écoute Spring
+
+L’adresse d’écoute est pilotée par `server.address`, alimentée par défaut par la variable `SERVER_ADDRESS`. Les deux topologies du dépôt sont différentes et ne doivent pas être confondues.
+
+**Déploiement systemd sur l’hôte (production LXC)**
+
+* le profil et l’adresse sont passés en **arguments de programme** dans `ExecStart`, et non par `Environment=` :
+  `--spring.profiles.active=prod --server.address=127.0.0.1` ;
+* raison : systemd donne la priorité au contenu de `EnvironmentFile=` sur les directives `Environment=`. Une ligne oubliée dans `/etc/les-routes-oubliees/application.env` pourrait donc réactiver le profil `dev` — donc l’identité locale factice — ou une écoute sur toutes les interfaces. Les arguments de programme sont la source de propriétés la plus prioritaire de Spring Boot et ne peuvent pas être écrasés par un fichier d’environnement ;
+* le fichier d’environnement ne porte donc que les secrets et la connexion à la base ;
+* Spring n’est joignable que depuis l’hôte ;
+* Nginx, sur la même machine, est le seul point d’entrée ;
+* aucun port Spring n’est ouvert sur les autres interfaces ;
+* garde-fou complémentaire : le démarrage du profil `prod` échoue si le profil `dev` est actif simultanément.
+
+**Déploiement en conteneurs (profil Compose `app`)**
+
+* `SERVER_ADDRESS=0.0.0.0` dans le conteneur backend : Nginx s’exécute dans un conteneur distinct et doit pouvoir joindre le service par le réseau Compose ;
+* la publication du port reste limitée au loopback de l’hôte : `127.0.0.1:${BACKEND_PORT:-8080}:8080` ;
+* l’écoute large est donc confinée au réseau interne du conteneur, jamais exposée sur les interfaces de l’hôte.
+
+Ne jamais figer `server.address=127.0.0.1` dans un profil également utilisé par un conteneur séparé de Nginx : le proxy ne pourrait plus joindre le backend.
+
 Ne pas exposer directement :
 
 * Spring Boot ;
@@ -142,6 +165,8 @@ Permissions-Policy
 X-Frame-Options ou frame-ancestors dans la CSP
 ```
 
+Nginx n’hérite les `add_header` du niveau supérieur que si l’emplacement courant n’en déclare aucun. Chaque emplacement qui pose son propre `Cache-Control` doit donc répéter les en-têtes de sécurité, sans quoi la réponse part sans politique. Le cas critique est `location = /index.html` : `try_files` y redirige en interne toutes les routes de la SPA, donc le document HTML de chaque page perdrait sa CSP. Les exemples `infra/nginx/les-routes-oubliees.conf.example` et `frontend/nginx.conf` appliquent cette répétition ; vérifier après toute modification que `/`, `/radar` et `/carnet` renvoient bien la CSP et `Permissions-Policy`.
+
 Les réponses admin et API sensibles ne doivent pas être mises en cache par un proxy partagé. Les médias publics peuvent avoir une politique de cache séparée lorsqu’ils sont publiés.
 
 Pour la PWA :
@@ -149,42 +174,69 @@ Pour la PWA :
 * HTTPS est obligatoire en production ;
 * les fichiers du service worker Angular doivent être servis depuis la racine du frontend ;
 * les routes admin, Radar, portail, intégration et écriture ne doivent pas être servies depuis un cache applicatif hors ligne ;
-* après déploiement, vérifier l'installation PWA, le chargement hors ligne des pages publiques et la mise à jour du snapshot public après modification d'un contenu publié.
+* après déploiement, vérifier l'installation PWA et la mise à jour du snapshot de contenu après modification d'un contenu publié.
 
 Routage indicatif :
 
 ```text
 /                 -> Angular
-/api/             -> Spring Boot
-/api/portal/      -> Spring Boot
-/api/radar/       -> Spring Boot
-/login/           -> Spring Boot
-/media/           -> Spring Boot ou répertoire contrôlé
+/api/             -> Spring Boot, JWT Cloudflare exigé
+/api/portal/      -> Spring Boot, JWT Cloudflare exigé
+/api/radar/       -> Spring Boot, JWT Cloudflare exigé
+/radar, /admin    -> Angular, après validation Cloudflare Access globale
+/media/           -> Spring Boot, JWT Cloudflare exigé
 /actuator/health  -> accès local uniquement
 ```
 
+Côté Spring, seules `/`, `/error` et `/actuator/health` restent accessibles sans identité : la racine et les fichiers Angular sont servis par le reverse proxy, `/error` est le dispatch interne du conteneur servlet, et `/actuator/health` est restreint au loopback par Nginx. Toute autre requête, y compris `/api/public/**` et `/media/**`, exige un JWT Cloudflare Access valide. Le seul `POST /api/integrations/home-assistant/radar/treasure-position` fait exception et utilise son Bearer applicatif.
+
 ## 8. Domaine et Cloudflare Access
 
-Configurer dans Google l’URI de redirection exacte de production.
+Configurer Cloudflare Access avec deux applications manuelles sur le même hôte.
 
-Format Spring Security habituel :
+| Application | Destination | Politique |
+| --- | --- | --- |
+| Application humaine | `lesroutesoubliees.nicolas-bourneuf.fr`, champ `Path` vide | `Allow` via Google ou One-time PIN |
+| Exception Home Assistant | chemin exact `api/integrations/home-assistant/radar/treasure-position` | `Bypass` / `Contourner` avec `Everyone` / `Tout le monde` |
 
-```text
-https://DOMAINE/cdn-cgi/access/login
-```
+L'application humaine protège la totalité de l'hôte. Aucune page du site n'est accessible anonymement. Cloudflare authentifie l'utilisateur, mais l'application conserve l'autorisation : les routes `/api/admin/**` exigent toujours un email présent dans l'allowlist administrateur active.
 
-Ne pas utiliser une URI HTTP en production.
+L'exception Home Assistant doit être strictement limitée au chemin exact de publication de position. Ne pas utiliser de joker, ne pas étendre à `/api/integrations/*`, `/api/integrations/home-assistant/*` ou `/api/*`, ne pas créer de second sous-domaine, de second tunnel, de Service Token Cloudflare ni d'application Service Auth.
 
-Configurer correctement la gestion des en-têtes transférés afin que Spring reconstruise l’URL publique HTTPS derrière le proxy.
+### 8.1 Secret Home Assistant
+
+Le secret Bearer applicatif est obligatoire en production :
+
+* générer au moins 32 octets aléatoires, encodés en base64url, soit 43 caractères :
+  `openssl rand -base64 32 | tr '+/' '-_' | tr -d '='` ;
+* le fournir par `RADAR_HOME_ASSISTANT_TOKEN` dans le fichier d'environnement du service ;
+* aucune valeur de secours n'existe dans le dépôt : sans variable, le démarrage du profil `prod` échoue immédiatement ;
+* le démarrage échoue également si la valeur est vide, reconnaissable comme factice, ou plus courte que l'encodage documenté ;
+* la longueur ne prouve pas l'entropie : elle est vérifiée pour détecter une erreur de configuration, pas pour valider le caractère aléatoire du secret ;
+* le secret n'est écrit ni dans les journaux ni dans les messages d'erreur ;
+* le profil `dev`, qui injecte une identité locale factice à la place de Cloudflare Access, ne doit jamais être actif sur le serveur : le contrôle de démarrage `prod` refuse cette combinaison.
+
+### 8.2 Limite de taille du chemin Home Assistant
+
+Le corps accepté sur `POST /api/integrations/home-assistant/radar/treasure-position` est limité à 4096 octets à deux niveaux :
+
+* Nginx applique `client_max_body_size 4k` sur cet emplacement exact uniquement ;
+* le backend lit le corps de manière bornée, y compris lorsque `Content-Length` est absent ou que la requête utilise un transfert fragmenté, et répond `413 Payload Too Large` au-delà.
+
+Cette limite n'est pas généralisée aux autres routes, dont les besoins diffèrent (téléversement de médias notamment).
+
+Configurer correctement la gestion des en-têtes transférés afin que Spring reconstruise l'URL publique HTTPS derrière le proxy.
 
 Tester obligatoirement :
 
 * connexion ;
-* retour Google ;
-* création de session ;
-* logout ;
+* accès direct à `/`, `/radar` et `/admin` sans session, qui doit déclencher Cloudflare Access ;
+* validation du JWT `Cf-Access-Jwt-Assertion` ;
+* deconnexion via `/cdn-cgi/access/logout` ;
 * refus d’un email non autorisé ;
-* expiration de session.
+* expiration de session ;
+* `POST` sans Bearer sur l'endpoint Home Assistant exact, qui doit atteindre le backend et répondre `401` sans redirection Cloudflare ;
+* chemin voisin de l'intégration Home Assistant, qui doit rester intercepté par Cloudflare Access.
 
 ### 8.1 Recuperation allowlist admin
 
@@ -208,11 +260,11 @@ Fichier :
 /etc/les-routes-oubliees/application.env
 ```
 
+Le profil actif et l’adresse d’écoute ne sont **pas** définis ici : ils sont épinglés en arguments de programme dans l’unité systemd (voir §6.1), car le contenu de `EnvironmentFile=` prime sur les directives `Environment=`.
+
 Variables minimales :
 
 ```text
-SPRING_PROFILES_ACTIVE=prod
-
 DATABASE_URL=jdbc:postgresql://127.0.0.1:5432/routes_oubliees
 DATABASE_USERNAME=routes_oubliees
 DATABASE_PASSWORD=CHANGE_ME
@@ -220,7 +272,7 @@ DATABASE_PASSWORD=CHANGE_ME
 CF_ACCESS_ISSUER=https://TEAM.cloudflareaccess.com
 CF_ACCESS_AUDIENCE=CHANGE_ME
 CF_ACCESS_CERTS_URL=https://TEAM.cloudflareaccess.com/cdn-cgi/access/certs
-CF_ACCESS_HOME_ASSISTANT_SUBJECT=CHANGE_ME
+RADAR_HOME_ASSISTANT_TOKEN=32_OCTETS_ALEATOIRES_EN_BASE64URL
 ADMIN_BOOTSTRAP_EMAILS=admin@example.invalid
 
 MEDIA_STORAGE_PATH=/var/lib/les-routes-oubliees/media
@@ -532,7 +584,7 @@ Avant la mise en place de la CI, les mêmes commandes doivent être exécutées 
 * carte ;
 * quêtes ;
 * prévisualisation ;
-* connexion Google ;
+* connexion Cloudflare Access ;
 * refus d’un non-administrateur ;
 * responsive ;
 * navigation clavier.
@@ -653,21 +705,24 @@ Variables de production à renseigner :
 CF_ACCESS_ISSUER=https://TEAM.cloudflareaccess.com
 CF_ACCESS_AUDIENCE=AUD_TAG_APPLICATION_HUMAINE
 CF_ACCESS_CERTS_URL=https://TEAM.cloudflareaccess.com/cdn-cgi/access/certs
-CF_ACCESS_HOME_ASSISTANT_SUBJECT=SUBJECT_DU_SERVICE_TOKEN_HOME_ASSISTANT
+RADAR_HOME_ASSISTANT_TOKEN=32_OCTETS_ALEATOIRES_EN_BASE64URL
 ```
+
+Le profil `prod` et l'adresse `127.0.0.1` ne figurent volontairement pas dans ce fichier : ils sont épinglés en arguments de programme dans l'unité systemd, hors de portée d'une ligne oubliée dans le fichier d'environnement (voir §6.1).
 
 Cloudflare Zero Trust :
 
-* protéger `/radar`, `/radar/*`, `/admin`, `/admin/*`, `/api/portal/*`, `/api/radar/*` et `/api/admin/*` avec une politique humaine limitée aux emails autorisés ;
-* activer Google et le code email à usage unique si souhaité ;
-* ne pas créer de règle qui autorise toute adresse email ;
-* créer une application Access plus spécifique pour `/api/integrations/home-assistant/*` avec une politique `Service Auth` et un Service Token dédié.
+* protéger tout l'hôte `lesroutesoubliees.nicolas-bourneuf.fr` avec une application humaine dont le champ `Path` est vide ;
+* utiliser une politique `Allow` avec les méthodes de connexion Google et One-time PIN ;
+* ne pas limiter les emails dans Cloudflare : l'autorisation administrateur reste gérée par `ADMIN_BOOTSTRAP_EMAILS` puis l'allowlist applicative ;
+* créer une seconde application plus spécifique sur le chemin exact `api/integrations/home-assistant/radar/treasure-position` ;
+* configurer cette application spécifique en `Bypass` / `Contourner` avec `Everyone` / `Tout le monde` ;
+* ne pas créer de Service Token Cloudflare, de second tunnel, de second sous-domaine ni de joker sur l'exception.
 
 Home Assistant doit envoyer :
 
 ```text
-CF-Access-Client-Id: ...
-CF-Access-Client-Secret: ...
+Authorization: Bearer <RADAR_HOME_ASSISTANT_TOKEN>
 ```
 
 Nginx :
@@ -676,7 +731,7 @@ Nginx :
 * transmettre `Cf-Access-Jwt-Assertion` au backend ;
 * désactiver le buffering et le cache sur `/api/radar/events` ;
 * autoriser le domaine des tuiles Leaflet dans la CSP ;
-* ne plus router les anciens chemins OAuth2 Google internes si le backend ne les expose plus.
+* ne plus router les anciens chemins OAuth2/login Spring internes si le backend ne les expose plus.
 
 Après modification du fichier de production, valider puis recharger :
 
@@ -686,3 +741,113 @@ sudo systemctl reload nginx
 ```
 
 Le fichier versionné de référence est `infra/nginx/les-routes-oubliees.conf.example`. Le fichier de production à adapter est généralement `/etc/nginx/sites-available/les-routes-oubliees`, sauf installation différente.
+
+## Addendum 2026-08-05 - Ordre de deploiement Radar definitif
+
+L'ordre de mise en production du module Radar est le suivant :
+
+1. creer dans Cloudflare Zero Trust une application Access humaine couvrant tout l'hote `lesroutesoubliees.nicolas-bourneuf.fr`, avec le champ `Path` vide ;
+2. recuperer l'Audience Tag de cette application humaine ;
+3. renseigner sur le serveur `CF_ACCESS_ISSUER`, `CF_ACCESS_AUDIENCE`, `CF_ACCESS_CERTS_URL`, `ADMIN_BOOTSTRAP_EMAILS` et `RADAR_HOME_ASSISTANT_TOKEN` ;
+4. comparer le fichier Nginx actif avec `infra/nginx/les-routes-oubliees.conf.example` avant modification ;
+5. valider Nginx avec `sudo nginx -t` ;
+6. verifier Nginx avec `sudo systemctl is-active nginx`, puis recharger avec `sudo systemctl reload nginx` ;
+7. transferer `dist/les-routes-oubliees-release.tar.gz` vers le serveur ;
+8. verifier son SHA-256 localement et sur le serveur ;
+9. deployer avec `/usr/local/sbin/lro-deploy` ;
+10. tester que `/`, `/radar` et `/admin` sont derrière Cloudflare Access ;
+11. tester les liens Angular internes vers `/radar` et `/admin` une fois l'application chargee ;
+12. tester Home Assistant avec le Bearer applicatif ;
+13. surveiller les logs sans afficher le secret ;
+14. nettoyer l'ancien OAuth Google interne uniquement apres validation et expiration de la periode de retour arriere.
+
+Generation du Bearer Home Assistant avec une source cryptographiquement sure :
+
+```bash
+openssl rand -base64 32
+```
+
+Test de l'endpoint sans inscrire le secret en clair dans l'historique du terminal :
+
+```bash
+read -r -s RADAR_AUTHORIZATION
+curl -fsS -X POST \
+  -H "Authorization: ${RADAR_AUTHORIZATION}" \
+  -H "Content-Type: application/json" \
+  --data '{"schemaVersion":1,"beacon":"tresor-aurelune","latitude":46.495854,"longitude":-1.775551,"accuracyM":6.414,"observedAt":"2026-08-04T21:51:57Z"}' \
+  https://DOMAINE/api/integrations/home-assistant/radar/treasure-position
+unset RADAR_AUTHORIZATION
+```
+
+Variables serveur Radar et Access :
+
+```text
+CF_ACCESS_ISSUER
+CF_ACCESS_AUDIENCE
+CF_ACCESS_CERTS_URL
+ADMIN_BOOTSTRAP_EMAILS
+RADAR_HOME_ASSISTANT_TOKEN
+```
+
+Ces variables s'ajoutent aux variables applicatives existantes pour PostgreSQL, le stockage des medias, l'URL publique et le fuseau horaire.
+
+Home Assistant utilise le Bearer applicatif comme authentification effective, car l'application Access la plus spécifique contourne Cloudflare sur ce chemin exact. Exemple `secrets.yaml` :
+
+```yaml
+aurelune_position_endpoint: "https://<DOMAINE>/api/integrations/home-assistant/radar/treasure-position"
+aurelune_radar_authorization: "Bearer <RADAR_HOME_ASSISTANT_TOKEN>"
+```
+
+Exemple `configuration.yaml` :
+
+```yaml
+rest_command:
+  publier_position_aurelune:
+    url: !secret aurelune_position_endpoint
+    method: post
+    headers:
+      Authorization: !secret aurelune_radar_authorization
+      Accept: "application/json"
+    content_type: "application/json"
+    verify_ssl: true
+    timeout: 10
+    payload: >-
+      {{
+        {
+          "schemaVersion": 1,
+          "beacon": "tresor-aurelune",
+          "latitude": latitude | float,
+          "longitude": longitude | float,
+          "accuracyM": accuracy_m | float,
+          "observedAt": observed_at | string
+        } | to_json
+      }}
+```
+
+L'automatisation Home Assistant doit fournir les valeurs issues de `device_tracker.tresor_d_aurelune` : `latitude`, `longitude`, `accuracy_m` et `last_seen` mappe vers `observedAt`.
+
+Créer manuellement l'application Access d'exception Home Assistant uniquement parce que l'application humaine couvre tout l'hôte. Elle doit cibler le chemin exact `api/integrations/home-assistant/radar/treasure-position` avec la politique `Bypass` / `Contourner` et `Everyone` / `Tout le monde`. Ne pas étendre cette exception à `/api/integrations/*` ou `/api/*`.
+
+Le fichier Nginx de production a identifier et modifier est generalement `/etc/nginx/sites-available/les-routes-oubliees`, sauf installation differente. Les differences obligatoires avec le fichier versionne sont : `Permissions-Policy` avec `geolocation=(self)`, `img-src` autorisant `https://tile.openstreetmap.org`, transmission de `Cf-Access-Jwt-Assertion`, preservation de `Authorization`, bloc SSE sans buffering/cache et `Cache-Control: no-store` sur les API d'identite, Radar, admin et integration Home Assistant.
+
+Le service worker ne doit plus intercepter les navigations avec le shell Angular mis en cache. `frontend/ngsw-config.json` conserve les assets PWA, mais exclut toutes les navigations pour que Cloudflare Access voie les accès à `/`, `/radar`, `/admin` et aux routes rechargées. Cette décision réduit le comportement hors ligne d'une nouvelle navigation ; elle est volontaire pour éviter une page affichée depuis le cache après expiration ou déconnexion Access.
+
+Un shell statique deja present dans un cache navigateur ou un ancien service worker peut rester affichable localement jusqu'a son eviction. Cloudflare Access ne peut pas intercepter une reponse servie entierement depuis le cache local ; les API Radar, admin, portail et integration restent donc exclues du cache et revalidees par le reseau.
+
+Les variables `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` ne sont plus utilisees par l'application : l'authentification humaine repose entierement sur Cloudflare Access. Leur suppression du fichier d'environnement du serveur et la suppression du client OAuth correspondant dans Google Cloud Console sont des operations manuelles restantes.
+
+Vérifications manuelles Cloudflare après déploiement :
+
+1. Sans session Access, `GET /` déclenche l'authentification Cloudflare.
+2. Sans session Access, l'accès direct à `/radar` et `/admin` déclenche aussi Cloudflare.
+3. Une fois l'application chargée, les liens Angular vers `/radar` et `/admin` fonctionnent sans rechargement complet.
+4. Sans session Access, un `POST` sur `/api/integrations/home-assistant/radar/treasure-position` sans Bearer atteint le backend et répond `401`, sans redirection Cloudflare.
+5. Le même endpoint avec un Bearer valide répond `204` pour une mesure strictement plus récente, et `200` avec `{"status":"ignored"}` pour une mesure non plus récente.
+6. Un corps supérieur à 4096 octets sur ce même chemin répond `413`.
+7. Un chemin voisin, par exemple `/api/integrations/home-assistant/radar`, reste intercepté par Cloudflare Access.
+8. Aucune autre route `/api/integrations/**` n'est ouverte.
+9. Toute route `/api/**` humaine et `/media/**` atteinte sans JWT Cloudflare valide répond `401` avec l'en-tête `X-LRO-Auth-Error: application`.
+10. Une session Access expirée pendant l'utilisation de la SPA provoque une reconnexion compréhensible, sans boucle : un seul rechargement, puis une action « Se reconnecter » stable.
+11. Après navigation vers `https://lesroutesoubliees.nicolas-bourneuf.fr/cdn-cgi/access/logout`, une nouvelle navigation vers le site redemande une authentification.
+12. Aucune donnée Radar, administrative ou Home Assistant n'est récupérée depuis un cache après expiration ou déconnexion.
+13. En quittant `/radar` par une navigation Angular normale, le repère disparaît immédiatement chez les autres participants ; après une interruption brutale, il disparaît au plus tard au terme du TTL serveur d'environ 45 secondes suivi du balayage périodique.

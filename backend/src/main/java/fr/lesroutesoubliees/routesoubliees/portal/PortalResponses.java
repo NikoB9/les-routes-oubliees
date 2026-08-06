@@ -7,7 +7,8 @@ import java.util.UUID;
 record PortalMeResponse(
 	PortalIdentityResponse identity,
 	List<PortalAdventurerChoiceResponse> availableAdventurers,
-	boolean guestAvailable
+	boolean guestAvailable,
+	boolean canAccessAdmin
 ) {
 }
 

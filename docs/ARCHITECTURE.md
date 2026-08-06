@@ -12,7 +12,7 @@ Principes :
 * frontend Angular séparé du backend Spring Boot ;
 * API REST ;
 * base PostgreSQL unique ;
-* session serveur ;
+* backend sans état : session gérée par Cloudflare Access en amont, JWT validé à chaque requête ;
 * fichiers médias sur volume persistant ;
 * pas de microservices ;
 * pas de complexité distribuée ;
@@ -255,6 +255,10 @@ GET /api/public/offline-snapshot
 
 Ces endpoints exposent uniquement les contenus publics publies et visibles. Ils ne doivent jamais inclure de brouillons, donnees admin, audit, emails administrateurs, secrets ou champs narratifs source non publics.
 
+Le prefixe `/api/public` designe le **filtrage editorial** des contenus, pas une absence d'authentification : comme toutes les API humaines, ces endpoints exigent un JWT Cloudflare Access valide. Cote Spring, seules `/`, `/error` et `/actuator/health` restent accessibles sans identite ; `/media/**` exige egalement une identite valide. La seule exception est le `POST` exact de publication de position Home Assistant, authentifie par un Bearer applicatif.
+
+Les refus d'authentification emis par l'application portent l'en-tete `X-LRO-Auth-Error: application` afin d'etre distingues d'une expiration de session Cloudflare Access, qui est renvoyee par Cloudflare avant l'origine et ne porte donc pas ce marqueur.
+
 Les erreurs utilisent `application/problem+json`.
 
 Une erreur doit contenir au minimum :
@@ -302,10 +306,9 @@ Opérations obligatoirement atomiques :
 
 ### 6.1 Choix
 
-* Google OpenID Connect ;
+* Cloudflare Access ;
 * validation JWT Cloudflare Access ;
-* session serveur ;
-* cookie sécurisé ;
+* session et cookie gérés par Cloudflare Access ;
 * allowlist PostgreSQL.
 
 ### 6.2 Flux
@@ -321,32 +324,20 @@ Cloudflare Access
     ▼
 Spring Security
     │
-    ├── vérifie l’identité
-    ├── vérifie email_verified
+    ├── vérifie signature, issuer, audience, exp et nbf
+    ├── extrait l'email depuis le JWT validé
     ├── normalise l’email
     ├── consulte l’allowlist
-    └── crée ou refuse la session
+    └── crée les autorités applicatives de la requête
 ```
 
-### 6.3 Session
+### 6.3 Session Access
 
-Le cookie de session doit être :
+La session humaine est gérée par Cloudflare Access avant l'origine. Le backend ne fournit plus de flux `/login`, `/oauth2/**`, ni de client OAuth Google interne.
 
-* `HttpOnly`;
-* `Secure` en production ;
-* `SameSite=Lax` sauf besoin OIDC contraire documenté ;
-* limité au domaine nécessaire ;
-* renouvelé après authentification.
+Cloudflare doit transmettre `Cf-Access-Jwt-Assertion` à l'origine. Le backend valide ce JWT pour chaque requête humaine protégée et ne doit jamais accepter un simple en-tête d'email falsifiable.
 
-Ne pas transmettre de JWT au frontend pour ce MVP.
-
-Les scopes Google doivent rester minimaux :
-
-```text
-openid email profile
-```
-
-Ne pas persister durablement les access tokens ou refresh tokens Google sauf besoin explicitement documenté. Les logs et l’audit ne doivent pas conserver les claims complets.
+Ne pas transmettre de JWT au frontend pour ce MVP. Les logs et l’audit ne doivent pas conserver les claims complets.
 
 ### 6.4 CSRF
 
@@ -354,13 +345,23 @@ Maintenir la protection CSRF sur les opérations d’écriture.
 
 Stratégie cible pour la SPA :
 
-* session serveur dans un cookie `HttpOnly`;
+* aucune session applicative : l’identité provient du JWT Cloudflare validé à chaque requête, la politique de session Spring est `STATELESS` ;
 * token CSRF transmis dans un cookie `XSRF-TOKEN` lisible par Angular ;
 * envoi du token par le frontend dans l’en-tête `X-XSRF-TOKEN` pour les méthodes d’écriture ;
+* les requêtes émises hors de `HttpClient` doivent poser ce jeton manuellement : c’est le cas du `DELETE` de départ Radar, envoyé par `fetch` pour survivre à la navigation ;
 * renouvellement du token selon la configuration Spring Security ;
 * erreur explicite et non verbeuse en cas de token absent ou invalide.
 
 Ne pas désactiver globalement CSRF pour simplifier le développement.
+
+### 6.6 Contrat d'erreur
+
+Toutes les erreurs d'API sont rendues en `application/problem+json` (RFC 9457) : `spring.mvc.problemdetails.enabled` couvre les refus métier et les erreurs de validation, le point d'entrée `401` produit le même format avec son marqueur `X-LRO-Auth-Error: application`, et un gestionnaire de dernier recours traduit toute exception imprévue en `500` au corps générique.
+
+Deux règles à ne pas relâcher :
+
+* le message d'une exception inattendue reste dans les journaux du serveur, jamais dans la réponse : il peut contenir une requête, un chemin ou une valeur de configuration ;
+* ce gestionnaire porte volontairement la priorité la plus basse. Spring retient le premier `@ControllerAdvice` possédant une méthode compatible, sans comparer la précision entre plusieurs advices : un `@ExceptionHandler(Exception.class)` déclaré plus tôt capturerait aussi les erreurs de validation et détruirait leur détail.
 
 ### 6.5 CORS
 
@@ -593,9 +594,9 @@ Le backend valide le JWT reçu dans l'en-tête `Cf-Access-Jwt-Assertion` avant d
 
 * `ROLE_USER` pour une identité humaine Access avec email validé par le JWT ;
 * `ROLE_ADMIN` lorsque l'email normalisé est actif dans `admin_allowed_emails` ;
-* `ROLE_HOME_ASSISTANT` pour le sujet de Service Token Cloudflare configuré.
+* `ROLE_HOME_ASSISTANT` pour le Bearer applicatif Home Assistant valide.
 
-Les routes OAuth2 Google internes `/oauth2/**` et `/login/**` ne font plus partie de l'architecture cible.
+Les routes Spring OAuth2 internes `/oauth2/**` et `/login/**` ne font plus partie de l'architecture cible.
 
 Nouveaux préfixes API :
 
@@ -610,3 +611,43 @@ Nouveaux préfixes API :
 Radar utilise SSE avec `SseEmitter`. Les positions des participants sont conservées uniquement en mémoire avec expiration courte. La position du trésor est stockée dans `radar_state`, mais n'est jamais exposée publiquement lorsque `treasure_visible=false`.
 
 Radar est exclu du cache PWA, d'IndexedDB et du snapshot hors ligne.
+
+### Cycle de vie des présences Radar
+
+La géolocalisation est strictement limitée au composant `RadarPage` :
+
+* le suivi `watchPosition()` démarre à l'ouverture de Radar, sur action de l'utilisateur, jamais au lancement de l'application ;
+* aucune publication n'a lieu avant une première position valide ;
+* la dernière position valide est republiée toutes les sept secondes, même sans nouveau relevé du navigateur, afin qu'un aventurier immobile reste visible ;
+* un seul `PUT` est en vol à la fois, avec au plus une position en attente ;
+* la destruction du composant marque immédiatement un état détruit, arrête le timer, appelle `clearWatch()`, ferme le SSE, annule le `PUT` en cours et vide la position en attente ; aucun callback tardif ni `finalize()` ne peut republier ;
+* aucun suivi n'est déplacé dans un service global et aucune autre page ne demande de position.
+
+Retrait de la présence :
+
+* `DELETE /api/radar/me/location` retire la présence de l'utilisateur authentifié, sans accepter d'identifiant fourni par le client, de façon idempotente (`204 No Content`), et diffuse immédiatement un nouvel état SSE ;
+* lors d'une navigation Angular normale hors de Radar, cette notification est envoyée après l'arrêt des publications, par une requête même origine détachée du composant (`keepalive`) ;
+* cette notification n'est jamais garantie : fermeture brutale, perte réseau ou appareil éteint peuvent l'empêcher ;
+* le TTL serveur d'environ 45 secondes est donc le filet de sécurité obligatoire. Un balayage périodique côté serveur retire les présences expirées et diffuse leur disparition, sans dépendre d'une nouvelle publication de position. La latence maximale de disparition est le TTL suivi de l'intervalle de balayage.
+
+Deux invariants protègent ce cycle côté serveur :
+
+* **La lecture n'expire rien.** `snapshot()` exclut les présences expirées de la vue renvoyée mais ne les supprime pas : la suppression et sa diffusion appartiennent au seul balayage périodique. Sans cela, une simple lecture pourrait consommer une expiration que personne n'aurait diffusée, et les clients déjà connectés conserveraient un repère disparu jusqu'à la publication suivante.
+* **Le départ explicite prime pendant cinq secondes.** Le client annule sa publication en vol avant d'envoyer le `DELETE`, mais une annulation navigateur ne garantit pas que le serveur n'a pas déjà commencé à traiter la requête. Un départ mémorisé fait donc ignorer toute publication de la même identité pendant cinq secondes, et une position dont l'horodatage est antérieur à celle déjà connue n'est jamais appliquée. Conséquence assumée : un retour sur Radar dans cette fenêtre reste invisible aux autres participants jusqu'à la publication suivante.
+
+Les diffusions SSE déclenchées par une écriture sont reportées après le commit de la transaction : un état construit à partir de données non validées ne doit jamais atteindre les abonnés.
+
+Ces diffusions partent ensuite d'un exécuteur dédié à un seul thread, et non du thread appelant. Une écriture SSE est bloquante : un client qui cesse de lire sans fermer sa connexion remplit le tampon réseau et immobilise le thread qui écrit. Tant que la diffusion partait du planificateur, un seul client dans cet état suspendait le balayage des présences, donc la diffusion des disparitions — exactement ce que le filet de sécurité doit garantir. Un thread unique, volontairement, pour préserver l'ordre des instantanés ; une file bornée à 64 abandonne le plus ancien plutôt que de grossir, chaque instantané étant un état complet que le suivant remplace. Résidu assumé : un client bloqué retarde les instantanés des autres jusqu'à la fin de sa connexion, mais ne peut plus figer ni le balayage ni un thread de requête.
+
+Le releve tresor Home Assistant reste applique par une mise a jour atomique strictement temporelle : `204 No Content` lorsque la mesure est appliquee, `200 OK` avec `{"status":"ignored"}` lorsqu'elle n'est pas strictement plus recente. `202 Accepted` n'est pas utilise, la mise a jour n'etant jamais differee.
+
+### Navigations et service worker
+
+Le service worker sert le shell Angular pour les navigations, **sauf** `/radar`, `/admin` et `/admin/**`, et sauf les URL de fichiers. Cet arbitrage remplace une exclusion totale des navigations, qui rendait le mode hors ligne annoncé dans `PLAN_FINAL` entièrement inopérant : sans navigation servie, la coquille applicative ne se chargeait jamais et le snapshot de contenu public mis en cache restait inatteignable.
+
+Ce que l'arbitrage préserve et ce qu'il concède :
+
+* **Préservé** : `/radar` et `/admin` passent toujours par le réseau. Cloudflare Access peut donc intercepter une session absente ou expirée avant qu'une page sensible ne soit rendue, et aucune vue d'administration ni aucune position ne sort d'un cache local.
+* **Concédé** : les pages publiques — accueil, carte, carnet — se rechargent hors ligne, y compris après une déconnexion Cloudflare Access, avec le dernier contenu public synchronisé. Ce contenu est celui que tout aventurier authentifié voit déjà ; il reste néanmoins lisible sur l'appareil jusqu'à l'expiration du cache, fixée à 24 heures.
+
+Les motifs sont figés par un test : voir `frontend/src/app/core/offline/ngsw-config.spec.ts`. Une erreur de motif ne casse aucun autre test et ne se voit qu'en navigateur, réseau coupé.
