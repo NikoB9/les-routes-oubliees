@@ -1,6 +1,7 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { defer, of } from 'rxjs';
+import { Observable, defer, of, throwError } from 'rxjs';
 
 import { AdminAuthService } from '../../../core/auth/admin-auth.service';
 import { NotebookApiService } from '../../notebook/notebook-api.service';
@@ -13,6 +14,13 @@ interface DateConversionHarness {
   toLocalDateTimeInput(value: string | null, timezone: string): string | null;
 }
 
+interface MediaUploadHarness {
+  selectedFile: { set(value: File | null): void };
+  mediaAltText: { set(value: string): void };
+  mediaErrorMessage: () => string;
+  uploadMedia: () => void;
+}
+
 class ResizeObserverStub {
   observe() {}
   unobserve() {}
@@ -21,9 +29,11 @@ class ResizeObserverStub {
 
 describe('AdminShell', () => {
   let sectionParam = 'home';
+  let uploadMediaResponse: () => Observable<unknown>;
 
   beforeEach(async () => {
     sectionParam = 'home';
+    uploadMediaResponse = () => of({});
     globalThis.ResizeObserver = ResizeObserverStub as typeof ResizeObserver;
 
     await TestBed.configureTestingModule({
@@ -126,6 +136,7 @@ describe('AdminShell', () => {
           provide: MediaApiService,
           useValue: {
             listAdminMedia: () => of([]),
+            uploadAdminMedia: () => uploadMediaResponse(),
           },
         },
       ],
@@ -182,6 +193,82 @@ describe('AdminShell', () => {
       'RIGHT',
     ]);
     expect(offsetInput?.value).toBe('22');
+  });
+
+  /**
+   * Un message unique servait les trois causes et réclamait le texte alternatif quelle que
+   * soit la vraie raison : devant un fichier trop lourd, l'administrateur corrigeait un champ
+   * déjà valide, puis échouait de nouveau sans jamais apprendre la taille en cause.
+   */
+  it('explains a rejected upload by its size instead of blaming the alt text', () => {
+    uploadMediaResponse = () => throwError(() => new HttpErrorResponse({ status: 413 }));
+    const fixture = TestBed.createComponent(AdminShell);
+    const shell = fixture.componentInstance as unknown as MediaUploadHarness;
+
+    shell.selectedFile.set(new File(['x'], 'carte.png', { type: 'image/png' }));
+    shell.mediaAltText.set('Carte révélée');
+    shell.uploadMedia();
+
+    expect(shell.mediaErrorMessage()).toContain('trop volumineux');
+  });
+
+  it('still names the missing fields when the upload form is incomplete', () => {
+    const fixture = TestBed.createComponent(AdminShell);
+    const shell = fixture.componentInstance as unknown as MediaUploadHarness;
+
+    shell.uploadMedia();
+
+    expect(shell.mediaErrorMessage()).toContain('obligatoires');
+  });
+
+  /** Toute autre panne reste distincte de la taille : le conseil serait trompeur. */
+  it('does not blame the file size for an unrelated upload failure', () => {
+    uploadMediaResponse = () => throwError(() => new HttpErrorResponse({ status: 500 }));
+    const fixture = TestBed.createComponent(AdminShell);
+    const shell = fixture.componentInstance as unknown as MediaUploadHarness;
+
+    shell.selectedFile.set(new File(['x'], 'carte.png', { type: 'image/png' }));
+    shell.mediaAltText.set('Carte révélée');
+    shell.uploadMedia();
+
+    expect(shell.mediaErrorMessage()).not.toContain('trop volumineux');
+  });
+
+  /**
+   * Le backend rédige ses refus métier dans `detail` : image trop grande, signature invalide.
+   * Les remplacer par un message générique reproduirait la confusion que l'on vient de lever.
+   */
+  it('shows the reason the server gives for a rejected upload', () => {
+    uploadMediaResponse = () =>
+      throwError(() => new HttpErrorResponse({
+        status: 400,
+        error: { detail: 'Image trop grande : 50 millions de pixels au maximum.' },
+      }));
+    const fixture = TestBed.createComponent(AdminShell);
+    const shell = fixture.componentInstance as unknown as MediaUploadHarness;
+
+    shell.selectedFile.set(new File(['x'], 'carte.png', { type: 'image/png' }));
+    shell.mediaAltText.set('Carte révélée');
+    shell.uploadMedia();
+
+    expect(shell.mediaErrorMessage()).toContain('50 millions de pixels');
+  });
+
+  /** Un 5xx ne doit jamais laisser filtrer un détail technique vers l'administrateur. */
+  it('never relays a server-side failure detail', () => {
+    uploadMediaResponse = () =>
+      throwError(() => new HttpErrorResponse({
+        status: 500,
+        error: { detail: 'NullPointerException at MediaService line 42' },
+      }));
+    const fixture = TestBed.createComponent(AdminShell);
+    const shell = fixture.componentInstance as unknown as MediaUploadHarness;
+
+    shell.selectedFile.set(new File(['x'], 'carte.png', { type: 'image/png' }));
+    shell.mediaAltText.set('Carte révélée');
+    shell.uploadMedia();
+
+    expect(shell.mediaErrorMessage()).not.toContain('NullPointerException');
   });
 
   it('does not expose a separate admin logout action', () => {

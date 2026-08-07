@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -66,6 +67,18 @@ interface ActiveMarkdownField {
   field: MarkdownField;
 }
 
+/**
+ * Messages de la médiathèque.
+ *
+ * Un message unique servait les trois causes, et réclamait le texte alternatif quelle que
+ * soit la vraie raison : devant un fichier trop lourd, l'administrateur corrigeait un champ
+ * déjà valide puis échouait de nouveau, sans jamais apprendre la taille en cause.
+ */
+const MEDIA_ERROR_REQUIRED_FIELDS = 'Le fichier et le texte alternatif sont obligatoires.';
+const MEDIA_ERROR_FILE_TOO_LARGE =
+  "Le fichier est trop volumineux pour être envoyé. Choisissez une image plus légère, ou réduisez sa définition avant de la déposer.";
+const MEDIA_ERROR_GENERIC = 'Impossible de traiter les médias pour le moment.';
+
 @Component({
   selector: 'app-admin-shell',
   imports: [FormsModule, LoadingIndicatorComponent, MarkdownToolbarComponent, RouterLink, TabBarComponent],
@@ -123,6 +136,7 @@ export class AdminShell {
   protected readonly statuses: QuestStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
   protected readonly media = signal<AdminMedia[]>([]);
   protected readonly mediaError = signal(false);
+  protected readonly mediaErrorMessage = signal(MEDIA_ERROR_GENERIC);
   protected readonly mediaSaved = signal(false);
   protected readonly selectedFile = signal<File | null>(null);
   protected readonly mediaAltText = signal('');
@@ -931,7 +945,7 @@ export class AdminShell {
     const file = this.selectedFile();
     const altText = this.mediaAltText().trim();
     if (!file || !altText) {
-      this.showMediaError();
+      this.showMediaError(MEDIA_ERROR_REQUIRED_FIELDS);
       return;
     }
     this.mediaApi.uploadAdminMedia(file, altText).subscribe({
@@ -944,7 +958,7 @@ export class AdminShell {
         this.loadDashboard();
         this.loadAuditLogs();
       },
-      error: () => this.showMediaError(),
+      error: (error: unknown) => this.showMediaError(this.mediaUploadErrorMessage(error)),
     });
   }
 
@@ -1577,9 +1591,34 @@ export class AdminShell {
     this.focusSummary(this.mapErrorSummary());
   }
 
-  private showMediaError() {
+  private showMediaError(message: string = MEDIA_ERROR_GENERIC) {
+    this.mediaErrorMessage.set(message);
     this.mediaError.set(true);
     this.focusSummary(this.mediaErrorSummary());
+  }
+
+  /**
+   * Traduit un refus d'envoi de média.
+   *
+   * Le `413` vient du conteneur servlet, qui rejette pendant l'analyse du multipart : aucun
+   * corps applicatif n'accompagne la réponse, seul le statut porte l'information.
+   *
+   * Les autres refus, eux, sont rendus en `application/problem+json` et leur champ `detail`
+   * porte déjà un motif rédigé pour l'administrateur — signature invalide, image trop grande,
+   * texte alternatif trop long. Le masquer derrière un message générique reproduirait
+   * exactement la confusion que ces messages distincts viennent lever.
+   */
+  private mediaUploadErrorMessage(error: unknown): string {
+    if (!(error instanceof HttpErrorResponse)) {
+      return MEDIA_ERROR_GENERIC;
+    }
+    if (error.status === 413) {
+      return MEDIA_ERROR_FILE_TOO_LARGE;
+    }
+    const problem = error.error as { detail?: unknown } | null;
+    const detail = typeof problem?.detail === 'string' ? problem.detail.trim() : '';
+    // Bornée aux 4xx : un 5xx ne doit jamais laisser filtrer un détail technique.
+    return error.status >= 400 && error.status < 500 && detail ? detail : MEDIA_ERROR_GENERIC;
   }
 
   private showAllowedEmailError() {

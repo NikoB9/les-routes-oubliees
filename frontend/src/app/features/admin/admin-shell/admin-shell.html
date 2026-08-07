@@ -859,7 +859,7 @@
 
     @if (mediaError()) {
       <p id="media-error-summary" #mediaErrorSummary class="alert" role="alert" tabindex="-1">
-        Impossible de traiter les médias pour le moment. Le fichier et le texte alternatif sont obligatoires.
+        {{ mediaErrorMessage() }}
       </p>
     }
     @if (mediaSaved()) {
