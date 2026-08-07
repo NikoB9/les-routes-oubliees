@@ -1,15 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
 /**
- * Point de sortie d'une session Cloudflare Access.
- *
- * Servi par l'edge Cloudflare et jamais par l'application, d'où le motif négatif
- * `!/cdn-cgi/**` de `ngsw-config.json` : sans lui le service worker répondrait la coquille
- * depuis son cache et la requête ne quitterait pas le navigateur.
- */
-export const CLOUDFLARE_ACCESS_LOGOUT_URL = '/cdn-cgi/access/logout';
-
-/**
  * Marqueur qui fait traverser le service worker à une navigation.
  *
  * ngsw le reconnaît et laisse alors partir la requête sur le réseau. Sans lui, toute
@@ -22,6 +13,21 @@ export const CLOUDFLARE_ACCESS_LOGOUT_URL = '/cdn-cgi/access/logout';
  * trajets d'authentification, qui n'ont aucun sens hors ligne.
  */
 const SERVICE_WORKER_BYPASS = 'ngsw-bypass';
+
+/**
+ * Point de sortie d'une session Cloudflare Access.
+ *
+ * Servi par l'edge Cloudflare et jamais par l'application, d'où le motif négatif
+ * `!/cdn-cgi/**` de `ngsw-config.json` : sans lui le service worker répondrait la coquille
+ * depuis son cache et la requête ne quitterait pas le navigateur.
+ *
+ * Ce motif ne suffit pourtant pas. Il dit au service worker de ne pas servir la coquille, pas
+ * de laisser passer : ngsw intercepte quand même et rejoue la requête lui-même. La
+ * déconnexion répondant par une redirection, c'est lui qui doit la suivre puis en rendre le
+ * résultat — ce qu'un service worker ne peut pas faire pour une navigation. D'où le marqueur,
+ * seul moyen de le tenir entièrement à l'écart du trajet.
+ */
+export const CLOUDFLARE_ACCESS_LOGOUT_URL = `/cdn-cgi/access/logout?${SERVICE_WORKER_BYPASS}=1`;
 
 /**
  * Reprise de session Cloudflare Access.
