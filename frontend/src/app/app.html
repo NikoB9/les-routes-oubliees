@@ -4,8 +4,19 @@
 
 @if (accessSession.reconnectRequired()) {
   <div class="access-reconnect" role="alert">
-    <p>Votre session sécurisée a expiré.</p>
-    <button type="button" (click)="accessSession.retryNow()">Se reconnecter</button>
+    @if (accessSession.reconnecting()) {
+      <p>Reconnexion en cours. Vous reviendrez sur cette page une fois identifié.</p>
+    }
+    @else {
+      <p>Votre session sécurisée a expiré.</p>
+    }
+    <button
+      type="button"
+      [disabled]="accessSession.reconnecting()"
+      (click)="accessSession.retryNow()"
+    >
+      {{ accessSession.reconnecting() ? 'Reconnexion…' : 'Se reconnecter' }}
+    </button>
   </div>
 }
 
