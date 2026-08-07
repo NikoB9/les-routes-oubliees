@@ -147,7 +147,8 @@ Le reverse proxy :
 * redirige les routes frontend vers `index.html`;
 * transmet `/api/` au backend ;
 * transmet le JWT Cloudflare Access et les routes API nécessaires ;
-* transmet `/media/` selon la stratégie retenue ;
+* transmet `/media/` sans imposer de `Cache-Control`, l'en-tête venant du backend ;
+* plafonne le débit de la publication Home Assistant ;
 * ajoute ou préserve les en-têtes de proxy ;
 * limite la taille des uploads ;
 * interdit le listing de répertoires ;
@@ -276,11 +277,18 @@ RADAR_HOME_ASSISTANT_TOKEN=32_OCTETS_ALEATOIRES_EN_BASE64URL
 ADMIN_BOOTSTRAP_EMAILS=admin@example.invalid
 
 MEDIA_STORAGE_PATH=/var/lib/les-routes-oubliees/media
+MEDIA_MAX_UPLOAD_BYTES=5242880
 SITE_PUBLIC_URL=https://example.invalid
 SITE_TIMEZONE=Europe/Paris
 ```
 
 Le fichier `.env.example` du dépôt contient uniquement des valeurs factices.
+
+### Plafond de téléversement des médias
+
+`MEDIA_MAX_UPLOAD_BYTES` est le seul réglage à modifier : `MediaUploadConfiguration` en dérive la limite du conteneur servlet, avec une marge de 16 Kio pour le champ `altText` et les délimiteurs multipart. Ne pas poser de `spring.servlet.multipart.max-file-size` en parallèle, ce serait rouvrir l'écart que ce calcul referme — laissée à son défaut, cette propriété valait 1 Mio et rejetait toute photo de téléphone bien avant le plafond applicatif annoncé.
+
+Seule contrainte externe : `client_max_body_size` côté Nginx doit rester **au moins aussi permissif**, sinon c'est Nginx qui refuse en premier, avec son propre `413` et sans passer par l'application. La valeur versionnée est `10m`, ce qui couvre les 5 Mio par défaut ; en cas d'augmentation, remonter les deux.
 
 Ne jamais placer le fichier de production dans Git.
 
@@ -742,6 +750,14 @@ sudo systemctl reload nginx
 
 Le fichier versionné de référence est `infra/nginx/les-routes-oubliees.conf.example`. Le fichier de production à adapter est généralement `/etc/nginx/sites-available/les-routes-oubliees`, sauf installation différente.
 
+Un second fichier est nécessaire : `infra/nginx/lro-rate-limit.conf.example`, à installer dans `/etc/nginx/conf.d/lro-rate-limit.conf`. Il déclare la zone `limit_req_zone` qui plafonne la publication Home Assistant. `limit_req_zone` étant une directive de contexte `http`, elle ne peut pas figurer dans le bloc `server` de `sites-available`, et son absence fait échouer `nginx -t` avec `unknown limit_req zone "lro_home_assistant"`.
+
+### Cache des médias
+
+`/media/` possède son propre emplacement, exempté du `Cache-Control: no-store` appliqué aux autres routes applicatives. Une URL de média désigne toujours le même octet — un UUID par fichier, jamais réécrit — et le service worker Angular refuse de conserver une réponse marquée `no-store` : sans cette exemption, la carte révélée, les avatars et l'emblème disparaissent dès que le réseau tombe.
+
+Cet emplacement ne doit poser aucun `Cache-Control` : `add_header` ajoute sans remplacer l'en-tête amont, et le client recevrait deux directives contradictoires. La politique est décidée par `PublicMediaController`, qui renvoie `private, max-age=31536000, immutable`. Il doit en revanche répéter les quatre en-têtes de sécurité, comme tout emplacement qui en déclare au moins un.
+
 ## Addendum 2026-08-05 - Ordre de deploiement Radar definitif
 
 L'ordre de mise en production du module Radar est le suivant :
@@ -828,7 +844,11 @@ L'automatisation Home Assistant doit fournir les valeurs issues de `device_track
 
 Créer manuellement l'application Access d'exception Home Assistant uniquement parce que l'application humaine couvre tout l'hôte. Elle doit cibler le chemin exact `api/integrations/home-assistant/radar/treasure-position` avec la politique `Bypass` / `Contourner` et `Everyone` / `Tout le monde`. Ne pas étendre cette exception à `/api/integrations/*` ou `/api/*`.
 
-Le fichier Nginx de production a identifier et modifier est generalement `/etc/nginx/sites-available/les-routes-oubliees`, sauf installation differente. Les differences obligatoires avec le fichier versionne sont : `Permissions-Policy` avec `geolocation=(self)`, `img-src` autorisant `https://tile.openstreetmap.org`, transmission de `Cf-Access-Jwt-Assertion`, preservation de `Authorization`, bloc SSE sans buffering/cache et `Cache-Control: no-store` sur les API d'identite, Radar, admin et integration Home Assistant.
+Le fichier Nginx de production a identifier et modifier est generalement `/etc/nginx/sites-available/les-routes-oubliees`, sauf installation differente. Les differences obligatoires avec le fichier versionne sont : `Permissions-Policy` avec `geolocation=(self)`, `img-src` autorisant `https://tile.openstreetmap.org`, transmission de `Cf-Access-Jwt-Assertion`, preservation de `Authorization`, bloc SSE sans buffering/cache, `Cache-Control: no-store` sur les API d'identite, Radar, admin et integration Home Assistant, emplacement `/media/` distinct qui laisse passer le `Cache-Control` du backend, et plafond `limit_req` sur la publication Home Assistant.
+
+Installer aussi `infra/nginx/lro-rate-limit.conf.example` dans `/etc/nginx/conf.d/` avant de recharger : sans la zone qu'il declare, `nginx -t` echoue.
+
+> **Addendum périmé, conservé pour l'historique.** L'exclusion totale des navigations décrite ci-dessous a été remplacée depuis : le service worker sert le shell Angular pour les navigations, **sauf** `/radar`, `/admin`, `/admin/**` et les URL de fichiers. L'exclusion totale rendait le mode hors ligne annoncé dans `PLAN_FINAL` entièrement inopérant, la coquille applicative ne se chargeant jamais. Voir `docs/ARCHITECTURE.md`, section « Navigations et service worker », et les motifs figés par `frontend/src/app/core/offline/ngsw-config.spec.ts`.
 
 Le service worker ne doit plus intercepter les navigations avec le shell Angular mis en cache. `frontend/ngsw-config.json` conserve les assets PWA, mais exclut toutes les navigations pour que Cloudflare Access voie les accès à `/`, `/radar`, `/admin` et aux routes rechargées. Cette décision réduit le comportement hors ligne d'une nouvelle navigation ; elle est volontaire pour éviter une page affichée depuis le cache après expiration ou déconnexion Access.
 

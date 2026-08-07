@@ -152,7 +152,9 @@ Angular peut etre installe comme PWA en production.
 Principes :
 
 * le service worker cache le shell public et les assets versionnes ;
-* les medias uploades `/media/**` ne sont pas caches par le service worker tant que l'acces public n'est pas filtre par contenu publie ;
+* les medias uploades `/media/**` sont caches par le service worker : la condition posee a l'origine est remplie, `MediaService.publicMedia` refusant tout media qui n'est pas reference par un contenu actif et publie. Sans ce cache, l'instantane hors ligne arrivait complet mais toutes les images etaient cassees, y compris l'image de carte revelee ;
+* une URL de media designant toujours le meme octet, le backend renvoie `private, max-age=31536000, immutable`, et le reverse proxy ne doit poser aucun `Cache-Control` sur ce chemin ;
+* les medias references par l'instantane sont rapatries des son ecriture, sans attendre la visite de la page qui les porte : un aventurier parti sur le terrain sans avoir ouvert la Carte doit malgre tout la voir ;
 * les API publiques GET peuvent etre mises en cache avec une strategie freshness courte pour permettre le mode avion ;
 * les API admin, Radar, portail, intégration et opérations d'écriture ne sont pas mises en cache ;
 * le dernier snapshot public est stocke dans IndexedDB ;
@@ -254,6 +256,15 @@ GET /api/public/offline-snapshot
 ```
 
 Ces endpoints exposent uniquement les contenus publics publies et visibles. Ils ne doivent jamais inclure de brouillons, donnees admin, audit, emails administrateurs, secrets ou champs narratifs source non publics.
+
+`content-version` est interroge a chaque ouverture de l'application, uniquement pour savoir si l'instantane deja stocke est encore valable. Il ne reconstruit donc pas l'instantane : `PublicContentVersionCalculator` derive l'empreinte d'un `count(*)` et d'un `max(updated_at)` par table publique, en une seule requete. Le couple couvre l'insertion, la modification et la suppression, qu'un `max(updated_at)` seul manquerait.
+
+Deux consequences assumees :
+
+* l'agregation ne filtre pas la visibilite, donc une modification de brouillon invalide inutilement le cache d'un client. La charge utile etant petite, cette sur-invalidation est preferable a une sous-invalidation qui figerait un contenu perime hors ligne ;
+* l'empreinte ne portant plus sur le rendu, une evolution du rendu Markdown ou de la forme des DTO ne suffirait plus a l'invalider. Une signature de build — `build-info.properties`, produit par le plugin Maven Spring Boot — est donc melangee a l'empreinte, ce qui force la mise a jour a chaque deploiement.
+
+`/api/public/offline-snapshot` renvoie obligatoirement la version issue de cette meme source, et la calcule avant sa charge utile : deux sources distinctes ne coincideraient jamais et le client retelechargerait a chaque ouverture.
 
 Le prefixe `/api/public` designe le **filtrage editorial** des contenus, pas une absence d'authentification : comme toutes les API humaines, ces endpoints exigent un JWT Cloudflare Access valide. Cote Spring, seules `/`, `/error` et `/actuator/health` restent accessibles sans identite ; `/media/**` exige egalement une identite valide. La seule exception est le `POST` exact de publication de position Home Assistant, authentifie par un Bearer applicatif.
 
@@ -441,6 +452,14 @@ media/
 Le nom stocké est généré par le serveur.
 
 Le nom original est uniquement une métadonnée.
+
+#### Validation à l'entrée
+
+Trois plafonds encadrent un téléversement, et un seul réglage les gouverne. `MEDIA_MAX_UPLOAD_BYTES` fixe le plafond applicatif ; `MediaUploadConfiguration` en **dérive** celui du conteneur servlet, avec une marge pour le champ `altText` et les délimiteurs multipart. Laissée à son défaut, cette limite du conteneur valait 1 Mio et rejetait toute photo de téléphone bien avant le plafond annoncé : ne jamais la reposer en parallèle, ce serait rouvrir l'écart. `client_max_body_size` côté Nginx doit rester au moins aussi permissif, faute de quoi le proxy refuse en premier sans passer par l'application.
+
+Les dimensions sont lues **dans l'en-tête**, jamais par un décodage. `ImageIO.read` allouait `largeur × hauteur × 4` octets pour n'en retirer que deux entiers : PNG et JPEG atteignant des taux de compression extrêmes sur une image uniforme, un fichier de quelques mébioctets suffisait à réclamer plusieurs gibioctets et à emporter la JVM — donc le Radar en pleine partie. WebP était déjà lu ainsi ; les trois formats le sont désormais, et la surface annoncée est plafonnée à cinquante millions de pixels. Ce plafond ne protège plus le serveur, qui ne décode rien, mais les navigateurs qui afficheront le fichier.
+
+Conséquence assumée : un fichier à l'en-tête valide mais au corps corrompu n'est plus détecté à l'entrée. Il ne s'affichera pas dans le navigateur, sans autre effet. La signature de format reste vérifiée octet par octet, ce qui continue de refuser un SVG déguisé en PNG.
 
 ### 8.3 Accès
 
@@ -643,9 +662,13 @@ Un seul écrivain par flux garantit l'ordre, y compris entre l'instantané initi
 
 Lâcher un client libère sa file et sa place au registre, **pas son thread** : l'écrivain reste bloqué dans l'écriture en cours jusqu'à ce qu'elle échoue. La durée de vie d'un écrivain bloqué est donc bornée par le premier intermédiaire qui cesse de lire, et non par l'application : le `send_timeout` de Nginx (60 secondes par défaut, non redéfini ici) borne le saut Nginx vers son client, lequel est Cloudflare en production, avec ses propres délais. Ce `send_timeout` reste à ce titre un garde-fou utile, alors même qu'il ne sert plus à protéger les autres participants.
 
+Le flux direct suit l'entrée effective dans le Radar — la première position obtenue — et non la construction de la carte. Adossé au chemin de succès de `ensureMap()`, il disparaissait avec Leaflet : un fragment périmé après un redéploiement interrompait `handlePosition()` avant la republication, et l'aventurier ne recevait plus rien, ne publiait plus rien, sans qu'aucun message ne le lui dise. L'échec de chargement de la carte est désormais absorbé et signalé par une bannière ; la liste des positions relevées ne dépendant pas de Leaflet, le Radar reste utilisable. L'ouverture du flux est gardée par un drapeau levé **avant** la souscription et non par la souscription elle-même : un observable qui échoue de façon synchrone exécute son rappel d'erreur avant que `subscribe()` n'ait retourné, et un garde fondé sur la souscription serait réarmé par cette affectation tardive, bloquant définitivement la reprise programmée.
+
 Côté client, le flux se rétablit seul. `EventSource` reconnecte de lui-même, sauf si le code appelle `close()`, ce qui annule définitivement ses tentatives : la fermeture n'a donc lieu qu'au désabonnement, à la destruction du composant. Une erreur dont l'état est `CONNECTING` est une coupure transitoire — bannière d'information et sondage de secours toutes les dix secondes, un tirage en échec ne tuant pas les suivants — et le direct reprend dès le premier événement reçu, ce qui arrête le sondage. Seul l'état `CLOSED`, réponse non conforme ou redirection Access, est définitif — et même celui-là ne condamne plus la session : le flux direct est réarmé une minute plus tard, le sondage couvrant l'intervalle. Conséquence : le recyclage de l'émetteur au bout d'une heure devient invisible, là où il faisait auparavant tomber tout client durablement présent en mode dégradé pour le reste de sa session.
 
 Un premier instantané en échec rejoint le même état de réception dégradée, sondage compris, au lieu de laisser la page figée sur un bandeau sans relance. Ce bandeau ne parle que de **réception**. Ne plus recevoir l'état des autres et ne plus leur transmettre le sien sont deux pannes distinctes : une publication de position en échec lève son propre message, que le prochain instantané reçu n'efface pas et que seule une publication réussie referme.
+
+Etant le seul chemin exempte de Cloudflare Access, donc la seule surface joignable depuis Internet sans identite, la publication Home Assistant est aussi la seule plafonnee en debit par le reverse proxy. Sans plafond, son jeton Bearer peut etre force indefiniment, et seule une ligne de journal par tentative en garderait trace. La cle de la zone `limit_req` est volontairement constante : derriere cloudflared toutes les requetes arrivent de `127.0.0.1`, une cle par adresse ne discriminerait rien, et un plafond global ne peut pas etre contourne par rotation d'adresse.
 
 Le releve tresor Home Assistant reste applique par une mise a jour atomique strictement temporelle : `204 No Content` lorsque la mesure est appliquee, `200 OK` avec `{"status":"ignored"}` lorsqu'elle n'est pas strictement plus recente. `202 Accepted` n'est pas utilise, la mise a jour n'etant jamais differee.
 
