@@ -141,9 +141,18 @@ button.secondary {
  * de pixels, et chaque agrandissement en reclame davantage. Une hauteur ferme borne la
  * degradation a une carte tronquee.
  */
+/*
+ * `isolation` confine les couches de Leaflet.
+ *
+ * Sa feuille empile ses propres plans a 400 et ses controles a 1000, dans le contexte
+ * d'empilement de la racine — donc au-dessus de l'en-tete colle, qui n'est qu'a 50. La carte
+ * lui passait par-dessus au defilement. Un contexte d'empilement propre ramene tout ce que
+ * Leaflet declare a l'interieur du conteneur, qui reste lui-meme au niveau 0.
+ */
 .radar-map {
   height: min(62dvh, 38rem);
   width: 100%;
+  isolation: isolate;
   overflow: hidden;
   border: 2px solid #5b3d24;
   border-radius: 8px;

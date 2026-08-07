@@ -50,6 +50,8 @@ export class RadarPage implements OnDestroy {
   private map: LeafletMap | null = null;
   private participantMarkers = new Map<string, LeafletMarker>();
   private participantCircles = new Map<string, LeafletCircle>();
+  /** Apparence déjà posée sur chaque repère, pour ne le reconstruire que si elle change. */
+  private participantAppearances = new Map<string, string>();
   private treasureMarker: LeafletMarker | null = null;
   private treasureCircle: LeafletCircle | null = null;
   private layerGroup: LeafletLayerGroup | null = null;
@@ -431,6 +433,9 @@ export class RadarPage implements OnDestroy {
       if (!activeIds.has(id)) {
         marker.remove();
         this.participantMarkers.delete(id);
+        // Sans cet oubli, un participant qui revient garderait l'apparence de son repère
+        // precedent : le repère serait recréé, mais jamais réhabillé.
+        this.participantAppearances.delete(id);
       }
     }
     for (const [id, circle] of this.participantCircles) {
@@ -445,22 +450,36 @@ export class RadarPage implements OnDestroy {
     this.renderTreasure(snapshot);
   }
 
+  /**
+   * Le repère n'est reconstruit que si son apparence a changé.
+   *
+   * `setIcon` remplace l'élément DOM du repère : l'avatar `<img>` est donc recréé, et le
+   * navigateur redemande l'image — au service worker, qui la sert depuis son cache, mais la
+   * décode à chaque fois. Or le rendu rejoue *tous* les participants à chaque instantané, et
+   * les instantanés arrivent au rythme des publications de position de toute la compagnie.
+   * L'apparence, elle, ne dépend que de l'avatar et de deux drapeaux : elle est presque
+   * toujours identique d'un instantané au suivant. Seules les coordonnées bougent, et
+   * `setLatLng` déplace le repère sans le reconstruire.
+   */
   private renderParticipant(participant: RadarParticipant, current: boolean) {
     if (!this.leaflet || !this.map) {
       return;
     }
-    const icon = this.leaflet.divIcon({
-      className: `radar-avatar-marker${current ? ' current' : ''}${participant.stale ? ' stale' : ''}`,
-      html: this.markerHtml(participant),
-      iconSize: [44, 44],
-      iconAnchor: [22, 22],
-    });
+    const className = `radar-avatar-marker${current ? ' current' : ''}${participant.stale ? ' stale' : ''}`;
+    const html = this.markerHtml(participant);
+    const appearance = `${className}|${html}`;
+    const icon = this.leaflet.divIcon({ className, html, iconSize: [44, 44], iconAnchor: [22, 22] });
     const latLng: [number, number] = [participant.latitude, participant.longitude];
     const marker = this.participantMarkers.get(participant.identityId);
     if (marker) {
-      marker.setLatLng(latLng).setIcon(icon).setPopupContent(this.participantPopup(participant));
+      marker.setLatLng(latLng).setPopupContent(this.participantPopup(participant));
+      if (this.participantAppearances.get(participant.identityId) !== appearance) {
+        this.participantAppearances.set(participant.identityId, appearance);
+        marker.setIcon(icon);
+      }
     }
     else {
+      this.participantAppearances.set(participant.identityId, appearance);
       this.participantMarkers.set(
         participant.identityId,
         this.leaflet.marker(latLng, { icon }).bindPopup(this.participantPopup(participant)).addTo(this.map),
