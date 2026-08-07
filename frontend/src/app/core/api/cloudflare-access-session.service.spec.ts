@@ -5,103 +5,64 @@ import { CloudflareAccessSessionService } from './cloudflare-access-session.serv
 describe('CloudflareAccessSessionService', () => {
   let service: CloudflareAccessSessionService;
   let assign: ReturnType<typeof vi.fn>;
-  let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    sessionStorage.clear();
     assign = vi.fn();
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: { href: 'https://routes.example.invalid/radar', assign },
     });
-    fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 200 })));
-    vi.stubGlobal('fetch', fetchMock);
 
     TestBed.configureTestingModule({});
     service = TestBed.inject(CloudflareAccessSessionService);
   });
 
   afterEach(() => {
-    // Les espions sont retires ici et non en fin de test : une assertion qui echoue saute la
-    // fin du test, et l'espion survivant ferait echouer le suivant pour une raison etrangere.
+    // Les espions sont retirés ici et non en fin de test : une assertion qui échoue saute la
+    // fin du test, et l'espion survivant ferait échouer le suivant pour une raison étrangère.
     vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-    sessionStorage.clear();
   });
 
-  it('reloads the page once on the first Access expiry', () => {
+  /**
+   * Une expiration ne doit jamais faire partir l'utilisateur de sa page.
+   *
+   * Recharger d'office lui prendrait son écran sans qu'il l'ait demandé, alors qu'une bonne
+   * part du site reste lisible hors session — les pages publiques sont servies depuis le cache
+   * du service worker. Il voit le bandeau, et décide.
+   */
+  it('raises the banner without taking the user off their page', () => {
     service.reauthenticate();
 
-    expect(assign).toHaveBeenCalledTimes(1);
-    expect(assign).toHaveBeenCalledWith('https://routes.example.invalid/radar?ngsw-bypass=1');
-    expect(service.reconnectRequired()).toBe(false);
-  });
-
-  it('never reloads twice and offers a stable reconnection action instead', () => {
-    service.reauthenticate();
-    service.reauthenticate();
-    service.reauthenticate();
-
-    expect(assign).toHaveBeenCalledTimes(1);
     expect(service.reconnectRequired()).toBe(true);
+    expect(assign).not.toHaveBeenCalled();
   });
 
-  it('keeps the lock across a page load until a valid session is confirmed', () => {
+  /**
+   * L'appel est répété à chaque `401` tant que la session n'est pas rétablie : il doit rester
+   * sans effet de bord. Rien ne navigue sans un clic, donc aucune boucle n'est possible.
+   */
+  it('stays inert when the same expiry is reported again', () => {
     service.reauthenticate();
-    expect(assign).toHaveBeenCalledTimes(1);
+    service.reauthenticate();
+    service.reauthenticate();
 
-    // Nouvelle instance : le verrou survit dans sessionStorage.
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({});
-    const reloaded = TestBed.inject(CloudflareAccessSessionService);
-
-    reloaded.reauthenticate();
-
-    expect(assign).toHaveBeenCalledTimes(1);
-    expect(reloaded.reconnectRequired()).toBe(true);
+    expect(service.reconnectRequired()).toBe(true);
+    expect(assign).not.toHaveBeenCalled();
   });
 
-  it('clears the lock only when a valid session is confirmed', () => {
+  /**
+   * Seul le chargement de l'identité du portail prouve qu'une session valide a été délivrée.
+   * Le bandeau ne s'efface donc pas parce qu'une requête quelconque a réussi en parallèle.
+   */
+  it('lowers the banner only when a valid session is confirmed', () => {
     service.reauthenticate();
+    expect(service.reconnectRequired()).toBe(true);
+
     service.confirmValidSession();
 
     expect(service.reconnectRequired()).toBe(false);
-
-    service.reauthenticate();
-
-    expect(assign).toHaveBeenCalledTimes(2);
+    expect(service.reconnecting()).toBe(false);
   });
-
-  it('still prevents a loop when sessionStorage is unavailable', () => {
-    // Stockage refusé : seul le verrou mémoire peut empêcher la boucle.
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-      throw new Error('storage disabled');
-    });
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('storage disabled');
-    });
-
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({});
-    const restricted = TestBed.inject(CloudflareAccessSessionService);
-
-    restricted.reauthenticate();
-    restricted.reauthenticate();
-    restricted.reauthenticate();
-
-    expect(assign).toHaveBeenCalledTimes(1);
-    expect(restricted.reconnectRequired()).toBe(true);
-
-    vi.restoreAllMocks();
-  });
-
-  /** Amène le service à l'état où le bandeau de reconnexion est affiché. */
-  function reachReconnectBanner() {
-    service.reauthenticate();
-    service.reauthenticate();
-    expect(service.reconnectRequired()).toBe(true);
-    assign.mockClear();
-  }
 
   /**
    * Une navigation qui atteint le réseau suffit : privée de session valide, elle reçoit de
@@ -113,53 +74,44 @@ describe('CloudflareAccessSessionService', () => {
    * service worker, et dont le premier chargement échouait en `ERR_FAILED`.
    */
   it('reloads through the network without touching the logout endpoint', () => {
-    reachReconnectBanner();
+    service.reauthenticate();
 
     service.retryNow();
 
     expect(assign).toHaveBeenCalledTimes(1);
     expect(assign).toHaveBeenCalledWith('https://routes.example.invalid/radar?ngsw-bypass=1');
     expect(assign).not.toHaveBeenCalledWith('/cdn-cgi/access/logout');
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   /**
    * L'utilisateur doit voir que son clic a été pris en compte : le navigateur ne quitte pas la
-   * page à l'instant de l'appel, et sans cet état le bandeau resterait identique. Un second
-   * clic ne doit pas relancer une navigation déjà demandée.
+   * page à l'instant de l'appel, et sans cet état le bandeau resterait identique.
    */
-  it('shows the reconnection is under way and ignores a second click', () => {
-    reachReconnectBanner();
+  it('shows the reconnection is under way', () => {
+    service.reauthenticate();
     expect(service.reconnecting()).toBe(false);
 
-    service.retryNow();
     service.retryNow();
 
     expect(service.reconnecting()).toBe(true);
     // Le bandeau reste affiché jusqu'à la navigation, sans quoi l'écran n'annoncerait rien.
     expect(service.reconnectRequired()).toBe(true);
-    expect(assign).toHaveBeenCalledTimes(1);
   });
 
   /**
-   * Le verrou est relâché pour le chargement suivant : sans cela la session d'après serait
-   * privée de son rechargement automatique et afficherait le bandeau dès la première
-   * expiration.
+   * L'état affiché ne doit jamais devenir une condition de blocage.
+   *
+   * Il ne retombe pas de lui-même — la page est censée partir — donc s'en servir pour refuser
+   * le second clic laisserait le bouton mort dès que le départ n'a pas lieu : navigation
+   * abandonnée, ou page restaurée depuis le cache de session avec son état d'avant. Le bouton
+   * étant la seule issue offerte, il ne doit jamais devenir sa propre impasse.
    */
-  it('frees the stored lock so the next page load gets its automatic reload back', () => {
-    reachReconnectBanner();
-
+  it('stays usable when a first attempt left without going anywhere', () => {
+    service.reauthenticate();
     service.retryNow();
-
-    expect(sessionStorage.getItem('lro.cloudflare-reauth.v1')).toBeNull();
-
-    // Nouvelle instance : c'est l'état que retrouve la page servie après l'identification.
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({});
-    const reloaded = TestBed.inject(CloudflareAccessSessionService);
     assign.mockClear();
 
-    reloaded.reauthenticate();
+    service.retryNow();
 
     expect(assign).toHaveBeenCalledTimes(1);
     expect(assign).toHaveBeenCalledWith('https://routes.example.invalid/radar?ngsw-bypass=1');
@@ -182,7 +134,6 @@ describe('CloudflareAccessSessionService', () => {
       configurable: true,
       value: { href: 'https://routes.example.invalid/carnet?quete=7', assign },
     });
-    reachReconnectBanner();
 
     service.retryNow();
 

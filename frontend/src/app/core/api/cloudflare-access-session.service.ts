@@ -16,8 +16,7 @@ export const CLOUDFLARE_ACCESS_LOGOUT_URL = '/cdn-cgi/access/logout';
  * navigation couverte par `navigationUrls` reçoit la coquille depuis le cache : elle ne
  * quitte pas le navigateur, Cloudflare ne la voit jamais, et aucune authentification ne peut
  * être redemandée. C'est ce qui rendait la reconnexion inopérante partout sauf sur `/radar`
- * et `/admin`, seules routes déjà exclues du cache — et qui faisait apparaître le bandeau
- * ailleurs, le rechargement automatique échouant pour exactement la même raison.
+ * et `/admin`, seules routes déjà exclues du cache.
  *
  * Le cache de navigation reste voulu par ailleurs : ce marqueur ne s'applique qu'aux
  * trajets d'authentification, qui n'ont aucun sens hors ligne.
@@ -27,62 +26,60 @@ const SERVICE_WORKER_BYPASS = 'ngsw-bypass';
 /**
  * Reprise de session Cloudflare Access.
  *
- * Un rechargement de page permet à Cloudflare de rejouer son parcours d'authentification
- * lorsque la session Access a expiré. Le verrou conservé dans `sessionStorage` garantit
- * qu'un seul rechargement est déclenché par expiration : il n'est levé que lorsqu'une
- * nouvelle session valide est explicitement confirmée, jamais parce qu'une requête
- * quelconque a réussi en parallèle.
+ * Une expiration ne fait jamais partir l'utilisateur de sa page : elle affiche un bandeau, et
+ * c'est lui qui décide de se reconnecter. Recharger d'office lui prendrait son écran sans
+ * l'avoir demandé, alors qu'une bonne part du site reste lisible hors session — les pages
+ * publiques sont servies depuis le cache du service worker.
+ *
+ * Ce choix supprime aussi toute possibilité de boucle : rien ne navigue sans un clic. Le
+ * verrou en `sessionStorage` qui l'empêchait autrefois n'a plus d'objet.
  */
 @Injectable({ providedIn: 'root' })
 export class CloudflareAccessSessionService {
-  private readonly reauthKey = 'lro.cloudflare-reauth.v1';
 
-  /** Vrai lorsqu'un rechargement a déjà été tenté sans rétablir la session. */
+  /** Vrai lorsqu'une session expirée a été constatée et n'a pas encore été rétablie. */
   readonly reconnectRequired = signal(false);
 
   /**
    * Vrai entre le clic sur la reconnexion et le départ effectif de la page.
    *
    * Le navigateur ne quitte pas la page à l'instant de l'appel : sans état visible, le bandeau
-   * resterait identique pendant ce délai et le bouton paraîtrait inerte — le défaut même que
-   * la reconnexion vient corriger. Il neutralise aussi les clics répétés.
+   * resterait identique pendant ce délai et le bouton paraîtrait inerte.
+   *
+   * Cet état n'interdit rien. Il ne retombe jamais de lui-même — la page est censée partir —
+   * si bien qu'en faire une condition de blocage laisserait le bouton mort dès que le départ
+   * n'a pas lieu : navigation abandonnée, ou page restaurée depuis le cache de session avec
+   * son état d'avant. Le bouton étant la seule issue offerte à l'utilisateur, il ne doit
+   * jamais pouvoir devenir sa propre impasse. Un second clic renavigue vers la même adresse,
+   * ce qui est sans conséquence.
    */
   readonly reconnecting = signal(false);
-
-  /**
-   * Verrou mémoire de secours.
-   *
-   * `sessionStorage` peut être indisponible (navigation restreinte, stockage désactivé) :
-   * sans ce drapeau, chaque `401` relancerait un rechargement et créerait la boucle que le
-   * verrou doit empêcher.
-   */
-  private pendingInMemory = false;
 
   constructor() {
     this.forgetBypassMarker();
   }
 
+  /**
+   * Constate une session expirée.
+   *
+   * Appelé sur chaque `401` que Cloudflare renvoie sans le marqueur applicatif. L'appel est
+   * donc répété tant que la session n'est pas rétablie : il doit rester sans effet de bord,
+   * et se contenter de lever le bandeau.
+   */
   reauthenticate(): void {
-    if (this.isPending()) {
-      // Deuxième expiration alors que le verrou est actif : proposer une action stable
-      // plutôt que de recharger en boucle.
-      this.reconnectRequired.set(true);
-      return;
-    }
-    this.markPending();
-    window.location.assign(this.networkUrl(window.location.href));
+    this.reconnectRequired.set(true);
   }
 
   /**
    * Confirme une nouvelle session valide.
    *
    * Appelé uniquement lorsque l'identité du portail a pu être chargée, ce qui prouve que
-   * Cloudflare Access a délivré une nouvelle session.
+   * Cloudflare Access a délivré une nouvelle session — jamais parce qu'une requête quelconque
+   * a réussi en parallèle.
    */
   confirmValidSession(): void {
     this.reconnectRequired.set(false);
     this.reconnecting.set(false);
-    this.releaseLock();
   }
 
   /**
@@ -98,16 +95,9 @@ export class CloudflareAccessSessionService {
    * lui-même — `/?__cf_access_message=logged_out` — que l'application ne peut pas marquer, que
    * le service worker intercepte donc, et dont le premier chargement échouait en
    * `ERR_FAILED`. Il fallait recharger à la main pour repartir.
-   *
-   * Le verrou est relâché avant de partir, pour que la prochaine expiration retrouve son
-   * rechargement automatique.
    */
   retryNow(): void {
-    if (this.reconnecting()) {
-      return;
-    }
     this.reconnecting.set(true);
-    this.releaseLock();
     window.location.assign(this.networkUrl(window.location.href));
   }
 
@@ -147,38 +137,6 @@ export class CloudflareAccessSessionService {
     }
     catch {
       // Historique indisponible : le marqueur reste visible, sans conséquence fonctionnelle.
-    }
-  }
-
-  private releaseLock(): void {
-    this.pendingInMemory = false;
-    try {
-      sessionStorage.removeItem(this.reauthKey);
-    }
-    catch {
-      // Stockage indisponible : le verrou mémoire suffit pour ce chargement de page.
-    }
-  }
-
-  private isPending(): boolean {
-    if (this.reconnectRequired() || this.pendingInMemory) {
-      return true;
-    }
-    try {
-      return sessionStorage.getItem(this.reauthKey) === 'pending';
-    }
-    catch {
-      return false;
-    }
-  }
-
-  private markPending(): void {
-    this.pendingInMemory = true;
-    try {
-      sessionStorage.setItem(this.reauthKey, 'pending');
-    }
-    catch {
-      // Stockage indisponible : un rechargement au plus reste tenté par chargement de page.
     }
   }
 }

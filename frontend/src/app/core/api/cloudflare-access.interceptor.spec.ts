@@ -59,7 +59,7 @@ describe('cloudflareAccessInterceptor', () => {
     request.flush({});
   });
 
-  it('keeps an application 401 without triggering a reload', () => {
+  it('keeps an application 401 without asking for a new Access session', () => {
     let received: number | null = null;
     http.get('/api/portal/me').subscribe({ error: (error: { status: number }) => (received = error.status) });
 

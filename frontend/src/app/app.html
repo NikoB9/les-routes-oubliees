@@ -10,11 +10,12 @@
     @else {
       <p>Votre session sécurisée a expiré.</p>
     }
-    <button
-      type="button"
-      [disabled]="accessSession.reconnecting()"
-      (click)="accessSession.retryNow()"
-    >
+    <!--
+      Le bouton reste actif pendant la reconnexion. Le navigateur est censé quitter la page,
+      donc l'état ne retombe jamais seul : le désactiver le rendrait mort si le départ n'a pas
+      lieu, et l'utilisateur n'a pas d'autre issue que ce bouton.
+    -->
+    <button type="button" (click)="accessSession.retryNow()">
       {{ accessSession.reconnecting() ? 'Reconnexion…' : 'Se reconnecter' }}
     </button>
   </div>
