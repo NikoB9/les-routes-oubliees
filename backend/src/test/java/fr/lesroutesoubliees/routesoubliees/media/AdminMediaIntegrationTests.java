@@ -8,6 +8,7 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -234,6 +235,84 @@ class AdminMediaIntegrationTests {
 				.with(user("admin@example.invalid").roles("ADMIN"))
 				.with(csrf()))
 			.andExpect(status().isConflict());
+	}
+
+	/**
+	 * Le logo du site est un media par conception : {@code SiteSettingsService.isSafeLogoPath}
+	 * autorise explicitement la forme {@code /media/{uuid}}. Le garde-fou de suppression
+	 * n'interrogeait pourtant pas {@code site_settings}, et detruisait ligne et fichier sur un
+	 * simple 204 — le logo disparaissait alors de toutes les pages, sans recours.
+	 */
+	@Test
+	void refusesDeleteWhenTheSiteLogoUsesTheMedia() throws Exception {
+		var id = idFrom(uploadPng("Logo de la Compagnie").andExpect(status().isCreated()).andReturn());
+
+		useMediaAsSiteLogo(id);
+
+		mvc.perform(delete("/api/admin/media/" + id)
+				.with(user("admin@example.invalid").roles("ADMIN"))
+				.with(csrf()))
+			.andExpect(status().isConflict());
+		// Meme liste pour les deux questions : le logo etant public, le media l'est aussi.
+		mvc.perform(get("/media/" + id).with(user("aventurier@example.invalid").roles("USER")))
+			.andExpect(status().isOk());
+	}
+
+	/**
+	 * Une vision de carte en brouillon retient son image sans la publier. C'est la forme la plus
+	 * nette du defaut : le garde-fou de suppression doit ignorer la visibilite, la ou celui de
+	 * diffusion l'applique. L'image de la carte revelee etant l'artefact central du jeu, sa
+	 * destruction n'est pas rattrapable.
+	 */
+	@Test
+	void refusesDeleteWhenADraftMapVisionUsesTheMedia() throws Exception {
+		var id = idFrom(uploadPng("Carte revelee").andExpect(status().isCreated()).andReturn());
+
+		useMediaAsDraftMapVision(id);
+
+		mvc.perform(delete("/api/admin/media/" + id)
+				.with(user("admin@example.invalid").roles("ADMIN"))
+				.with(csrf()))
+			.andExpect(status().isConflict());
+		mvc.perform(get("/media/" + id).with(user("aventurier@example.invalid").roles("USER")))
+			.andExpect(status().isNotFound());
+	}
+
+	private void useMediaAsSiteLogo(String id) throws Exception {
+		mvc.perform(put("/api/admin/settings")
+				.with(user("admin@example.invalid").roles("ADMIN"))
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "siteName": "Les Routes Oubliées",
+					  "subtitle": "Compagnie d'Arkhavel",
+					  "logoPath": "/media/%s",
+					  "timezone": "Europe/Paris",
+					  "status": "ONLINE",
+					  "maintenanceMessage": null,
+					  "accessibilityInformationMarkdown": "Informations d'accessibilité."
+					}
+					""".formatted(id)))
+			.andExpect(status().isOk());
+	}
+
+	private void useMediaAsDraftMapVision(String id) throws Exception {
+		mvc.perform(post("/api/admin/map-views")
+				.with(user("admin@example.invalid").roles("ADMIN"))
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "name": "Carte révélée",
+					  "descriptionMarkdown": "La carte complète.",
+					  "assetPath": "/media/%s",
+					  "imageAlt": "Carte révélée du domaine.",
+					  "displayOrder": 9,
+					  "status": "DRAFT"
+					}
+					""".formatted(id)))
+			.andExpect(status().is2xxSuccessful());
 	}
 
 	private org.springframework.test.web.servlet.ResultActions uploadPng(String altText) throws Exception {

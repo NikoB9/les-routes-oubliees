@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
@@ -37,6 +38,42 @@ class MediaService {
 	 * photo d'appareil, qui depassent rarement vingt-cinq millions.
 	 */
 	private static final long MAX_IMAGE_PIXELS = 50_000_000L;
+
+	/** Condition de publication d'une quete, partagee par ses cinq colonnes Markdown. */
+	private static final String PUBLISHED_QUEST = "status = 'PUBLISHED' and visible_to_players = true";
+
+	/**
+	 * Tous les endroits ou une URL de media peut apparaitre.
+	 *
+	 * <p>Une seule liste pour les deux questions posees a un media — peut-il etre servi, peut-il
+	 * etre supprime — parce que deux listes tenues a la main ont derive. Celle de la suppression
+	 * ignorait {@code site_settings.logo_path} et {@code map_visions.asset_path}, alors que le
+	 * logo du site et l'image de la carte revelee sont des medias par conception : la validation
+	 * de chemin les autorise explicitement. Un administrateur pouvait donc detruire l'un ou
+	 * l'autre — ligne et fichier — et ne decouvrait la panne qu'ensuite, en 404 sur le site
+	 * public, sans recours puisque le fichier n'existe plus.
+	 *
+	 * <p>{@code publicWhen} est la condition de visibilite publique de la ligne, et la seule
+	 * difference entre les deux questions : la suppression l'ignore, la diffusion l'applique. Un
+	 * brouillon porte donc {@code false} — il retient un media sans jamais le rendre public.
+	 *
+	 * <p>Les requetes sont assemblees a partir de cette liste constante, jamais d'une valeur
+	 * recue. Seule l'URL du media voyage en parametre.
+	 */
+	private static final List<MediaReference> MEDIA_REFERENCES = List.of(
+		new MediaReference("site_settings", "logo_path", true, "true"),
+		new MediaReference("company_profiles", "emblem_path", true, "active = true"),
+		new MediaReference("adventurers", "avatar_path", true, "visible = true"),
+		new MediaReference("map_visions", "asset_path", true, "active = true and status = 'PUBLISHED'"),
+		new MediaReference("site_settings", "accessibility_information_markdown", false, "true"),
+		new MediaReference("home_messages", "content_markdown", false, "active = true and status = 'PUBLISHED'"),
+		new MediaReference("company_profiles", "long_description_markdown", false, "active = true"),
+		new MediaReference("map_visions", "description_markdown", false, "active = true and status = 'PUBLISHED'"),
+		new MediaReference("quests", "important_events_markdown", false, PUBLISHED_QUEST),
+		new MediaReference("quests", "discovered_clues_markdown", false, PUBLISHED_QUEST),
+		new MediaReference("quests", "completed_trials_markdown", false, PUBLISHED_QUEST),
+		new MediaReference("quests", "extra_content_markdown", false, PUBLISHED_QUEST),
+		new MediaReference("quests", "admin_draft_markdown", false, "false"));
 
 	private final MediaAssetRepository mediaAssets;
 	private final JdbcTemplate jdbc;
@@ -130,69 +167,45 @@ class MediaService {
 		audit.record(actorEmail, "MEDIA_DELETED", "MEDIA", id.toString(), "Média supprimé");
 	}
 
+	/** Un media retenu quelque part, brouillon compris, ne peut pas etre detruit. */
 	private boolean isReferenced(MediaAsset asset) {
-		var url = "/media/" + asset.id();
-		var textPattern = "%" + url + "%";
-		var exactReferences = jdbc.queryForObject("""
-			select
-			    (select count(*) from company_profiles where emblem_path = ?) +
-			    (select count(*) from adventurers where avatar_path = ?)
-			""", Integer.class, url, url);
-		var markdownReferences = jdbc.queryForObject("""
-			select count(*) from quests
-			where important_events_markdown like ?
-			   or discovered_clues_markdown like ?
-			   or completed_trials_markdown like ?
-			   or extra_content_markdown like ?
-			   or admin_draft_markdown like ?
-			""", Integer.class, textPattern, textPattern, textPattern, textPattern, textPattern);
-		return exactReferences != null && exactReferences > 0 || markdownReferences != null && markdownReferences > 0;
+		return countReferences(asset, false) > 0;
 	}
 
+	/** Un media n'est servi que s'il est atteignable depuis un contenu reellement publie. */
 	private boolean isPubliclyReferenced(MediaAsset asset) {
+		return countReferences(asset, true) > 0;
+	}
+
+	private long countReferences(MediaAsset asset, boolean publicOnly) {
 		var url = "/media/" + asset.id();
-		var textPattern = "%" + url + "%";
-		var publicReferences = jdbc.queryForObject("""
-			select
-			    (select count(*) from site_settings where logo_path = ?) +
-			    (select count(*) from company_profiles where active = true and emblem_path = ?) +
-			    (select count(*) from adventurers where visible = true and avatar_path = ?) +
-			    (select count(*) from map_visions where active = true and status = 'PUBLISHED' and asset_path = ?)
-			""", Integer.class, url, url, url, url);
-		var markdownReferences = jdbc.queryForObject("""
-			select
-			    (select count(*) from site_settings where accessibility_information_markdown like ?) +
-			    (select count(*) from home_messages
-			        where active = true
-			          and status = 'PUBLISHED'
-			          and content_markdown like ?) +
-			    (select count(*) from company_profiles
-			        where active = true
-			          and long_description_markdown like ?) +
-			    (select count(*) from map_visions
-			        where active = true
-			          and status = 'PUBLISHED'
-			          and description_markdown like ?) +
-			    (select count(*) from quests
-			        where status = 'PUBLISHED'
-			          and visible_to_players = true
-			          and (
-			            important_events_markdown like ?
-			            or discovered_clues_markdown like ?
-			            or completed_trials_markdown like ?
-			            or extra_content_markdown like ?
-			          ))
-			""", Integer.class,
-			textPattern,
-			textPattern,
-			textPattern,
-			textPattern,
-			textPattern,
-			textPattern,
-			textPattern,
-			textPattern);
-		return publicReferences != null && publicReferences > 0
-			|| markdownReferences != null && markdownReferences > 0;
+		var sql = MEDIA_REFERENCES.stream()
+			.map(reference -> reference.countSubquery(publicOnly))
+			.collect(Collectors.joining(" + ", "select ", ""));
+		// Les parametres suivent le meme parcours de la liste que les sous-requetes : leur ordre
+		// ne peut pas diverger de celui des `?`.
+		var parameters = MEDIA_REFERENCES.stream()
+			.map(reference -> reference.exact() ? url : "%" + url + "%")
+			.toArray();
+		var total = jdbc.queryForObject(sql, Long.class, parameters);
+		return total == null ? 0 : total;
+	}
+
+	/**
+	 * Un endroit ou une URL de media peut apparaitre.
+	 *
+	 * @param table      table interrogee
+	 * @param column     colonne susceptible de porter l'URL
+	 * @param exact      l'URL est la valeur entiere de la colonne, sinon elle y est incluse
+	 * @param publicWhen condition rendant la ligne publique, {@code "true"} si elle l'est
+	 *                   toujours et {@code "false"} si elle ne l'est jamais
+	 */
+	private record MediaReference(String table, String column, boolean exact, String publicWhen) {
+
+		String countSubquery(boolean publicOnly) {
+			return "(select count(*) from %s where %s and %s %s ?)"
+				.formatted(table, publicOnly ? publicWhen : "true", column, exact ? "=" : "like");
+		}
 	}
 
 	private String normalizeAltText(String value) {
