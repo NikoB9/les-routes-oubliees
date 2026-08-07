@@ -4,20 +4,8 @@
 
 @if (accessSession.reconnectRequired()) {
   <div class="access-reconnect" role="alert">
-    @if (accessSession.reconnecting()) {
-      <p>Reconnexion en cours. Vous reviendrez sur cette page une fois identifié.</p>
-    }
-    @else {
-      <p>Votre session sécurisée a expiré.</p>
-    }
-    <!--
-      Le bouton reste actif pendant la reconnexion. Le navigateur est censé quitter la page,
-      donc l'état ne retombe jamais seul : le désactiver le rendrait mort si le départ n'a pas
-      lieu, et l'utilisateur n'a pas d'autre issue que ce bouton.
-    -->
-    <button type="button" (click)="accessSession.retryNow()">
-      {{ accessSession.reconnecting() ? 'Reconnexion…' : 'Se reconnecter' }}
-    </button>
+    <p>Votre session sécurisée a expiré.</p>
+    <button type="button" (click)="accessSession.retryNow()">Se reconnecter</button>
   </div>
 }
 

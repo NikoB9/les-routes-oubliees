@@ -44,7 +44,6 @@
   cursor: pointer;
 }
 
-
 .app-shell {
   display: grid;
   grid-template-columns: 14rem minmax(0, 1fr);
