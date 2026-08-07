@@ -22,6 +22,9 @@ describe('CloudflareAccessSessionService', () => {
   });
 
   afterEach(() => {
+    // Les espions sont retires ici et non en fin de test : une assertion qui echoue saute la
+    // fin du test, et l'espion survivant ferait echouer le suivant pour une raison etrangere.
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
     sessionStorage.clear();
   });
@@ -265,6 +268,7 @@ describe('CloudflareAccessSessionService', () => {
    */
   it('drops the bypass marker from the address once the page is served', () => {
     const replaceState = vi.spyOn(window.history, 'replaceState');
+    const state: unknown = window.history.state;
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: { href: 'https://routes.example.invalid/carnet?quete=7&ngsw-bypass=1', assign },
@@ -274,12 +278,12 @@ describe('CloudflareAccessSessionService', () => {
     TestBed.configureTestingModule({});
     TestBed.inject(CloudflareAccessSessionService);
 
+    // L'état d'historique est repris tel quel : la réécriture ne porte que sur l'adresse.
     expect(replaceState).toHaveBeenCalledWith(
-      expect.anything(),
+      state,
       '',
       'https://routes.example.invalid/carnet?quete=7',
     );
-    replaceState.mockRestore();
   });
 
   /** Une adresse ordinaire ne doit pas être réécrite pour autant. */
@@ -291,6 +295,5 @@ describe('CloudflareAccessSessionService', () => {
     TestBed.inject(CloudflareAccessSessionService);
 
     expect(replaceState).not.toHaveBeenCalled();
-    replaceState.mockRestore();
   });
 });
