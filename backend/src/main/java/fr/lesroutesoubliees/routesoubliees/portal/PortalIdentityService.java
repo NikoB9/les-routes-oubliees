@@ -172,24 +172,53 @@ public class PortalIdentityService {
 		return findBySubject(principal.subject()).orElseGet(() -> createIdentity(principal));
 	}
 
+	/**
+	 * Cree l'identite portail d'un principal, ou reprend la sienne apres un changement de
+	 * sujet Cloudflare.
+	 *
+	 * <p>Cloudflare Access emet un {@code sub} par identite de fournisseur, pas par personne :
+	 * un joueur qui entre d'abord par code a usage unique puis par un fournisseur externe se
+	 * presente avec la meme adresse et un sujet different. L'insertion violait alors
+	 * {@code uq_portal_identities_email} et le joueur restait bloque hors du portail, sans
+	 * aucun levier d'administration pour l'en sortir.
+	 *
+	 * <p>Une identite existante portant cette adresse <em>est</em> la meme personne :
+	 * Cloudflare a deja etabli qu'elle la possede, c'est ce que le JWT atteste. Le sujet est
+	 * donc reassocie, ce qui rend la methode de connexion indifferente sans affaiblir la regle
+	 * « une personne, un personnage ». Le personnage deja choisi est conserve, puisque la
+	 * ligne d'origine — et son identifiant — le sont aussi.
+	 *
+	 * <p>Une seule instruction, et non une insertion suivie d'un rattrapage : sur PostgreSQL,
+	 * une violation de contrainte avorte la transaction en cours, et toute requete suivante y
+	 * echoue a son tour. Un bloc {@code catch} ne peut donc rien reparer ici. L'ecriture
+	 * atomique regle du meme coup la course au tout premier acces, ou deux requetes
+	 * simultanees du meme joueur inseraient la meme adresse.
+	 *
+	 * <p>Une collision sur l'adresse implique necessairement un sujet different : cette
+	 * methode n'est atteinte que lorsque la recherche par sujet est revenue vide. Un
+	 * identifiant conserve different de celui qui vient d'etre tire signale donc exactement une
+	 * reassociation.
+	 */
 	private PortalIdentity createIdentity(CloudflareAccessPrincipal principal) {
 		if (principal.email() == null || principal.email().isBlank()) {
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Email Cloudflare Access requis.");
 		}
 		var id = UUID.randomUUID();
-		try {
-			jdbc.update("""
-				insert into portal_identities(
-					id, cloudflare_subject, normalized_email, access_mode, created_at, updated_at
-				)
-				values (?, ?, ?, 'UNASSIGNED', ?, ?)
-				""", id, principal.subject(), principal.email(), now(), now());
+		var storedId = jdbc.queryForObject("""
+			insert into portal_identities(
+				id, cloudflare_subject, normalized_email, access_mode, created_at, updated_at
+			)
+			values (?, ?, ?, 'UNASSIGNED', ?, ?)
+			on conflict (normalized_email) do update
+			set cloudflare_subject = excluded.cloudflare_subject, updated_at = excluded.updated_at
+			returning id
+			""", UUID.class, id, principal.subject(), principal.email(), now(), now());
+		if (storedId != null && !storedId.equals(id)) {
+			LOGGER.info("Identite portail {} reassociee a un nouveau sujet Cloudflare Access.", storedId);
+			audit.record(null, "PORTAL_IDENTITY_SUBJECT_REBOUND", "PORTAL_IDENTITY", storedId.toString(),
+				"Sujet Cloudflare Access reassocie a une identite existante");
 		}
-		catch (DataIntegrityViolationException exception) {
-			return findBySubject(principal.subject())
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Identite deja existante.", exception));
-		}
-		return findById(id).orElseThrow();
+		return findById(storedId).orElseThrow();
 	}
 
 	private Optional<PortalIdentity> findBySubject(String subject) {
