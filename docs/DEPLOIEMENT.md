@@ -168,6 +168,11 @@ X-Frame-Options ou frame-ancestors dans la CSP
 
 Nginx n’hérite les `add_header` du niveau supérieur que si l’emplacement courant n’en déclare aucun. Chaque emplacement qui pose son propre `Cache-Control` doit donc répéter les en-têtes de sécurité, sans quoi la réponse part sans politique. Le cas critique est `location = /index.html` : `try_files` y redirige en interne toutes les routes de la SPA, donc le document HTML de chaque page perdrait sa CSP. Les exemples `infra/nginx/les-routes-oubliees.conf.example` et `frontend/nginx.conf` appliquent cette répétition ; vérifier après toute modification que `/`, `/radar` et `/carnet` renvoient bien la CSP et `Permissions-Policy`.
 
+Deux pièges lient la CSP au build du frontend, tous deux silencieux à la compilation :
+
+* `optimization.styles.inlineCritical` est **désactivé** dans `frontend/angular.json`. Activée — c'est le défaut d'Angular — cette option n'insère plus la feuille globale que par `<link media="print" onload="this.media='all'">`. `script-src 'self'` interdit les gestionnaires d'évènements en ligne : le `onload` ne s'exécute jamais, la feuille reste destinée à l'impression et **aucun style global ne s'applique**, `leaflet.css` compris. Les styles de composants, eux, sont intégrés au JavaScript et continuent de s'appliquer : la page paraît presque normale, ce qui rend la panne difficile à lire. Symptôme côté Radar : les tuiles quittent le positionnement absolu, retombent dans le flux et la carte s'étire sans fin.
+* `connect-src` doit lister le domaine des tuiles au même titre qu'`img-src`. Le service worker intercepte les requêtes d'images et les rejoue par `fetch()`, soumis à `connect-src` ; refusé, ngsw répond par sa 504 de synthèse et la carte reste vide.
+
 Les réponses admin et API sensibles ne doivent pas être mises en cache par un proxy partagé. Les médias publics peuvent avoir une politique de cache séparée lorsqu’ils sont publiés.
 
 Pour la PWA :
@@ -844,7 +849,7 @@ L'automatisation Home Assistant doit fournir les valeurs issues de `device_track
 
 Créer manuellement l'application Access d'exception Home Assistant uniquement parce que l'application humaine couvre tout l'hôte. Elle doit cibler le chemin exact `api/integrations/home-assistant/radar/treasure-position` avec la politique `Bypass` / `Contourner` et `Everyone` / `Tout le monde`. Ne pas étendre cette exception à `/api/integrations/*` ou `/api/*`.
 
-Le fichier Nginx de production a identifier et modifier est generalement `/etc/nginx/sites-available/les-routes-oubliees`, sauf installation differente. Les differences obligatoires avec le fichier versionne sont : `Permissions-Policy` avec `geolocation=(self)`, `img-src` autorisant `https://tile.openstreetmap.org`, transmission de `Cf-Access-Jwt-Assertion`, preservation de `Authorization`, bloc SSE sans buffering/cache, `Cache-Control: no-store` sur les API d'identite, Radar, admin et integration Home Assistant, emplacement `/media/` distinct qui laisse passer le `Cache-Control` du backend, et plafond `limit_req` sur la publication Home Assistant.
+Le fichier Nginx de production a identifier et modifier est generalement `/etc/nginx/sites-available/les-routes-oubliees`, sauf installation differente. Les differences obligatoires avec le fichier versionne sont : `Permissions-Policy` avec `geolocation=(self)`, `img-src` **et** `connect-src` autorisant `https://tile.openstreetmap.org`, transmission de `Cf-Access-Jwt-Assertion`, preservation de `Authorization`, bloc SSE sans buffering/cache, `Cache-Control: no-store` sur les API d'identite, Radar, admin et integration Home Assistant, emplacement `/media/` distinct qui laisse passer le `Cache-Control` du backend, et plafond `limit_req` sur la publication Home Assistant.
 
 Installer aussi `infra/nginx/lro-rate-limit.conf.example` dans `/etc/nginx/conf.d/` avant de recharger : sans la zone qu'il declare, `nginx -t` echoue.
 

@@ -134,8 +134,15 @@ button.secondary {
   gap: 0.75rem;
 }
 
+/*
+ * Hauteur ferme, et non `min-height`. Leaflet sort ses tuiles du flux, donc les deux se
+ * valent tant que sa feuille de styles s'applique. Quand elle manque, les tuiles retombent
+ * dans le flux : `min-height` les laisse empiler le conteneur sur des dizaines de milliers
+ * de pixels, et chaque agrandissement en reclame davantage. Une hauteur ferme borne la
+ * degradation a une carte tronquee.
+ */
 .radar-map {
-  min-height: min(62dvh, 38rem);
+  height: min(62dvh, 38rem);
   width: 100%;
   overflow: hidden;
   border: 2px solid #5b3d24;
@@ -223,6 +230,6 @@ button.secondary {
   }
 
   .radar-map {
-    min-height: 70dvh;
+    height: 70dvh;
   }
 }

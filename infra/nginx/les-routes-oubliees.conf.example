@@ -13,10 +13,15 @@ server {
     # en-tetes, sinon la reponse part sans politique de securite. Le cas le plus grave est
     # `location = /index.html` : `try_files` y redirige en interne toutes les routes de la
     # SPA, donc c'est le document HTML de chaque page qui perdrait sa CSP.
+    #
+    # Le domaine des tuiles figure dans `img-src` *et* dans `connect-src`. Les deux sont
+    # necessaires : le service worker Angular intercepte toutes les requetes, y compris les
+    # images, et les rejoue par `fetch()`, soumis a `connect-src`. Sans cette autorisation,
+    # ngsw echoue et repond par sa 504 de synthese, et la carte du Radar reste vide.
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
-    add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+    add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
 
     location / {
         try_files $uri $uri/ /index.html;
@@ -27,7 +32,7 @@ server {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
-        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 
     location = /api/radar/events {
@@ -48,7 +53,7 @@ server {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
-        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 
     # Publication de position Home Assistant : seul chemin exempte de Cloudflare Access.
@@ -77,7 +82,7 @@ server {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
-        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 
     # Medias : seul chemin applicatif exempte de `no-store`. Une URL de media designe
@@ -105,7 +110,7 @@ server {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
-        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 
     # `/media/` est traite par l'emplacement precedent et ne parvient jamais ici.
@@ -124,7 +129,7 @@ server {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
-        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 
     location /actuator/ {
