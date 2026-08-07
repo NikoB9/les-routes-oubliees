@@ -43,9 +43,9 @@ export class CloudflareAccessSessionService {
   /**
    * Vrai entre le clic sur la reconnexion et le départ effectif de la page.
    *
-   * La sortie de session est un aller-retour réseau : sans état visible, le bandeau resterait
-   * identique pendant ce temps et le bouton paraîtrait de nouveau inerte — le défaut même que
-   * la reconnexion vient corriger.
+   * Le navigateur ne quitte pas la page à l'instant de l'appel : sans état visible, le bandeau
+   * resterait identique pendant ce délai et le bouton paraîtrait inerte — le défaut même que
+   * la reconnexion vient corriger. Il neutralise aussi les clics répétés.
    */
   readonly reconnecting = signal(false);
 
@@ -88,69 +88,27 @@ export class CloudflareAccessSessionService {
   /**
    * Relance le parcours Cloudflare Access à la demande de l'utilisateur.
    *
-   * Le bouton ne recharge plus la page. `reconnectRequired` n'est levé qu'après un
-   * rechargement déjà tenté et resté sans effet : le refaire refait exactement ce qui vient
-   * d'échouer. Rien ne bouge à l'écran, et comme le bandeau disparaît le temps de la
-   * navigation pour revenir au `401` suivant, le bouton paraît ne rien faire.
+   * Une navigation ordinaire suffit, dès lors qu'elle atteint le réseau : privée de session
+   * valide, elle reçoit de Cloudflare sa redirection vers l'authentification, puis revient sur
+   * l'adresse d'origine. Ce qui la rendait inopérante n'était pas la navigation mais le
+   * service worker, qui la servait depuis son cache sans qu'elle quitte le navigateur.
    *
-   * La session est donc terminée à la source, puis l'utilisateur est ramené où il était.
+   * Aucune déconnexion préalable n'est demandée. Elle l'a été tant que la cause était mal
+   * comprise, et elle coûtait cher : Cloudflare renvoie alors sur une adresse qu'il choisit
+   * lui-même — `/?__cf_access_message=logged_out` — que l'application ne peut pas marquer, que
+   * le service worker intercepte donc, et dont le premier chargement échouait en
+   * `ERR_FAILED`. Il fallait recharger à la main pour repartir.
+   *
+   * Le verrou est relâché avant de partir, pour que la prochaine expiration retrouve son
+   * rechargement automatique.
    */
   retryNow(): void {
     if (this.reconnecting()) {
       return;
     }
     this.reconnecting.set(true);
-    void this.leaveAccessSession();
-  }
-
-  /**
-   * Sort de la session Access sans faire quitter sa page à l'utilisateur.
-   *
-   * La déconnexion est demandée en arrière-plan plutôt que par une navigation : Cloudflare
-   * retire son cookie dans la réponse, et la navigation qui suit repart alors sans session,
-   * ce qui rend le parcours d'authentification obligatoire. C'est la seule action dont
-   * l'effet ne dépende pas de l'état dont on cherche justement à sortir. L'utilisateur
-   * revient ensuite sur l'adresse qu'il consultait, pas sur la page de déconnexion.
-   *
-   * Cloudflare ne documente aucun paramètre de retour sur `/cdn-cgi/access/logout` — ni
-   * `returnTo` ni équivalent, ni sur la page « Session management » ni dans la FAQ Identity.
-   * Faire le trajet en deux temps depuis l'application ne dépend d'aucun comportement non
-   * documenté.
-   *
-   * L'attente de la réponse n'est pas facultative : partir avant que l'en-tête `Set-Cookie`
-   * ne soit traité emporterait l'ancienne session, et Cloudflare laisserait passer sans rien
-   * redemander.
-   *
-   * `redirect: 'manual'` est ce qui rend l'appel viable. La déconnexion répond couramment par
-   * une redirection vers `<équipe>.cloudflareaccess.com`, une autre origine : suivie, elle
-   * serait refusée par `connect-src 'self'`, la requête échouerait et le repli s'appliquerait
-   * à chaque fois. Ne pas la suivre laisse le navigateur traiter le `Set-Cookie` de la
-   * réponse — c'est tout ce dont on a besoin — et rend une redirection opaque, sans corps ni
-   * statut lisible. Elle vaut donc succès au même titre qu'un `200`.
-   *
-   * L'échec renvoie à la page de déconnexion visible. Elle fait moins bien — l'utilisateur
-   * doit revenir seul — mais elle aboutit, là où rester sur place ne laisserait aucune issue.
-   */
-  private async leaveAccessSession(): Promise<void> {
-    const destination = this.networkUrl(window.location.href);
-    // Le verrou est relâché avant de partir, pour que la prochaine expiration retrouve son
-    // rechargement automatique. Le bandeau, lui, reste affiché jusqu'à la navigation.
     this.releaseLock();
-    try {
-      const response = await fetch(CLOUDFLARE_ACCESS_LOGOUT_URL, {
-        credentials: 'include',
-        cache: 'no-store',
-        redirect: 'manual',
-      });
-      if (!response.ok && response.type !== 'opaqueredirect') {
-        throw new Error(`logout ${response.status}`);
-      }
-    }
-    catch {
-      window.location.assign(CLOUDFLARE_ACCESS_LOGOUT_URL);
-      return;
-    }
-    window.location.assign(destination);
+    window.location.assign(this.networkUrl(window.location.href));
   }
 
   /**

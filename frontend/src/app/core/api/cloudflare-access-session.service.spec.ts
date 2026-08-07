@@ -104,72 +104,31 @@ describe('CloudflareAccessSessionService', () => {
   }
 
   /**
-   * Le bandeau n'apparaît qu'après un rechargement resté sans effet. Recharger de nouveau
-   * referait donc ce qui vient d'échouer : le bouton semblerait inerte, le bandeau revenant
-   * seulement au `401` suivant.
+   * Une navigation qui atteint le réseau suffit : privée de session valide, elle reçoit de
+   * Cloudflare sa redirection vers l'authentification.
    *
-   * La déconnexion est demandée en arrière-plan, puis l'utilisateur est ramené sur l'adresse
-   * qu'il consultait — jamais sur la page de déconnexion, que rien ne le ferait quitter.
+   * Aucune déconnexion n'est demandée au passage. Elle l'a été tant que la cause était mal
+   * comprise, et elle faisait atterrir sur `/?__cf_access_message=logged_out` — une adresse
+   * choisie par Cloudflare, que l'application ne peut pas marquer, donc interceptée par le
+   * service worker, et dont le premier chargement échouait en `ERR_FAILED`.
    */
-  it('drops the Access cookie, then returns the user to the page they were on', async () => {
+  it('reloads through the network without touching the logout endpoint', () => {
     reachReconnectBanner();
 
     service.retryNow();
-    await vi.waitFor(() => expect(assign).toHaveBeenCalled());
 
-    expect(fetchMock).toHaveBeenCalledWith('/cdn-cgi/access/logout', {
-      credentials: 'include',
-      cache: 'no-store',
-      redirect: 'manual',
-    });
     expect(assign).toHaveBeenCalledTimes(1);
     expect(assign).toHaveBeenCalledWith('https://routes.example.invalid/radar?ngsw-bypass=1');
+    expect(assign).not.toHaveBeenCalledWith('/cdn-cgi/access/logout');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   /**
-   * La déconnexion répond couramment par une redirection vers le domaine de l'équipe, que
-   * `connect-src 'self'` refuserait si on la suivait. Elle n'est donc pas suivie : le
-   * navigateur traite le `Set-Cookie`, et la réponse revient opaque — sans statut lisible.
-   * La prendre pour un échec renverrait à la page de déconnexion à chaque reconnexion, ce qui
-   * annulerait tout le bénéfice.
+   * L'utilisateur doit voir que son clic a été pris en compte : le navigateur ne quitte pas la
+   * page à l'instant de l'appel, et sans cet état le bandeau resterait identique. Un second
+   * clic ne doit pas relancer une navigation déjà demandée.
    */
-  it('accepts the opaque redirect the logout endpoint answers with', async () => {
-    fetchMock.mockResolvedValueOnce({ ok: false, status: 0, type: 'opaqueredirect' } as Response);
-    reachReconnectBanner();
-
-    service.retryNow();
-    await vi.waitFor(() => expect(assign).toHaveBeenCalled());
-
-    expect(assign).toHaveBeenCalledWith('https://routes.example.invalid/radar?ngsw-bypass=1');
-  });
-
-  /**
-   * Partir avant que la réponse ne soit traitée emporterait l'ancien cookie : Cloudflare
-   * laisserait passer sans rien redemander, et l'expiration resterait entière.
-   */
-  it('never navigates before the logout response has been received', async () => {
-    let completeLogout: (() => void) | undefined;
-    fetchMock.mockImplementationOnce(
-      () => new Promise((resolve) => (completeLogout = () => resolve(new Response(null, { status: 200 })))),
-    );
-    reachReconnectBanner();
-
-    service.retryNow();
-    await Promise.resolve();
-
-    expect(assign).not.toHaveBeenCalled();
-    expect(service.reconnecting()).toBe(true);
-
-    completeLogout?.();
-    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('https://routes.example.invalid/radar?ngsw-bypass=1'));
-  });
-
-  /**
-   * L'utilisateur doit voir que son clic a été pris en compte : sans cet état, le bandeau
-   * resterait identique pendant l'aller-retour et le bouton paraîtrait de nouveau inerte.
-   * Un second clic ne doit pas relancer une sortie déjà en cours.
-   */
-  it('shows the reconnection is under way and ignores a second click', async () => {
+  it('shows the reconnection is under way and ignores a second click', () => {
     reachReconnectBanner();
     expect(service.reconnecting()).toBe(false);
 
@@ -179,34 +138,7 @@ describe('CloudflareAccessSessionService', () => {
     expect(service.reconnecting()).toBe(true);
     // Le bandeau reste affiché jusqu'à la navigation, sans quoi l'écran n'annoncerait rien.
     expect(service.reconnectRequired()).toBe(true);
-    await vi.waitFor(() => expect(assign).toHaveBeenCalledTimes(1));
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  /**
-   * Déconnexion refusée ou réseau coupé : la page de déconnexion visible fait moins bien —
-   * l'utilisateur doit revenir seul — mais elle aboutit, là où rester sur place ne laisserait
-   * aucune issue.
-   */
-  it('falls back to the visible logout page when the request fails', async () => {
-    fetchMock.mockRejectedValueOnce(new Error('offline'));
-    reachReconnectBanner();
-
-    service.retryNow();
-    await vi.waitFor(() => expect(assign).toHaveBeenCalled());
-
-    expect(assign).toHaveBeenCalledWith('/cdn-cgi/access/logout');
-  });
-
-  /** Une réponse d'erreur ne retire aucun cookie : y revenir serait revenir à l'identique. */
-  it('treats a rejected logout as a failure rather than a success', async () => {
-    fetchMock.mockResolvedValueOnce(new Response(null, { status: 403 }));
-    reachReconnectBanner();
-
-    service.retryNow();
-    await vi.waitFor(() => expect(assign).toHaveBeenCalled());
-
-    expect(assign).toHaveBeenCalledWith('/cdn-cgi/access/logout');
+    expect(assign).toHaveBeenCalledTimes(1);
   });
 
   /**
@@ -214,11 +146,10 @@ describe('CloudflareAccessSessionService', () => {
    * privée de son rechargement automatique et afficherait le bandeau dès la première
    * expiration.
    */
-  it('frees the stored lock so the next page load gets its automatic reload back', async () => {
+  it('frees the stored lock so the next page load gets its automatic reload back', () => {
     reachReconnectBanner();
 
     service.retryNow();
-    await vi.waitFor(() => expect(assign).toHaveBeenCalled());
 
     expect(sessionStorage.getItem('lro.cloudflare-reauth.v1')).toBeNull();
 
@@ -246,7 +177,7 @@ describe('CloudflareAccessSessionService', () => {
    * Il est ajouté aux paramètres existants, jamais substitué à eux : la page rejointe est
    * celle que l'utilisateur consultait, arguments compris.
    */
-  it('reaches the network from a cached page, keeping the address intact', async () => {
+  it('reaches the network from a cached page, keeping the address intact', () => {
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: { href: 'https://routes.example.invalid/carnet?quete=7', assign },
@@ -254,7 +185,6 @@ describe('CloudflareAccessSessionService', () => {
     reachReconnectBanner();
 
     service.retryNow();
-    await vi.waitFor(() => expect(assign).toHaveBeenCalled());
 
     expect(assign).toHaveBeenCalledWith(
       'https://routes.example.invalid/carnet?quete=7&ngsw-bypass=1',
