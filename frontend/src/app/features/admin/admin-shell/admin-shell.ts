@@ -31,6 +31,7 @@ import {
   AdminMapPreview,
   AdminMapVision,
   AdminMapVisionUpsert,
+  AdminPortalAssignmentUpdate,
   AdminPortalIdentity,
   AdminRadarSettings,
   MapMarkerLabelPosition,
@@ -78,6 +79,16 @@ const MEDIA_ERROR_REQUIRED_FIELDS = 'Le fichier et le texte alternatif sont obli
 const MEDIA_ERROR_FILE_TOO_LARGE =
   "Le fichier est trop volumineux pour être envoyé. Choisissez une image plus légère, ou réduisez sa définition avant de la déposer.";
 const MEDIA_ERROR_GENERIC = 'Impossible de traiter les médias pour le moment.';
+
+/**
+ * Messages des identités du portail.
+ *
+ * La liste des aventuriers propose aussi ceux qu'un autre joueur a déjà choisis : le conflit
+ * est un aboutissement courant, pas un incident. Le message générique laissait croire à une
+ * panne et n'indiquait pas la seule chose utile — que l'aventurier est pris.
+ */
+const PORTAL_GENERIC_ERROR = 'Impossible de mettre à jour les identités.';
+const PORTAL_ADVENTURER_TAKEN_ERROR = 'Cet aventurier est déjà attribué à une autre identité.';
 
 @Component({
   selector: 'app-admin-shell',
@@ -196,6 +207,7 @@ export class AdminShell {
   protected readonly radarSaved = signal(false);
   protected readonly portalIdentities = signal<AdminPortalIdentity[]>([]);
   protected readonly portalError = signal(false);
+  protected readonly portalErrorMessage = signal(PORTAL_GENERIC_ERROR);
   protected readonly portalSaved = signal(false);
   protected readonly portalModes: PortalAccessMode[] = ['UNASSIGNED', 'ADVENTURER', 'GUEST'];
   protected readonly siteStatuses: SiteStatus[] = ['ONLINE', 'MAINTENANCE'];
@@ -1016,37 +1028,63 @@ export class AdminShell {
     });
   }
 
+  /**
+   * Aventuriers qu'il est permis de proposer pour une identité.
+   *
+   * Un aventurier masqué est refusé par le serveur : le laisser dans la liste ne menait qu'à
+   * une erreur. Celui déjà attribué y reste pourtant même masqué — l'en retirer laisserait le
+   * select sans option correspondante, donc vide, effaçant de l'écran l'attribution qu'il a
+   * justement pour rôle de montrer.
+   */
+  protected assignableAdventurers(identity: AdminPortalIdentity): AdminAdventurer[] {
+    return this.adventurers().filter(
+      (adventurer) => adventurer.visible || adventurer.id === identity.adventurerId,
+    );
+  }
+
   protected updatePortalIdentityMode(identity: AdminPortalIdentity, accessMode: string) {
     if (!this.portalModes.includes(accessMode as PortalAccessMode)) {
       return;
     }
-    this.adminApi.updatePortalAssignment(identity.id, {
+    this.savePortalAssignment(identity, {
       accessMode: accessMode as PortalAccessMode,
       adventurerId: accessMode === 'ADVENTURER' ? identity.adventurerId : null,
-    }).subscribe({
-      next: () => {
-        this.portalSaved.set(true);
-        this.portalError.set(false);
-        this.loadPortalIdentities();
-        this.loadAuditLogs();
-      },
-      error: () => this.portalError.set(true),
     });
   }
 
+  /**
+   * Retirer l'aventurier remet l'identité en attente de choix, et non en invité : c'est le seul
+   * des deux modes qui rende la main au joueur. Le mode invité reste accessible explicitement
+   * par l'autre liste, qui est faite pour cela.
+   *
+   * Le mode était auparavant forcé à `ADVENTURER` quel que soit le choix, si bien que
+   * « Aucun » formait une attribution sans aventurier — que le serveur rejette.
+   */
   protected updatePortalIdentityAdventurer(identity: AdminPortalIdentity, adventurerId: string) {
-    this.adminApi.updatePortalAssignment(identity.id, {
-      accessMode: 'ADVENTURER',
-      adventurerId: adventurerId || null,
-    }).subscribe({
+    this.savePortalAssignment(identity, adventurerId
+      ? { accessMode: 'ADVENTURER', adventurerId }
+      : { accessMode: 'UNASSIGNED', adventurerId: null });
+  }
+
+  private savePortalAssignment(identity: AdminPortalIdentity, update: AdminPortalAssignmentUpdate) {
+    this.portalSaved.set(false);
+    this.adminApi.updatePortalAssignment(identity.id, update).subscribe({
       next: () => {
         this.portalSaved.set(true);
         this.portalError.set(false);
         this.loadPortalIdentities();
         this.loadAuditLogs();
       },
-      error: () => this.portalError.set(true),
+      error: (failure: unknown) => this.showPortalError(failure),
     });
+  }
+
+  /** Le texte est déduit du seul code HTTP : aucun détail venu du serveur n'est relayé. */
+  private showPortalError(failure?: unknown) {
+    const conflict = failure instanceof HttpErrorResponse && failure.status === 409;
+    this.portalErrorMessage.set(conflict ? PORTAL_ADVENTURER_TAKEN_ERROR : PORTAL_GENERIC_ERROR);
+    this.portalSaved.set(false);
+    this.portalError.set(true);
   }
 
   private loadQuests() {
@@ -1168,7 +1206,7 @@ export class AdminShell {
         this.portalIdentities.set(identities);
         this.portalError.set(false);
       },
-      error: () => this.portalError.set(true),
+      error: () => this.showPortalError(),
     });
   }
 
