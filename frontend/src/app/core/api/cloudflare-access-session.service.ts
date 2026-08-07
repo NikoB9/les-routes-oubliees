@@ -10,6 +10,21 @@ import { Injectable, signal } from '@angular/core';
 export const CLOUDFLARE_ACCESS_LOGOUT_URL = '/cdn-cgi/access/logout';
 
 /**
+ * Marqueur qui fait traverser le service worker à une navigation.
+ *
+ * ngsw le reconnaît et laisse alors partir la requête sur le réseau. Sans lui, toute
+ * navigation couverte par `navigationUrls` reçoit la coquille depuis le cache : elle ne
+ * quitte pas le navigateur, Cloudflare ne la voit jamais, et aucune authentification ne peut
+ * être redemandée. C'est ce qui rendait la reconnexion inopérante partout sauf sur `/radar`
+ * et `/admin`, seules routes déjà exclues du cache — et qui faisait apparaître le bandeau
+ * ailleurs, le rechargement automatique échouant pour exactement la même raison.
+ *
+ * Le cache de navigation reste voulu par ailleurs : ce marqueur ne s'applique qu'aux
+ * trajets d'authentification, qui n'ont aucun sens hors ligne.
+ */
+const SERVICE_WORKER_BYPASS = 'ngsw-bypass';
+
+/**
  * Reprise de session Cloudflare Access.
  *
  * Un rechargement de page permet à Cloudflare de rejouer son parcours d'authentification
@@ -43,6 +58,10 @@ export class CloudflareAccessSessionService {
    */
   private pendingInMemory = false;
 
+  constructor() {
+    this.forgetBypassMarker();
+  }
+
   reauthenticate(): void {
     if (this.isPending()) {
       // Deuxième expiration alors que le verrou est actif : proposer une action stable
@@ -51,7 +70,7 @@ export class CloudflareAccessSessionService {
       return;
     }
     this.markPending();
-    window.location.assign(window.location.href);
+    window.location.assign(this.networkUrl(window.location.href));
   }
 
   /**
@@ -113,7 +132,7 @@ export class CloudflareAccessSessionService {
    * doit revenir seul — mais elle aboutit, là où rester sur place ne laisserait aucune issue.
    */
   private async leaveAccessSession(): Promise<void> {
-    const destination = window.location.href;
+    const destination = this.networkUrl(window.location.href);
     // Le verrou est relâché avant de partir, pour que la prochaine expiration retrouve son
     // rechargement automatique. Le bandeau, lui, reste affiché jusqu'à la navigation.
     this.releaseLock();
@@ -132,6 +151,45 @@ export class CloudflareAccessSessionService {
       return;
     }
     window.location.assign(destination);
+  }
+
+  /**
+   * Adresse à demander au réseau plutôt qu'au service worker.
+   *
+   * Une URL illisible est rendue telle quelle : la navigation vaut mieux que rien, et sur
+   * `/radar` comme sur `/admin` elle suffit de toute façon.
+   */
+  private networkUrl(href: string): string {
+    try {
+      const url = new URL(href, window.location.origin);
+      url.searchParams.set(SERVICE_WORKER_BYPASS, '1');
+      return url.toString();
+    }
+    catch {
+      return href;
+    }
+  }
+
+  /**
+   * Retire le marqueur de l'adresse une fois la page servie.
+   *
+   * Il n'a de sens que pour la requête qui l'a porté. Le laisser le ferait suivre
+   * l'utilisateur dans sa navigation, ses favoris et ses partages, et priverait de cache
+   * chaque retour sur la page. `replaceState` ne recharge rien et n'ajoute pas d'entrée à
+   * l'historique : le bouton « précédent » reste intact.
+   */
+  private forgetBypassMarker(): void {
+    try {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has(SERVICE_WORKER_BYPASS)) {
+        return;
+      }
+      url.searchParams.delete(SERVICE_WORKER_BYPASS);
+      window.history.replaceState(window.history.state, '', url.toString());
+    }
+    catch {
+      // Historique indisponible : le marqueur reste visible, sans conséquence fonctionnelle.
+    }
   }
 
   private releaseLock(): void {
