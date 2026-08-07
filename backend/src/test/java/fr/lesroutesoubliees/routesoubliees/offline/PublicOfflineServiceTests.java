@@ -36,12 +36,18 @@ class PublicOfflineServiceTests {
 		assertThat(snapshot.questDetails()).extracting(PublicQuestDetailResponse::code).containsExactly("QUEST_1");
 	}
 
+	/**
+	 * Les deux points d'entree doivent renvoyer la meme version.
+	 *
+	 * <p>Le client compare la version stockee avec son instantane a celle que renvoie
+	 * {@code /content-version} : deux sources distinctes ne coincideraient jamais et il
+	 * retelechargerait a chaque ouverture.
+	 */
 	@Test
-	void changesVersionWhenPublicSnapshotChanges() {
-		var firstVersion = serviceWithQuestTitle("Quete visible").contentVersion();
-		var secondVersion = serviceWithQuestTitle("Quete modifiee").contentVersion();
+	void servesTheSameVersionOnTheSnapshotAndOnTheVersionEndpoint() {
+		var service = serviceWithQuestTitle("Quete visible");
 
-		assertThat(secondVersion).isNotEqualTo(firstVersion);
+		assertThat(service.snapshot().version()).isEqualTo(service.contentVersion());
 	}
 
 	private PublicOfflineService serviceWithQuestTitle(String questTitle) {
@@ -51,6 +57,9 @@ class PublicOfflineServiceTests {
 		var adventurers = mock(PublicAdventurerService.class);
 		var maps = mock(PublicMapService.class);
 		var quests = mock(PublicQuestService.class);
+		var versions = mock(PublicContentVersionCalculator.class);
+
+		when(versions.currentVersion()).thenReturn("a".repeat(64));
 
 		var questId = UUID.fromString("50000000-0000-0000-0000-000000000001");
 		var summary = new PublicQuestSummaryResponse(questId, "QUEST_1", questTitle, "Resume", 1);
@@ -88,6 +97,6 @@ class PublicOfflineServiceTests {
 		when(quests.visibleQuests()).thenReturn(List.of(summary));
 		when(quests.visibleQuest("QUEST_1")).thenReturn(detail);
 
-		return new PublicOfflineService(settings, messages, companies, adventurers, maps, quests);
+		return new PublicOfflineService(settings, messages, companies, adventurers, maps, quests, versions);
 	}
 }

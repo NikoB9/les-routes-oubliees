@@ -44,4 +44,29 @@ describe('ngsw-config.json', () => {
   it('never serves the shell for file requests', () => {
     expect(negatives).toContain('!/**/*.*');
   });
+
+  /**
+   * `/cdn-cgi/access/logout` est servi par l'edge Cloudflare, jamais par l'application. Sans
+   * ce motif négatif, le service worker répond la coquille depuis son cache : la requête ne
+   * quitte pas le navigateur, la session Access survit et l'utilisateur voit « Page
+   * introuvable » au lieu d'être déconnecté. Le motif `!/**\/*.*` ne suffit pas, le dernier
+   * segment `logout` ne contenant aucun point.
+   */
+  it('lets Cloudflare handle its own endpoints', () => {
+    expect(negatives).toContain('!/cdn-cgi/**');
+  });
+
+  /**
+   * Tout le contenu visuel public passe par `/media/{uuid}` : la carte révélée, les avatars,
+   * l'emblème, le logo. Sans ce groupe, l'instantané hors ligne arrive complet et toutes les
+   * images sont cassées — la page Carte se retrouve vide de sa carte.
+   */
+  it('caches public media for offline use', () => {
+    const media = config.dataGroups.find((group) => group.urls.includes('/media/**'));
+
+    expect(media).toBeDefined();
+    // `performance` et non `freshness` : hors ligne, une image doit être servie sans que le
+    // service worker attende d'abord l'expiration d'un délai réseau.
+    expect(media?.cacheConfig.strategy).toBe('performance');
+  });
 });

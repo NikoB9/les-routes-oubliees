@@ -4,6 +4,7 @@
   "navigationUrls": [
     "/**",
     "!/**/*.*",
+    "!/cdn-cgi/**",
     "!/radar",
     "!/admin",
     "!/admin/**"
@@ -56,6 +57,15 @@
         "maxSize": 40,
         "maxAge": "24h",
         "timeout": "5s"
+      }
+    },
+    {
+      "name": "public-media",
+      "urls": ["/media/**"],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxSize": 60,
+        "maxAge": "30d"
       }
     }
   ]
