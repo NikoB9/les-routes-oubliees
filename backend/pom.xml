@@ -120,6 +120,20 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<executions>
+					<!--
+						Produit build-info.properties, d'ou PublicContentVersionCalculator tire sa
+						signature de build. La version du contenu public n'etant plus derivee de la
+						charge utile rendue, c'est la seule chose qui invalide les instantanes hors
+						ligne deja stockes lorsqu'un deploiement change le rendu Markdown ou la
+						forme des DTO sans toucher aux donnees.
+					-->
+					<execution>
+						<goals>
+							<goal>build-info</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

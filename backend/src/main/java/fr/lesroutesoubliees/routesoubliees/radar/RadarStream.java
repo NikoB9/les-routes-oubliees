@@ -78,9 +78,16 @@ final class RadarStream {
 	 * un etat complet, l'abandonner silencieusement laisserait ce client perime sans qu'il le
 	 * sache ; ferme, il se reconnecte en quelques secondes et recoit un etat frais.
 	 *
-	 * <p>L'emetteur n'est volontairement pas termine ici : {@code complete()} peut attendre le
-	 * verrou d'ecriture, ce qui rebloquerait le diffuseur. C'est l'ecrivain qui le termine a
-	 * son reveil.
+	 * <p>Le lachage interrompt l'ecrivain, et ce n'est pas optionnel. Une file pleine implique
+	 * que l'ecrivain n'attend pas dessus : il ne peut etre que bloque dans {@code send()}, donc
+	 * sur le reseau. Sans interruption, plus rien ne le reveille — le flux vient d'etre retire
+	 * du registre, donc {@code destroy()} ne le voit plus, et les rappels du conteneur
+	 * arriveraient sur un flux deja marque. Seule la fermeture de la requete asynchrone par le
+	 * conteneur, une heure plus tard, finissait par le liberer.
+	 *
+	 * <p>L'emetteur n'est en revanche toujours pas termine ici : {@code complete()} peut
+	 * attendre le verrou d'ecriture, ce qui rebloquerait le diffuseur. C'est l'ecrivain qui le
+	 * termine, une fois reveille.
 	 */
 	void offer(RadarStreamEvent event) {
 		if (closing.get()) {
@@ -92,22 +99,28 @@ final class RadarStream {
 		if (markClosing()) {
 			LOGGER.warn("Flux Radar lache : le client ne suit plus le rythme des diffusions.");
 		}
+		interruptWriter();
 	}
 
 	/**
 	 * Ferme le flux depuis l'exterieur : rappel du conteneur ou arret du contexte.
 	 *
-	 * <p>Seul endroit ou l'ecrivain est interrompu. Reveiller un thread gare sur la file est
-	 * sans risque. Interrompre une ecriture en cours l'est tout autant ici, non parce que ce
-	 * serait reserve a l'arret — {@code onCompletion}, {@code onTimeout} et {@code onError}
-	 * declenchent cette fermeture en exploitation normale — mais parce que ces rappels
-	 * n'arrivent que sur une reponse deja terminee ou mourante : l'ecriture interrompue n'avait
-	 * plus de destinataire.
+	 * <p>L'interruption est inconditionnelle, contrairement au retrait du registre. Adossee au
+	 * meme drapeau, elle devenait sans effet des qu'{@link #offer} avait deja lache le flux :
+	 * {@code onCompletion}, {@code onTimeout} et {@code onError} retournaient alors sans rien
+	 * faire, precisement sur le flux qui avait le plus besoin d'etre libere.
+	 *
+	 * <p>Reveiller un thread gare sur la file est sans risque. Interrompre une ecriture en
+	 * cours l'est egalement : soit le rappel vient du conteneur, et la reponse est deja
+	 * terminee ou mourante ; soit le flux a ete lache pour retard, et couper l'ecriture d'un
+	 * client qui ne suit plus est exactement ce qui est voulu.
 	 */
 	void close() {
-		if (!markClosing()) {
-			return;
-		}
+		markClosing();
+		interruptWriter();
+	}
+
+	private void interruptWriter() {
 		var thread = this.writer;
 		if (thread != null && thread != Thread.currentThread()) {
 			thread.interrupt();
@@ -145,10 +158,15 @@ final class RadarStream {
 		catch (RuntimeException exception) {
 			LOGGER.warn("Flux Radar retire apres une erreur inattendue a l'ecriture.", exception);
 		}
+		// Le drapeau d'interruption est efface avant de terminer l'emetteur, puis restaure. Une
+		// interruption survenue pendant `send()` remonte en `InterruptedIOException`, donc par
+		// la branche `IOException` et non par `InterruptedException` : le drapeau reste alors
+		// arme, et `complete()` s'executerait sur un thread interrompu.
 		finally {
 			markClosing();
+			var wasInterrupted = interrupted || Thread.interrupted();
 			completeQuietly();
-			if (interrupted) {
+			if (wasInterrupted) {
 				Thread.currentThread().interrupt();
 			}
 		}

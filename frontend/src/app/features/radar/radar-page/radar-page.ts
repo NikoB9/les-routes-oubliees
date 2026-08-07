@@ -32,6 +32,9 @@ export class RadarPage implements OnDestroy {
   // la même chose que ne plus leur transmettre le sien.
   protected readonly streamError = signal(false);
   protected readonly publishError = signal(false);
+  // Troisième cause distincte : la carte peut manquer alors que le flux et la publication
+  // fonctionnent. La liste des positions ne dépend pas de Leaflet, le Radar reste utilisable.
+  protected readonly mapUnavailable = signal(false);
   protected readonly selectedParticipant = signal<RadarParticipant | null>(null);
 
   protected readonly portal = computed(() => this.portalStore.portal());
@@ -47,6 +50,8 @@ export class RadarPage implements OnDestroy {
   private map: LeafletMap | null = null;
   private participantMarkers = new Map<string, LeafletMarker>();
   private participantCircles = new Map<string, LeafletCircle>();
+  /** Apparence déjà posée sur chaque repère, pour ne le reconstruire que si elle change. */
+  private participantAppearances = new Map<string, string>();
   private treasureMarker: LeafletMarker | null = null;
   private treasureCircle: LeafletCircle | null = null;
   private layerGroup: LeafletLayerGroup | null = null;
@@ -58,6 +63,7 @@ export class RadarPage implements OnDestroy {
   private streamRetry: Subscription | null = null;
   private fallbackPolling: Subscription | null = null;
   private mapInitializing = false;
+  private streamActive = false;
   private locationPublishInFlight = false;
   private locationPublishPending = false;
   private locationPublished = false;
@@ -159,8 +165,22 @@ export class RadarPage implements OnDestroy {
       });
   }
 
+  /**
+   * Ouvre le flux direct, une seule fois.
+   *
+   * Le garde repose sur un drapeau et non sur `streamSubscription` : un observable qui
+   * échoue de façon synchrone exécute son rappel d'erreur *avant* que `subscribe()` n'ait
+   * retourné, donc avant l'affectation. Un garde fondé sur la souscription serait alors
+   * réarmé par cette affectation tardive et bloquerait définitivement la reprise programmée.
+   *
+   * Aucun rappel `complete` : le flux `EventSource` ne se termine jamais de lui-même, il ne
+   * fait qu'échouer ou être démonté à la destruction.
+   */
   private startEvents() {
-    this.streamSubscription?.unsubscribe();
+    if (this.streamActive || this.destroyed) {
+      return;
+    }
+    this.streamActive = true;
     this.streamSubscription = this.radarApi
       .events()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -170,6 +190,7 @@ export class RadarPage implements OnDestroy {
         // une reprise est armée, sans quoi la session entière resterait en mode dégradé — le
         // défaut même que la reconnexion native vient de supprimer.
         error: () => {
+          this.streamActive = false;
           this.startFallbackPolling();
           this.scheduleStreamRetry();
         },
@@ -253,6 +274,11 @@ export class RadarPage implements OnDestroy {
     };
     this.lastLocation = payload;
     this.locationState.set('ready');
+    // La réception des autres suit l'entrée effective dans le Radar, jamais le chargement de
+    // la carte : adossée à `ensureMap`, elle disparaissait avec Leaflet, et la publication
+    // avec elle puisqu'un import en échec interrompait cette méthode avant les deux appels
+    // qui suivent.
+    this.startEvents();
     await this.ensureMap(payload);
     this.startLocationInterval();
     this.sendLatestLocation();
@@ -288,6 +314,11 @@ export class RadarPage implements OnDestroy {
    * sinon tous deux le garde pendant le chargement de Leaflet, et la seconde initialisation
    * échouerait sur un conteneur déjà pris. Il retombe dans tous les cas, de sorte qu'un relevé
    * ultérieur puisse réessayer si l'élément n'était pas encore rendu.
+   *
+   * L'échec est absorbé plutôt que propagé. Un chargement de Leaflet en échec — un fragment
+   * périmé après un redéploiement, par exemple — interrompait sinon `handlePosition()` avant
+   * le démarrage de la republication : l'aventurier se croyait présent alors qu'il ne
+   * publiait plus rien et restait invisible des autres, sans le moindre message.
    */
   private async ensureMap(location: RadarLocationPayload) {
     if (this.map || this.mapInitializing || this.destroyed) {
@@ -295,7 +326,7 @@ export class RadarPage implements OnDestroy {
     }
     this.mapInitializing = true;
     try {
-      this.leaflet = await import('leaflet');
+      this.leaflet = await this.loadLeaflet();
       const element = this.mapElement()?.nativeElement;
       if (!element || !this.leaflet || this.destroyed) {
         return;
@@ -306,12 +337,35 @@ export class RadarPage implements OnDestroy {
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(this.map);
       this.layerGroup = this.leaflet.layerGroup().addTo(this.map);
-      this.startEvents();
+      this.mapUnavailable.set(false);
       this.renderSnapshot();
+    }
+    catch {
+      this.mapUnavailable.set(true);
     }
     finally {
       this.mapInitializing = false;
     }
+  }
+
+  /**
+   * Chargement paresseux de Leaflet, isolé pour être reproductible en test.
+   *
+   * Le défaut corrigé ici — un fragment périmé après un redéploiement qui emportait aussi la
+   * publication de position — est invisible en exploitation : personne ne voit qu'il ne
+   * publie plus. Un échec impossible à simuler est un échec qui revient.
+   *
+   * Le `default` est déballé parce que Leaflet 1.9.4 ne publie qu'un paquet UMD
+   * (`main: dist/leaflet-src.js`, ni `module` ni `exports`). Ses `exports.map = …` sont
+   * enfermés dans la fabrique UMD, donc invisibles à l'analyse statique du bundler : aucun
+   * export nommé n'est synthétisé et l'espace de noms ne porte que `default`. `L.map` était
+   * alors `undefined` et la carte échouait partout, en développement comme en production —
+   * `@types/leaflet` promettant des exports nommés, la compilation ne disait rien. Le repli
+   * sur l'espace de noms couvre un empaquetage qui exposerait un jour ces exports.
+   */
+  private async loadLeaflet(): Promise<LeafletModule> {
+    const module = await import('leaflet');
+    return (module as unknown as { default?: LeafletModule }).default ?? (module as unknown as LeafletModule);
   }
 
   private startLocationInterval() {
@@ -379,6 +433,9 @@ export class RadarPage implements OnDestroy {
       if (!activeIds.has(id)) {
         marker.remove();
         this.participantMarkers.delete(id);
+        // Sans cet oubli, un participant qui revient garderait l'apparence de son repère
+        // precedent : le repère serait recréé, mais jamais réhabillé.
+        this.participantAppearances.delete(id);
       }
     }
     for (const [id, circle] of this.participantCircles) {
@@ -393,22 +450,36 @@ export class RadarPage implements OnDestroy {
     this.renderTreasure(snapshot);
   }
 
+  /**
+   * Le repère n'est reconstruit que si son apparence a changé.
+   *
+   * `setIcon` remplace l'élément DOM du repère : l'avatar `<img>` est donc recréé, et le
+   * navigateur redemande l'image — au service worker, qui la sert depuis son cache, mais la
+   * décode à chaque fois. Or le rendu rejoue *tous* les participants à chaque instantané, et
+   * les instantanés arrivent au rythme des publications de position de toute la compagnie.
+   * L'apparence, elle, ne dépend que de l'avatar et de deux drapeaux : elle est presque
+   * toujours identique d'un instantané au suivant. Seules les coordonnées bougent, et
+   * `setLatLng` déplace le repère sans le reconstruire.
+   */
   private renderParticipant(participant: RadarParticipant, current: boolean) {
     if (!this.leaflet || !this.map) {
       return;
     }
-    const icon = this.leaflet.divIcon({
-      className: `radar-avatar-marker${current ? ' current' : ''}${participant.stale ? ' stale' : ''}`,
-      html: this.markerHtml(participant),
-      iconSize: [44, 44],
-      iconAnchor: [22, 22],
-    });
+    const className = `radar-avatar-marker${current ? ' current' : ''}${participant.stale ? ' stale' : ''}`;
+    const html = this.markerHtml(participant);
+    const appearance = `${className}|${html}`;
+    const icon = this.leaflet.divIcon({ className, html, iconSize: [44, 44], iconAnchor: [22, 22] });
     const latLng: [number, number] = [participant.latitude, participant.longitude];
     const marker = this.participantMarkers.get(participant.identityId);
     if (marker) {
-      marker.setLatLng(latLng).setIcon(icon).setPopupContent(this.participantPopup(participant));
+      marker.setLatLng(latLng).setPopupContent(this.participantPopup(participant));
+      if (this.participantAppearances.get(participant.identityId) !== appearance) {
+        this.participantAppearances.set(participant.identityId, appearance);
+        marker.setIcon(icon);
+      }
     }
     else {
+      this.participantAppearances.set(participant.identityId, appearance);
       this.participantMarkers.set(
         participant.identityId,
         this.leaflet.marker(latLng, { icon }).bindPopup(this.participantPopup(participant)).addTo(this.map),

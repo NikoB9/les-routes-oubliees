@@ -859,7 +859,7 @@
 
     @if (mediaError()) {
       <p id="media-error-summary" #mediaErrorSummary class="alert" role="alert" tabindex="-1">
-        Impossible de traiter les médias pour le moment. Le fichier et le texte alternatif sont obligatoires.
+        {{ mediaErrorMessage() }}
       </p>
     }
     @if (mediaSaved()) {
@@ -1084,7 +1084,7 @@
     </div>
 
     @if (portalError()) {
-      <p class="alert" role="alert">Impossible de mettre à jour les identités.</p>
+      <p class="alert" role="alert">{{ portalErrorMessage() }}</p>
     }
     @if (portalSaved()) {
       <p class="status" role="status">Attribution mise à jour.</p>
@@ -1099,22 +1099,32 @@
               <p>{{ identity.adventurerName || identity.accessMode }}</p>
               <label>
                 Mode
-                <select #modeSelect [value]="identity.accessMode" (change)="updatePortalIdentityMode(identity, modeSelect.value)">
+                <select
+                  name="portalMode"
+                  [ngModel]="identity.accessMode"
+                  [ngModelOptions]="{ standalone: true }"
+                  (ngModelChange)="updatePortalIdentityMode(identity, $event)"
+                >
                   @for (mode of portalModes; track mode) {
-                    <option [value]="mode">{{ mode }}</option>
+                    <option [value]="mode" [disabled]="mode === 'ADVENTURER' && !identity.adventurerId">
+                      {{ mode }}
+                    </option>
                   }
                 </select>
               </label>
               <label>
                 Aventurier
                 <select
-                  #adventurerSelect
-                  [value]="identity.adventurerId || ''"
-                  (change)="updatePortalIdentityAdventurer(identity, adventurerSelect.value)"
+                  name="portalAdventurer"
+                  [ngModel]="identity.adventurerId || ''"
+                  [ngModelOptions]="{ standalone: true }"
+                  (ngModelChange)="updatePortalIdentityAdventurer(identity, $event)"
                 >
                   <option value="">Aucun</option>
-                  @for (adventurer of adventurers(); track adventurer.id) {
-                    <option [value]="adventurer.id">{{ adventurer.name }}</option>
+                  @for (adventurer of assignableAdventurers(identity); track adventurer.id) {
+                    <option [value]="adventurer.id">
+                      {{ adventurer.name }}{{ adventurer.visible ? '' : ' (masqué)' }}
+                    </option>
                   }
                 </select>
               </label>

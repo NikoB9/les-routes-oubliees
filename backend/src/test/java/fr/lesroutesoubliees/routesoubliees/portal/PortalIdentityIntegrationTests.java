@@ -1,5 +1,6 @@
 package fr.lesroutesoubliees.routesoubliees.portal;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
@@ -153,6 +154,56 @@ class PortalIdentityIntegrationTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.accessMode").value("UNASSIGNED"))
 			.andExpect(jsonPath("$.adventurerId").doesNotExist());
+	}
+
+	/**
+	 * Cloudflare Access emet un sujet par identite de fournisseur, pas par personne : la meme
+	 * adresse revient avec un sujet different des que le joueur change de methode de connexion.
+	 * Sans reassociation, l'insertion violait l'unicite de l'adresse et le joueur restait
+	 * bloque hors du portail, sans recours administrable.
+	 */
+	@Test
+	void rebindsTheIdentityWhenCloudflareIssuesANewSubjectForTheSameEmail() throws Exception {
+		var email = "portal-test-5@example.invalid";
+		mvc.perform(get("/api/portal/me").with(authentication(portalUser("subject-portal-5a", email))))
+			.andExpect(status().isOk());
+		var identityId = identityId(email);
+
+		mvc.perform(get("/api/portal/me").with(authentication(portalUser("subject-portal-5b", email))))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.identity.id").value(identityId.toString()));
+
+		assertThat(jdbc.queryForObject(
+			"select cloudflare_subject from portal_identities where id = ?", String.class, identityId))
+			.as("le sujet doit avoir ete reassocie a l'identite existante")
+			.isEqualTo("subject-portal-5b");
+		assertThat(jdbc.queryForObject(
+			"select count(*) from portal_identities where normalized_email = ?", Long.class, email))
+			.as("une adresse ne doit jamais porter deux identites")
+			.isEqualTo(1L);
+	}
+
+	/** La garantie que voit reellement le joueur : son personnage survit au changement de sujet. */
+	@Test
+	void keepsTheChosenAdventurerAcrossASubjectChange() throws Exception {
+		var email = "portal-test-6@example.invalid";
+		var adventurerId = visibleAdventurerId();
+		mvc.perform(post("/api/portal/me/adventurer")
+				.with(authentication(portalUser("subject-portal-6a", email)))
+				.with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"adventurerId\":\"%s\"}".formatted(adventurerId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.identity.accessMode").value("ADVENTURER"));
+
+		mvc.perform(get("/api/portal/me").with(authentication(portalUser("subject-portal-6b", email))))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.identity.accessMode").value("ADVENTURER"))
+			.andExpect(jsonPath("$.identity.adventurerId").value(adventurerId.toString()));
+	}
+
+	private UUID identityId(String email) {
+		return jdbc.queryForObject("select id from portal_identities where normalized_email = ?", UUID.class, email);
 	}
 
 	private UUID visibleAdventurerId() {

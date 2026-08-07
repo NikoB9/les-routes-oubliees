@@ -1,0 +1,18 @@
+# Limitation de debit de la publication Home Assistant.
+#
+# A installer dans /etc/nginx/conf.d/ : `limit_req_zone` est une directive de contexte
+# `http`, elle ne peut pas figurer dans le bloc `server` de sites-available.
+#
+# POST /api/integrations/home-assistant/radar/treasure-position est le seul chemin exempte
+# de Cloudflare Access, donc la seule surface joignable depuis Internet sans identite. Il
+# n'est protege que par un jeton Bearer : sans plafond, ce jeton peut etre force
+# indefiniment, et seule une ligne de journal par tentative en garderait trace.
+#
+# Cle volontairement constante plutot que $binary_remote_addr : derriere cloudflared toutes
+# les requetes arrivent de 127.0.0.1, une cle par adresse ne discriminerait rien. Un plafond
+# global convient d'autant mieux qu'un seul client legitime publie sur ce chemin, et il ne
+# peut pas etre contourne par rotation d'adresse.
+#
+# 30 requetes par minute : Home Assistant publie une position toutes les quelques secondes
+# au plus dense, la marge reste confortable.
+limit_req_zone $server_name zone=lro_home_assistant:1m rate=30r/m;

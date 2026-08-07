@@ -1,6 +1,5 @@
 package fr.lesroutesoubliees.routesoubliees.media;
 
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -8,6 +7,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
@@ -28,6 +28,52 @@ import fr.lesroutesoubliees.routesoubliees.shared.config.SiteProperties;
 class MediaService {
 
 	private static final List<String> ALLOWED_TYPES = List.of("image/png", "image/jpeg", "image/webp");
+
+	/**
+	 * Surface maximale d'une image acceptee, en pixels.
+	 *
+	 * <p>Le serveur ne decode plus rien, mais les navigateurs qui afficheront le fichier, eux,
+	 * l'allouent : cinquante millions de pixels representent deja deux cents mebioctets une
+	 * fois la trame construite. La valeur reste tres au-dessus d'une carte scannee ou d'une
+	 * photo d'appareil, qui depassent rarement vingt-cinq millions.
+	 */
+	private static final long MAX_IMAGE_PIXELS = 50_000_000L;
+
+	/** Condition de publication d'une quete, partagee par ses cinq colonnes Markdown. */
+	private static final String PUBLISHED_QUEST = "status = 'PUBLISHED' and visible_to_players = true";
+
+	/**
+	 * Tous les endroits ou une URL de media peut apparaitre.
+	 *
+	 * <p>Une seule liste pour les deux questions posees a un media — peut-il etre servi, peut-il
+	 * etre supprime — parce que deux listes tenues a la main ont derive. Celle de la suppression
+	 * ignorait {@code site_settings.logo_path} et {@code map_visions.asset_path}, alors que le
+	 * logo du site et l'image de la carte revelee sont des medias par conception : la validation
+	 * de chemin les autorise explicitement. Un administrateur pouvait donc detruire l'un ou
+	 * l'autre — ligne et fichier — et ne decouvrait la panne qu'ensuite, en 404 sur le site
+	 * public, sans recours puisque le fichier n'existe plus.
+	 *
+	 * <p>{@code publicWhen} est la condition de visibilite publique de la ligne, et la seule
+	 * difference entre les deux questions : la suppression l'ignore, la diffusion l'applique. Un
+	 * brouillon porte donc {@code false} — il retient un media sans jamais le rendre public.
+	 *
+	 * <p>Les requetes sont assemblees a partir de cette liste constante, jamais d'une valeur
+	 * recue. Seule l'URL du media voyage en parametre.
+	 */
+	private static final List<MediaReference> MEDIA_REFERENCES = List.of(
+		new MediaReference("site_settings", "logo_path", true, "true"),
+		new MediaReference("company_profiles", "emblem_path", true, "active = true"),
+		new MediaReference("adventurers", "avatar_path", true, "visible = true"),
+		new MediaReference("map_visions", "asset_path", true, "active = true and status = 'PUBLISHED'"),
+		new MediaReference("site_settings", "accessibility_information_markdown", false, "true"),
+		new MediaReference("home_messages", "content_markdown", false, "active = true and status = 'PUBLISHED'"),
+		new MediaReference("company_profiles", "long_description_markdown", false, "active = true"),
+		new MediaReference("map_visions", "description_markdown", false, "active = true and status = 'PUBLISHED'"),
+		new MediaReference("quests", "important_events_markdown", false, PUBLISHED_QUEST),
+		new MediaReference("quests", "discovered_clues_markdown", false, PUBLISHED_QUEST),
+		new MediaReference("quests", "completed_trials_markdown", false, PUBLISHED_QUEST),
+		new MediaReference("quests", "extra_content_markdown", false, PUBLISHED_QUEST),
+		new MediaReference("quests", "admin_draft_markdown", false, "false"));
 
 	private final MediaAssetRepository mediaAssets;
 	private final JdbcTemplate jdbc;
@@ -121,69 +167,45 @@ class MediaService {
 		audit.record(actorEmail, "MEDIA_DELETED", "MEDIA", id.toString(), "Média supprimé");
 	}
 
+	/** Un media retenu quelque part, brouillon compris, ne peut pas etre detruit. */
 	private boolean isReferenced(MediaAsset asset) {
-		var url = "/media/" + asset.id();
-		var textPattern = "%" + url + "%";
-		var exactReferences = jdbc.queryForObject("""
-			select
-			    (select count(*) from company_profiles where emblem_path = ?) +
-			    (select count(*) from adventurers where avatar_path = ?)
-			""", Integer.class, url, url);
-		var markdownReferences = jdbc.queryForObject("""
-			select count(*) from quests
-			where important_events_markdown like ?
-			   or discovered_clues_markdown like ?
-			   or completed_trials_markdown like ?
-			   or extra_content_markdown like ?
-			   or admin_draft_markdown like ?
-			""", Integer.class, textPattern, textPattern, textPattern, textPattern, textPattern);
-		return exactReferences != null && exactReferences > 0 || markdownReferences != null && markdownReferences > 0;
+		return countReferences(asset, false) > 0;
 	}
 
+	/** Un media n'est servi que s'il est atteignable depuis un contenu reellement publie. */
 	private boolean isPubliclyReferenced(MediaAsset asset) {
+		return countReferences(asset, true) > 0;
+	}
+
+	private long countReferences(MediaAsset asset, boolean publicOnly) {
 		var url = "/media/" + asset.id();
-		var textPattern = "%" + url + "%";
-		var publicReferences = jdbc.queryForObject("""
-			select
-			    (select count(*) from site_settings where logo_path = ?) +
-			    (select count(*) from company_profiles where active = true and emblem_path = ?) +
-			    (select count(*) from adventurers where visible = true and avatar_path = ?) +
-			    (select count(*) from map_visions where active = true and status = 'PUBLISHED' and asset_path = ?)
-			""", Integer.class, url, url, url, url);
-		var markdownReferences = jdbc.queryForObject("""
-			select
-			    (select count(*) from site_settings where accessibility_information_markdown like ?) +
-			    (select count(*) from home_messages
-			        where active = true
-			          and status = 'PUBLISHED'
-			          and content_markdown like ?) +
-			    (select count(*) from company_profiles
-			        where active = true
-			          and long_description_markdown like ?) +
-			    (select count(*) from map_visions
-			        where active = true
-			          and status = 'PUBLISHED'
-			          and description_markdown like ?) +
-			    (select count(*) from quests
-			        where status = 'PUBLISHED'
-			          and visible_to_players = true
-			          and (
-			            important_events_markdown like ?
-			            or discovered_clues_markdown like ?
-			            or completed_trials_markdown like ?
-			            or extra_content_markdown like ?
-			          ))
-			""", Integer.class,
-			textPattern,
-			textPattern,
-			textPattern,
-			textPattern,
-			textPattern,
-			textPattern,
-			textPattern,
-			textPattern);
-		return publicReferences != null && publicReferences > 0
-			|| markdownReferences != null && markdownReferences > 0;
+		var sql = MEDIA_REFERENCES.stream()
+			.map(reference -> reference.countSubquery(publicOnly))
+			.collect(Collectors.joining(" + ", "select ", ""));
+		// Les parametres suivent le meme parcours de la liste que les sous-requetes : leur ordre
+		// ne peut pas diverger de celui des `?`.
+		var parameters = MEDIA_REFERENCES.stream()
+			.map(reference -> reference.exact() ? url : "%" + url + "%")
+			.toArray();
+		var total = jdbc.queryForObject(sql, Long.class, parameters);
+		return total == null ? 0 : total;
+	}
+
+	/**
+	 * Un endroit ou une URL de media peut apparaitre.
+	 *
+	 * @param table      table interrogee
+	 * @param column     colonne susceptible de porter l'URL
+	 * @param exact      l'URL est la valeur entiere de la colonne, sinon elle y est incluse
+	 * @param publicWhen condition rendant la ligne publique, {@code "true"} si elle l'est
+	 *                   toujours et {@code "false"} si elle ne l'est jamais
+	 */
+	private record MediaReference(String table, String column, boolean exact, String publicWhen) {
+
+		String countSubquery(boolean publicOnly) {
+			return "(select count(*) from %s where %s and %s %s ?)"
+				.formatted(table, publicOnly ? publicWhen : "true", column, exact ? "=" : "like");
+		}
 	}
 
 	private String normalizeAltText(String value) {
@@ -221,12 +243,38 @@ class MediaService {
 		if (bytes.length == 0) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le fichier est vide.");
 		}
-		return switch (mimeType) {
+		var dimensions = switch (mimeType) {
 			case "image/png" -> validatePng(bytes);
 			case "image/jpeg" -> validateJpeg(bytes);
 			case "image/webp" -> validateWebp(bytes);
 			default -> throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Type de media refuse.");
 		};
+		return validateDimensions(dimensions);
+	}
+
+	/**
+	 * Refuse une image dont les dimensions annoncees sont inexploitables ou demesurees.
+	 *
+	 * <p>Positivite d'abord. {@link #readHeaderDimensions} la garantit deja pour PNG et JPEG,
+	 * mais pas le chemin WebP : la variante avec perte lit un champ de quatorze bits sans
+	 * verifier le code de demarrage du bloc, et rend {@code 0} sur un fichier forge. Le
+	 * controle est place ici pour valoir pour les trois formats.
+	 *
+	 * <p>Surface ensuite, y compris pour WebP dont les dimensions n'ont jamais ete decodees
+	 * ici : le fichier serait servi tel quel aux navigateurs, qui l'alloueraient a notre place.
+	 *
+	 * <p>Le produit est calcule en {@code long} : deux entiers de l'ordre de 50 000
+	 * deborderaient un {@code int} et le controle se retournerait contre lui-meme.
+	 */
+	private ImageDimensions validateDimensions(ImageDimensions dimensions) {
+		if (dimensions.width() <= 0 || dimensions.height() <= 0) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dimensions d'image invalides.");
+		}
+		if ((long) dimensions.width() * dimensions.height() > MAX_IMAGE_PIXELS) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+				"Image trop grande : " + (MAX_IMAGE_PIXELS / 1_000_000) + " millions de pixels au maximum.");
+		}
+		return dimensions;
 	}
 
 	private ImageDimensions validatePng(byte[] bytes) {
@@ -241,14 +289,14 @@ class MediaService {
 			|| bytes[7] != 0x0A) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Signature PNG invalide.");
 		}
-		return imageIoDimensions(bytes);
+		return headerDimensions(bytes);
 	}
 
 	private ImageDimensions validateJpeg(byte[] bytes) {
 		if (bytes.length < 4 || bytes[0] != (byte) 0xFF || bytes[1] != (byte) 0xD8) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Signature JPEG invalide.");
 		}
-		return imageIoDimensions(bytes);
+		return headerDimensions(bytes);
 	}
 
 	private ImageDimensions validateWebp(byte[] bytes) {
@@ -266,13 +314,18 @@ class MediaService {
 		if (bytes[12] == 0x56 && bytes[13] == 0x50 && bytes[14] == 0x38 && bytes[15] == 0x20) {
 			return new ImageDimensions(littleEndian16(bytes, 26) & 0x3FFF, littleEndian16(bytes, 28) & 0x3FFF);
 		}
+		// VP8L, sans perte. Apres l'octet de signature, un flux de bits petit-boutiste porte
+		// 14 bits de largeur moins un, 14 bits de hauteur moins un, un bit alpha et trois bits
+		// de version. La hauteur s'etale donc sur trois octets : les deux bits de poids fort de
+		// b1, la totalite de b2, puis le quartet bas de b3 — le quartet haut appartenant a
+		// alpha et a la version, il doit etre masque.
 		if (bytes[12] == 0x56 && bytes[13] == 0x50 && bytes[14] == 0x38 && bytes[15] == 0x4C) {
 			var b0 = unsigned(bytes[21]);
 			var b1 = unsigned(bytes[22]);
 			var b2 = unsigned(bytes[23]);
 			var b3 = unsigned(bytes[24]);
 			var width = 1 + (((b1 & 0x3F) << 8) | b0);
-			var height = 1 + ((b3 << 6) | (b2 >> 2) | ((b1 & 0xC0) << 6));
+			var height = 1 + (((b1 >> 6) & 0x03) | (b2 << 2) | ((b3 & 0x0F) << 10));
 			return new ImageDimensions(width, height);
 		}
 		if (bytes[12] == 0x56 && bytes[13] == 0x50 && bytes[14] == 0x38 && bytes[15] == 0x58) {
@@ -283,16 +336,53 @@ class MediaService {
 		throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Format WebP invalide.");
 	}
 
-	private ImageDimensions imageIoDimensions(byte[] bytes) {
-		try {
-			BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
-			if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0) {
-				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image invalide.");
-			}
-			return new ImageDimensions(image.getWidth(), image.getHeight());
+	/**
+	 * Dimensions d'un PNG ou d'un JPEG, lues dans l'en-tete.
+	 *
+	 * <p>Volontairement sans {@code ImageIO.read} : decoder allouait
+	 * {@code largeur x hauteur x 4} octets pour n'en retirer que deux entiers. PNG et JPEG
+	 * atteignant des taux de compression extremes sur une image uniforme, un fichier de
+	 * quelques mebioctets suffisait a reclamer plusieurs gibioctets et a emporter la JVM —
+	 * donc le Radar en pleine partie. Seul l'en-tete est desormais lu, et la surface annoncee
+	 * est plafonnee par {@link #validateDimensions}.
+	 *
+	 * <p>Consequence assumee : un fichier a l'en-tete valide mais au corps corrompu n'est plus
+	 * detecte ici. Il ne s'affichera pas dans le navigateur, sans autre consequence — c'est le
+	 * compromis deja retenu pour WebP, dont les dimensions ont toujours ete lues ainsi.
+	 */
+	private ImageDimensions headerDimensions(byte[] bytes) {
+		var dimensions = readHeaderDimensions(bytes);
+		if (dimensions == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image invalide.");
 		}
-		catch (IOException ex) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image invalide.", ex);
+		return dimensions;
+	}
+
+	/** @return les dimensions declarees, ou {@code null} si l'en-tete est illisible */
+	private ImageDimensions readHeaderDimensions(byte[] bytes) {
+		try (var input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+			if (input == null) {
+				return null;
+			}
+			var readers = ImageIO.getImageReaders(input);
+			if (!readers.hasNext()) {
+				return null;
+			}
+			var reader = readers.next();
+			try {
+				reader.setInput(input);
+				var width = reader.getWidth(0);
+				var height = reader.getHeight(0);
+				return width > 0 && height > 0 ? new ImageDimensions(width, height) : null;
+			}
+			finally {
+				reader.dispose();
+			}
+		}
+		// Un en-tete tronque ou incoherent fait lever les lecteurs de facons variees, y compris
+		// des exceptions non verifiees : toutes signifient la meme chose, l'image est refusee.
+		catch (IOException | RuntimeException exception) {
+			return null;
 		}
 	}
 

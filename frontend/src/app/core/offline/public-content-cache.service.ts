@@ -21,10 +21,21 @@ const MAP_KEY = 'map';
 const QUESTS_KEY = 'quests';
 const QUEST_DETAIL_PREFIX = 'quest:';
 
+/**
+ * Repère une URL de média dans l'instantané, quel que soit l'endroit où elle figure.
+ *
+ * Même motif que `MarkdownRenderer.MEDIA_IMAGE` côté serveur. Balayer le JSON sérialisé
+ * plutôt qu'énumérer les champs couvre d'un seul geste les chemins explicites — logo,
+ * emblème, avatars, image de carte — et les images intégrées dans le HTML déjà rendu, sans
+ * qu'une évolution des DTO puisse laisser un média en arrière.
+ */
+const MEDIA_URL = /\/media\/[0-9a-fA-F-]{36}/g;
+
 @Injectable({ providedIn: 'root' })
 export class PublicContentCacheService {
   private readonly http = inject(HttpClient);
   private databasePromise: Promise<IDBDatabase> | null = null;
+  private prefetchedVersion: string | null = null;
 
   async refreshIfNeeded(): Promise<void> {
     if (!this.supportsIndexedDb()) {
@@ -36,7 +47,11 @@ export class PublicContentCacheService {
     );
     const localSnapshot = await this.readSnapshot();
 
-    if (localSnapshot?.version === remoteVersion.version) {
+    if (localSnapshot && localSnapshot.version === remoteVersion.version) {
+      // Le contenu n'a pas bougé, mais les médias ne sont pas forcément déjà rapatriés :
+      // voir `prefetchMedia`. Volontairement non attendu, l'affichage des pages ne doit pas
+      // dépendre du rapatriement des images.
+      void this.prefetchMedia(localSnapshot);
       return;
     }
 
@@ -44,6 +59,47 @@ export class PublicContentCacheService {
       this.http.get<PublicOfflineSnapshot>('/api/public/offline-snapshot'),
     );
     await this.writeSnapshot(snapshot);
+    void this.prefetchMedia(snapshot);
+  }
+
+  /**
+   * Fait entrer dans le cache du service worker les médias référencés par l'instantané.
+   *
+   * Sans cela, une image n'est disponible hors ligne que si la page qui la porte a déjà été
+   * consultée en ligne : un joueur qui part sur le terrain sans avoir ouvert la Carte n'en
+   * aurait aucune.
+   *
+   * Le rapatriement ne peut pas être adossé à la seule écriture d'un nouvel instantané. Au
+   * tout premier chargement, le service worker n'a pas encore la main — Angular ne
+   * l'enregistre qu'une fois l'application stabilisée — et les visites suivantes trouvent la
+   * version inchangée : les deux conditions ne coïncideraient jamais et aucun média ne serait
+   * rapatrié. Il est donc tenté à chaque rafraîchissement, et n'est marqué comme fait qu'une
+   * fois réellement lancé.
+   */
+  private async prefetchMedia(snapshot: PublicOfflineSnapshot): Promise<void> {
+    // Sans service worker aux commandes, aucun cache ne recueillerait ces réponses : le
+    // trafic serait pur gaspillage. C'est le cas en développement, le service worker n'étant
+    // enregistré qu'en production. Aucun marquage ici : la tentative doit se répéter jusqu'à
+    // ce qu'il prenne la main.
+    if (typeof navigator === 'undefined' || !navigator.serviceWorker?.controller) {
+      return;
+    }
+
+    // Une fois par version et par chargement de page : les requêtes suivantes seraient
+    // servies depuis le cache du service worker, mais les répéter à chaque navigation reste
+    // du travail inutile.
+    if (this.prefetchedVersion === snapshot.version) {
+      return;
+    }
+    this.prefetchedVersion = snapshot.version;
+
+    const urls = new Set(JSON.stringify(snapshot).match(MEDIA_URL) ?? []);
+
+    // `allSettled` et non `all` : un média supprimé entre-temps ne doit jamais faire échouer
+    // le rafraîchissement, ni empêcher la mise en cache des autres.
+    await Promise.allSettled(
+      [...urls].map((url) => fetch(url, { credentials: 'same-origin' })),
+    );
   }
 
   shouldUseOfflineFallback(error: unknown): boolean {

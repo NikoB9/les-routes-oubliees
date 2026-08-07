@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -30,6 +31,7 @@ import {
   AdminMapPreview,
   AdminMapVision,
   AdminMapVisionUpsert,
+  AdminPortalAssignmentUpdate,
   AdminPortalIdentity,
   AdminRadarSettings,
   MapMarkerLabelPosition,
@@ -65,6 +67,28 @@ interface ActiveMarkdownField {
   target: MarkdownTarget;
   field: MarkdownField;
 }
+
+/**
+ * Messages de la médiathèque.
+ *
+ * Un message unique servait les trois causes, et réclamait le texte alternatif quelle que
+ * soit la vraie raison : devant un fichier trop lourd, l'administrateur corrigeait un champ
+ * déjà valide puis échouait de nouveau, sans jamais apprendre la taille en cause.
+ */
+const MEDIA_ERROR_REQUIRED_FIELDS = 'Le fichier et le texte alternatif sont obligatoires.';
+const MEDIA_ERROR_FILE_TOO_LARGE =
+  "Le fichier est trop volumineux pour être envoyé. Choisissez une image plus légère, ou réduisez sa définition avant de la déposer.";
+const MEDIA_ERROR_GENERIC = 'Impossible de traiter les médias pour le moment.';
+
+/**
+ * Messages des identités du portail.
+ *
+ * La liste des aventuriers propose aussi ceux qu'un autre joueur a déjà choisis : le conflit
+ * est un aboutissement courant, pas un incident. Le message générique laissait croire à une
+ * panne et n'indiquait pas la seule chose utile — que l'aventurier est pris.
+ */
+const PORTAL_GENERIC_ERROR = 'Impossible de mettre à jour les identités.';
+const PORTAL_ADVENTURER_TAKEN_ERROR = 'Cet aventurier est déjà attribué à une autre identité.';
 
 @Component({
   selector: 'app-admin-shell',
@@ -123,6 +147,7 @@ export class AdminShell {
   protected readonly statuses: QuestStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
   protected readonly media = signal<AdminMedia[]>([]);
   protected readonly mediaError = signal(false);
+  protected readonly mediaErrorMessage = signal(MEDIA_ERROR_GENERIC);
   protected readonly mediaSaved = signal(false);
   protected readonly selectedFile = signal<File | null>(null);
   protected readonly mediaAltText = signal('');
@@ -182,6 +207,7 @@ export class AdminShell {
   protected readonly radarSaved = signal(false);
   protected readonly portalIdentities = signal<AdminPortalIdentity[]>([]);
   protected readonly portalError = signal(false);
+  protected readonly portalErrorMessage = signal(PORTAL_GENERIC_ERROR);
   protected readonly portalSaved = signal(false);
   protected readonly portalModes: PortalAccessMode[] = ['UNASSIGNED', 'ADVENTURER', 'GUEST'];
   protected readonly siteStatuses: SiteStatus[] = ['ONLINE', 'MAINTENANCE'];
@@ -931,7 +957,7 @@ export class AdminShell {
     const file = this.selectedFile();
     const altText = this.mediaAltText().trim();
     if (!file || !altText) {
-      this.showMediaError();
+      this.showMediaError(MEDIA_ERROR_REQUIRED_FIELDS);
       return;
     }
     this.mediaApi.uploadAdminMedia(file, altText).subscribe({
@@ -944,7 +970,7 @@ export class AdminShell {
         this.loadDashboard();
         this.loadAuditLogs();
       },
-      error: () => this.showMediaError(),
+      error: (error: unknown) => this.showMediaError(this.mediaUploadErrorMessage(error)),
     });
   }
 
@@ -1002,37 +1028,63 @@ export class AdminShell {
     });
   }
 
+  /**
+   * Aventuriers qu'il est permis de proposer pour une identité.
+   *
+   * Un aventurier masqué est refusé par le serveur : le laisser dans la liste ne menait qu'à
+   * une erreur. Celui déjà attribué y reste pourtant même masqué — l'en retirer laisserait le
+   * select sans option correspondante, donc vide, effaçant de l'écran l'attribution qu'il a
+   * justement pour rôle de montrer.
+   */
+  protected assignableAdventurers(identity: AdminPortalIdentity): AdminAdventurer[] {
+    return this.adventurers().filter(
+      (adventurer) => adventurer.visible || adventurer.id === identity.adventurerId,
+    );
+  }
+
   protected updatePortalIdentityMode(identity: AdminPortalIdentity, accessMode: string) {
     if (!this.portalModes.includes(accessMode as PortalAccessMode)) {
       return;
     }
-    this.adminApi.updatePortalAssignment(identity.id, {
+    this.savePortalAssignment(identity, {
       accessMode: accessMode as PortalAccessMode,
       adventurerId: accessMode === 'ADVENTURER' ? identity.adventurerId : null,
-    }).subscribe({
-      next: () => {
-        this.portalSaved.set(true);
-        this.portalError.set(false);
-        this.loadPortalIdentities();
-        this.loadAuditLogs();
-      },
-      error: () => this.portalError.set(true),
     });
   }
 
+  /**
+   * Retirer l'aventurier remet l'identité en attente de choix, et non en invité : c'est le seul
+   * des deux modes qui rende la main au joueur. Le mode invité reste accessible explicitement
+   * par l'autre liste, qui est faite pour cela.
+   *
+   * Le mode était auparavant forcé à `ADVENTURER` quel que soit le choix, si bien que
+   * « Aucun » formait une attribution sans aventurier — que le serveur rejette.
+   */
   protected updatePortalIdentityAdventurer(identity: AdminPortalIdentity, adventurerId: string) {
-    this.adminApi.updatePortalAssignment(identity.id, {
-      accessMode: 'ADVENTURER',
-      adventurerId: adventurerId || null,
-    }).subscribe({
+    this.savePortalAssignment(identity, adventurerId
+      ? { accessMode: 'ADVENTURER', adventurerId }
+      : { accessMode: 'UNASSIGNED', adventurerId: null });
+  }
+
+  private savePortalAssignment(identity: AdminPortalIdentity, update: AdminPortalAssignmentUpdate) {
+    this.portalSaved.set(false);
+    this.adminApi.updatePortalAssignment(identity.id, update).subscribe({
       next: () => {
         this.portalSaved.set(true);
         this.portalError.set(false);
         this.loadPortalIdentities();
         this.loadAuditLogs();
       },
-      error: () => this.portalError.set(true),
+      error: (failure: unknown) => this.showPortalError(failure),
     });
+  }
+
+  /** Le texte est déduit du seul code HTTP : aucun détail venu du serveur n'est relayé. */
+  private showPortalError(failure?: unknown) {
+    const conflict = failure instanceof HttpErrorResponse && failure.status === 409;
+    this.portalErrorMessage.set(conflict ? PORTAL_ADVENTURER_TAKEN_ERROR : PORTAL_GENERIC_ERROR);
+    this.portalSaved.set(false);
+    this.portalError.set(true);
   }
 
   private loadQuests() {
@@ -1154,7 +1206,7 @@ export class AdminShell {
         this.portalIdentities.set(identities);
         this.portalError.set(false);
       },
-      error: () => this.portalError.set(true),
+      error: () => this.showPortalError(),
     });
   }
 
@@ -1577,9 +1629,34 @@ export class AdminShell {
     this.focusSummary(this.mapErrorSummary());
   }
 
-  private showMediaError() {
+  private showMediaError(message: string = MEDIA_ERROR_GENERIC) {
+    this.mediaErrorMessage.set(message);
     this.mediaError.set(true);
     this.focusSummary(this.mediaErrorSummary());
+  }
+
+  /**
+   * Traduit un refus d'envoi de média.
+   *
+   * Le `413` vient du conteneur servlet, qui rejette pendant l'analyse du multipart : aucun
+   * corps applicatif n'accompagne la réponse, seul le statut porte l'information.
+   *
+   * Les autres refus, eux, sont rendus en `application/problem+json` et leur champ `detail`
+   * porte déjà un motif rédigé pour l'administrateur — signature invalide, image trop grande,
+   * texte alternatif trop long. Le masquer derrière un message générique reproduirait
+   * exactement la confusion que ces messages distincts viennent lever.
+   */
+  private mediaUploadErrorMessage(error: unknown): string {
+    if (!(error instanceof HttpErrorResponse)) {
+      return MEDIA_ERROR_GENERIC;
+    }
+    if (error.status === 413) {
+      return MEDIA_ERROR_FILE_TOO_LARGE;
+    }
+    const problem = error.error as { detail?: unknown } | null;
+    const detail = typeof problem?.detail === 'string' ? problem.detail.trim() : '';
+    // Bornée aux 4xx : un 5xx ne doit jamais laisser filtrer un détail technique.
+    return error.status >= 400 && error.status < 500 && detail ? detail : MEDIA_ERROR_GENERIC;
   }
 
   private showAllowedEmailError() {

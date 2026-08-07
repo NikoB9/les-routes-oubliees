@@ -103,9 +103,16 @@ class RadarEventBroadcasterTests {
 	/**
 	 * La file d'un flux est bornee : un client qui ne suit pas est lache au lieu d'accumuler
 	 * indefiniment. Il se reconnectera et recevra un etat frais.
+	 *
+	 * <p>Le loquet n'est volontairement pas libere avant les verifications : c'est tout
+	 * l'enjeu. Une file pleine implique que l'ecrivain est bloque dans {@code send()}, donc sur
+	 * le reseau, et le lachage doit l'en sortir de lui-meme. Ce test passait auparavant parce
+	 * qu'il deverrouillait l'ecriture lui-meme, ce que rien ne fait en exploitation. Le
+	 * {@code finally} ne reste que par hygiene, pour qu'une assertion en echec ne laisse pas un
+	 * thread gare dix secondes.
 	 */
 	@Test
-	void dropsAStreamThatCannotKeepUp() throws InterruptedException {
+	void dropsAStreamThatCannotKeepUpAndReleasesItsWriter() throws InterruptedException {
 		var release = new CountDownLatch(1);
 		var stalled = TestEmitter.stalling(release);
 		broadcaster.attach(stalled);
@@ -120,13 +127,40 @@ class RadarEventBroadcasterTests {
 			assertThat(broadcaster.openStreams())
 				.as("le flux sature doit quitter le registre")
 				.isZero();
+			assertThat(stalled.awaitCompletion())
+				.as("l'emetteur lache doit etre termine sans que personne ne debloque l'ecriture")
+				.isTrue();
 		}
 		finally {
 			release.countDown();
 		}
+	}
 
-		// L'emetteur lache n'est termine que par son propre ecrivain, une fois debloque.
-		assertThat(stalled.awaitCompletion()).as("l'emetteur lache doit etre termine").isTrue();
+	/**
+	 * Un rappel du conteneur arrivant apres le lachage ne doit ni echouer ni ressusciter le
+	 * flux. C'est le chemin qu'un drapeau unique neutralisait : {@code onTimeout} — une heure
+	 * apres l'ouverture — retournait sans rien faire sur le flux deja marque, alors qu'il etait
+	 * le dernier filet cense liberer son ecrivain.
+	 */
+	@Test
+	void toleratesALateContainerCallbackOnADroppedStream() throws InterruptedException {
+		var release = new CountDownLatch(1);
+		var stalled = TestEmitter.stalling(release);
+		broadcaster.attach(stalled);
+
+		try {
+			for (var event = 0; event < 40; event++) {
+				broadcaster.broadcast("snapshot", "etat " + event);
+			}
+			assertThat(stalled.awaitCompletion()).isTrue();
+
+			stalled.triggerTimeout();
+
+			assertThat(broadcaster.openStreams()).isZero();
+		}
+		finally {
+			release.countDown();
+		}
 	}
 
 	@Test
@@ -154,6 +188,8 @@ class RadarEventBroadcasterTests {
 		private final CountDownLatch completed = new CountDownLatch(1);
 		private final CountDownLatch release;
 		private final Failure failure;
+
+		private volatile Runnable timeoutCallback;
 
 		private TestEmitter(CountDownLatch release, Failure failure) {
 			this.release = release;
@@ -198,8 +234,21 @@ class RadarEventBroadcasterTests {
 		}
 
 		@Override
+		public synchronized void onTimeout(Runnable callback) {
+			this.timeoutCallback = callback;
+			super.onTimeout(callback);
+		}
+
+		@Override
 		public void complete() {
 			completed.countDown();
+		}
+
+		/** Rejoue le rappel de delai depasse, tel que le conteneur le declencherait. */
+		void triggerTimeout() {
+			var callback = this.timeoutCallback;
+			assertThat(callback).as("le diffuseur doit avoir branche un rappel de delai depasse").isNotNull();
+			callback.run();
 		}
 
 		/** Prochain evenement ecrit, sous forme textuelle. Echoue si rien n'arrive. */

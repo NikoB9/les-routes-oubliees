@@ -1,9 +1,5 @@
 package fr.lesroutesoubliees.routesoubliees.offline;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +20,7 @@ public class PublicOfflineService {
 	private final PublicAdventurerService adventurers;
 	private final PublicMapService maps;
 	private final PublicQuestService quests;
+	private final PublicContentVersionCalculator versions;
 
 	PublicOfflineService(
 		SiteSettingsService settings,
@@ -31,7 +28,8 @@ public class PublicOfflineService {
 		PublicCompanyService companies,
 		PublicAdventurerService adventurers,
 		PublicMapService maps,
-		PublicQuestService quests
+		PublicQuestService quests,
+		PublicContentVersionCalculator versions
 	) {
 		this.settings = settings;
 		this.messages = messages;
@@ -39,18 +37,33 @@ public class PublicOfflineService {
 		this.adventurers = adventurers;
 		this.maps = maps;
 		this.quests = quests;
+		this.versions = versions;
 	}
 
 	@Transactional(readOnly = true)
 	public String contentVersion() {
-		return version(snapshotPayload());
+		return versions.currentVersion();
 	}
 
+	/**
+	 * Instantane public complet et sa version.
+	 *
+	 * <p>La version vient obligatoirement de la meme source que
+	 * {@link #contentVersion()} : une version calculee autrement ici ne correspondrait jamais
+	 * a celle que le client interroge ensuite, et il retelechargerait sans fin.
+	 *
+	 * <p>Elle est calculee <strong>avant</strong> la charge utile. Les deux lectures
+	 * partagent la transaction mais pas l'instantane MVCC — PostgreSQL est en
+	 * {@code READ COMMITTED} — donc une ecriture peut se glisser entre elles. Dans cet ordre,
+	 * le pire cas est un contenu plus frais que sa version, corrige au rafraichissement
+	 * suivant ; l'ordre inverse epinglerait un contenu perime.
+	 */
 	@Transactional(readOnly = true)
 	public PublicOfflineSnapshotResponse snapshot() {
+		var version = versions.currentVersion();
 		var payload = snapshotPayload();
 		return new PublicOfflineSnapshotResponse(
-			version(payload),
+			version,
 			payload.settings(),
 			payload.home(),
 			payload.map(),
@@ -73,24 +86,5 @@ public class PublicOfflineService {
 			maps.publicMap(),
 			visibleQuests,
 			details);
-	}
-
-	private String version(PublicOfflineSnapshotPayload payload) {
-		try {
-			var digest = MessageDigest.getInstance("SHA-256");
-			var bytes = digest.digest(payload.toString().getBytes(StandardCharsets.UTF_8));
-			return toHex(bytes);
-		}
-		catch (NoSuchAlgorithmException exception) {
-			throw new IllegalStateException("Unable to compute public content version", exception);
-		}
-	}
-
-	private String toHex(byte[] bytes) {
-		var builder = new StringBuilder(bytes.length * 2);
-		for (var value : bytes) {
-			builder.append(String.format("%02x", value));
-		}
-		return builder.toString();
 	}
 }
