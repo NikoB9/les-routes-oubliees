@@ -10,6 +10,8 @@ import { RadarPage } from './radar-page';
 
 interface RadarPageInternals {
   ensureMap: () => Promise<void>;
+  loadLeaflet: () => Promise<unknown>;
+  mapUnavailable: () => boolean;
   handlePosition: (position: GeolocationPosition) => Promise<void>;
   handleLocationError: (error: GeolocationPositionError) => void;
   requestLocation: () => void;
@@ -348,6 +350,8 @@ describe('RadarPage', () => {
    * qu'un instantané reçu effaçait de surcroît quelques secondes plus tard.
    */
   it('signals a failed publication apart from the reception banner', async () => {
+    const stream = new Subject<RadarStreamEvent>();
+    radarApi.events.mockReturnValue(stream.asObservable());
     radarApi.updateLocation.mockReturnValue(throwError(() => new Error('offline')));
     const component = fixture.componentInstance as unknown as RadarPageInternals;
     vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
@@ -358,7 +362,7 @@ describe('RadarPage', () => {
     expect(component.streamError()).toBe(false);
 
     // Recevoir un instantané prouve la réception, jamais la publication : le message tient.
-    component.startEvents();
+    stream.next({ kind: 'snapshot', snapshot });
 
     expect(component.publishError()).toBe(true);
   });
@@ -374,6 +378,74 @@ describe('RadarPage', () => {
     vi.advanceTimersByTime(7000);
 
     expect(component.publishError()).toBe(false);
+  });
+
+  /**
+   * Le flux ne démarrait que sur le chemin de succès de la construction de la carte. Un
+   * fragment Leaflet périmé après un redéploiement interrompait donc `handlePosition()` avant
+   * la republication : l'aventurier ne recevait plus rien, ne publiait plus rien, et rien ne
+   * le lui disait. La liste des positions ne dépendant pas de Leaflet, le Radar doit rester
+   * pleinement utilisable.
+   */
+  it('keeps receiving and publishing when Leaflet fails to load', async () => {
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    vi.spyOn(component, 'loadLeaflet').mockRejectedValue(new Error('fragment perime'));
+
+    await component.handlePosition(position(46.1, -1.1));
+
+    expect(component.mapUnavailable()).toBe(true);
+    expect(radarApi.events).toHaveBeenCalledTimes(1);
+    expect(radarApi.updateLocation).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * Leaflet 1.9.4 ne publie qu'un paquet UMD (`main: dist/leaflet-src.js`, ni `module` ni
+   * `exports`). Ses `exports.map = …` étant enfermés dans la fabrique UMD, le bundler n'en
+   * synthétise aucun export nommé : le fragment livré au navigateur ne porte qu'un `default`.
+   * `L.map` valait donc `undefined`, la construction de la carte levait une `TypeError`
+   * aussitôt absorbée, et le Radar s'ouvrait sans carte — depuis toujours, partout.
+   *
+   * Rien ne pouvait le voir : `@types/leaflet` promet ces exports nommés, donc la compilation
+   * se taisait, et l'interop CommonJS de Vitest les recrée, donc charger le vrai module ne
+   * reproduit pas la forme livrée. Ce test impose donc cette forme, celle du bundle.
+   */
+  it('unwraps the default-only namespace the bundler produces for Leaflet', async () => {
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    const factories = ['map', 'tileLayer', 'layerGroup', 'marker', 'circle', 'divIcon', 'latLngBounds'];
+    vi.doMock('leaflet', () => ({ default: Object.fromEntries(factories.map((name) => [name, vi.fn()])) }));
+
+    try {
+      const leaflet = (await component.loadLeaflet()) as Record<string, unknown>;
+
+      for (const factory of factories) {
+        expect(typeof leaflet[factory], `L.${factory}`).toBe('function');
+      }
+    }
+    finally {
+      vi.doUnmock('leaflet');
+    }
+  });
+
+  /** Le flux précède la carte : il ne doit dépendre d'aucune de ses issues. */
+  it('opens the stream before the map is built', async () => {
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    vi.spyOn(component, 'ensureMap').mockRejectedValue(new Error('carte'));
+
+    await expect(component.handlePosition(position(46.1, -1.1))).rejects.toThrow();
+
+    expect(radarApi.events).toHaveBeenCalledTimes(1);
+  });
+
+  /** Un relevé toutes les quelques secondes ne doit pas rouvrir le flux à chaque fois. */
+  it('opens the direct stream only once across repeated positions', async () => {
+    const component = fixture.componentInstance as unknown as RadarPageInternals;
+    vi.spyOn(component, 'ensureMap').mockResolvedValue(undefined);
+
+    await component.handlePosition(position(46.1, -1.1));
+    await component.handlePosition(position(46.2, -1.2));
+    await component.handlePosition(position(46.3, -1.3));
+
+    expect(radarApi.events).toHaveBeenCalledTimes(1);
   });
 
   /** Le premier état manquant est déjà une réception dégradée : elle doit se rattraper seule. */

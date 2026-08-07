@@ -59,6 +59,10 @@
       <p class="alert" role="status">Votre position n'atteint plus le serveur : les autres participants risquent de ne plus vous voir.</p>
     }
 
+    @if (mapUnavailable()) {
+      <p class="alert" role="status">Le parchemin de la carte ne s'est pas déroulé. Les positions relevées restent lisibles ci-dessous, et la vôtre continue d'être transmise.</p>
+    }
+
     <div #map class="radar-map" aria-label="Carte du Radar d'Aurelune"></div>
 
     <section class="radar-list" aria-labelledby="radar-list-title">
