@@ -1,6 +1,15 @@
 import { Injectable, signal } from '@angular/core';
 
 /**
+ * Point de sortie d'une session Cloudflare Access.
+ *
+ * Servi par l'edge Cloudflare et jamais par l'application, d'où le motif négatif
+ * `!/cdn-cgi/**` de `ngsw-config.json` : sans lui le service worker répondrait la coquille
+ * depuis son cache et la requête ne quitterait pas le navigateur.
+ */
+export const CLOUDFLARE_ACCESS_LOGOUT_URL = '/cdn-cgi/access/logout';
+
+/**
  * Reprise de session Cloudflare Access.
  *
  * Un rechargement de page permet à Cloudflare de rejouer son parcours d'authentification
@@ -53,11 +62,22 @@ export class CloudflareAccessSessionService {
     }
   }
 
-  /** Relance explicitement le parcours Cloudflare Access à la demande de l'utilisateur. */
+  /**
+   * Relance le parcours Cloudflare Access à la demande de l'utilisateur.
+   *
+   * Le bouton ne recharge plus la page. `reconnectRequired` n'est levé qu'après un
+   * rechargement déjà tenté et resté sans effet : le refaire refait exactement ce qui vient
+   * d'échouer. Rien ne bouge à l'écran, et comme le bandeau disparaît le temps de la
+   * navigation pour revenir au `401` suivant, le bouton paraît ne rien faire.
+   *
+   * La session est donc terminée à la source. Cloudflare retire son cookie, ce qui rend le
+   * parcours d'authentification obligatoire au retour — c'est la seule action dont l'effet ne
+   * dépende pas de l'état dont on cherche justement à sortir. Le verrou est relâché avant de
+   * partir, pour que la prochaine expiration retrouve son rechargement automatique.
+   */
   retryNow(): void {
     this.confirmValidSession();
-    this.markPending();
-    window.location.assign(window.location.href);
+    window.location.assign(CLOUDFLARE_ACCESS_LOGOUT_URL);
   }
 
   private isPending(): boolean {

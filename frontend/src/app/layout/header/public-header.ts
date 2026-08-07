@@ -2,6 +2,7 @@ import { Component, DestroyRef, ElementRef, HostListener, computed, inject, sign
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
+import { CLOUDFLARE_ACCESS_LOGOUT_URL } from '../../core/api/cloudflare-access-session.service';
 import { SiteSettingsApiService } from '../../core/config/site-settings-api.service';
 import { PublicSiteSettings } from '../../core/config/site-settings.models';
 import { PortalIdentityStore } from '../../core/portal/portal-identity.store';
@@ -21,7 +22,7 @@ export class PublicHeaderComponent {
   private readonly profileButton = viewChild<ElementRef<HTMLButtonElement>>('profileButton');
 
   protected readonly fallbackLogo = '/assets/brand/logo-compagnie-des-routes-oubliees.png?v=12fa08d';
-  protected readonly logoutUrl = '/cdn-cgi/access/logout';
+  protected readonly logoutUrl = CLOUDFLARE_ACCESS_LOGOUT_URL;
   protected readonly profileMenuOpen = signal(false);
   protected readonly profileName = computed(() => {
     const identity = this.portal.identity();
