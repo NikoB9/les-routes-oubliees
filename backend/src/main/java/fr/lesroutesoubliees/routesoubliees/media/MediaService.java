@@ -1,6 +1,5 @@
 package fr.lesroutesoubliees.routesoubliees.media;
 
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,6 +27,16 @@ import fr.lesroutesoubliees.routesoubliees.shared.config.SiteProperties;
 class MediaService {
 
 	private static final List<String> ALLOWED_TYPES = List.of("image/png", "image/jpeg", "image/webp");
+
+	/**
+	 * Surface maximale d'une image acceptee, en pixels.
+	 *
+	 * <p>Le serveur ne decode plus rien, mais les navigateurs qui afficheront le fichier, eux,
+	 * l'allouent : cinquante millions de pixels representent deja deux cents mebioctets une
+	 * fois la trame construite. La valeur reste tres au-dessus d'une carte scannee ou d'une
+	 * photo d'appareil, qui depassent rarement vingt-cinq millions.
+	 */
+	private static final long MAX_IMAGE_PIXELS = 50_000_000L;
 
 	private final MediaAssetRepository mediaAssets;
 	private final JdbcTemplate jdbc;
@@ -221,12 +230,38 @@ class MediaService {
 		if (bytes.length == 0) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le fichier est vide.");
 		}
-		return switch (mimeType) {
+		var dimensions = switch (mimeType) {
 			case "image/png" -> validatePng(bytes);
 			case "image/jpeg" -> validateJpeg(bytes);
 			case "image/webp" -> validateWebp(bytes);
 			default -> throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Type de media refuse.");
 		};
+		return validateDimensions(dimensions);
+	}
+
+	/**
+	 * Refuse une image dont les dimensions annoncees sont inexploitables ou demesurees.
+	 *
+	 * <p>Positivite d'abord. {@link #readHeaderDimensions} la garantit deja pour PNG et JPEG,
+	 * mais pas le chemin WebP : la variante avec perte lit un champ de quatorze bits sans
+	 * verifier le code de demarrage du bloc, et rend {@code 0} sur un fichier forge. Le
+	 * controle est place ici pour valoir pour les trois formats.
+	 *
+	 * <p>Surface ensuite, y compris pour WebP dont les dimensions n'ont jamais ete decodees
+	 * ici : le fichier serait servi tel quel aux navigateurs, qui l'alloueraient a notre place.
+	 *
+	 * <p>Le produit est calcule en {@code long} : deux entiers de l'ordre de 50 000
+	 * deborderaient un {@code int} et le controle se retournerait contre lui-meme.
+	 */
+	private ImageDimensions validateDimensions(ImageDimensions dimensions) {
+		if (dimensions.width() <= 0 || dimensions.height() <= 0) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dimensions d'image invalides.");
+		}
+		if ((long) dimensions.width() * dimensions.height() > MAX_IMAGE_PIXELS) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+				"Image trop grande : " + (MAX_IMAGE_PIXELS / 1_000_000) + " millions de pixels au maximum.");
+		}
+		return dimensions;
 	}
 
 	private ImageDimensions validatePng(byte[] bytes) {
@@ -241,14 +276,14 @@ class MediaService {
 			|| bytes[7] != 0x0A) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Signature PNG invalide.");
 		}
-		return imageIoDimensions(bytes);
+		return headerDimensions(bytes);
 	}
 
 	private ImageDimensions validateJpeg(byte[] bytes) {
 		if (bytes.length < 4 || bytes[0] != (byte) 0xFF || bytes[1] != (byte) 0xD8) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Signature JPEG invalide.");
 		}
-		return imageIoDimensions(bytes);
+		return headerDimensions(bytes);
 	}
 
 	private ImageDimensions validateWebp(byte[] bytes) {
@@ -266,13 +301,18 @@ class MediaService {
 		if (bytes[12] == 0x56 && bytes[13] == 0x50 && bytes[14] == 0x38 && bytes[15] == 0x20) {
 			return new ImageDimensions(littleEndian16(bytes, 26) & 0x3FFF, littleEndian16(bytes, 28) & 0x3FFF);
 		}
+		// VP8L, sans perte. Apres l'octet de signature, un flux de bits petit-boutiste porte
+		// 14 bits de largeur moins un, 14 bits de hauteur moins un, un bit alpha et trois bits
+		// de version. La hauteur s'etale donc sur trois octets : les deux bits de poids fort de
+		// b1, la totalite de b2, puis le quartet bas de b3 — le quartet haut appartenant a
+		// alpha et a la version, il doit etre masque.
 		if (bytes[12] == 0x56 && bytes[13] == 0x50 && bytes[14] == 0x38 && bytes[15] == 0x4C) {
 			var b0 = unsigned(bytes[21]);
 			var b1 = unsigned(bytes[22]);
 			var b2 = unsigned(bytes[23]);
 			var b3 = unsigned(bytes[24]);
 			var width = 1 + (((b1 & 0x3F) << 8) | b0);
-			var height = 1 + ((b3 << 6) | (b2 >> 2) | ((b1 & 0xC0) << 6));
+			var height = 1 + (((b1 >> 6) & 0x03) | (b2 << 2) | ((b3 & 0x0F) << 10));
 			return new ImageDimensions(width, height);
 		}
 		if (bytes[12] == 0x56 && bytes[13] == 0x50 && bytes[14] == 0x38 && bytes[15] == 0x58) {
@@ -283,16 +323,53 @@ class MediaService {
 		throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Format WebP invalide.");
 	}
 
-	private ImageDimensions imageIoDimensions(byte[] bytes) {
-		try {
-			BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
-			if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0) {
-				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image invalide.");
-			}
-			return new ImageDimensions(image.getWidth(), image.getHeight());
+	/**
+	 * Dimensions d'un PNG ou d'un JPEG, lues dans l'en-tete.
+	 *
+	 * <p>Volontairement sans {@code ImageIO.read} : decoder allouait
+	 * {@code largeur x hauteur x 4} octets pour n'en retirer que deux entiers. PNG et JPEG
+	 * atteignant des taux de compression extremes sur une image uniforme, un fichier de
+	 * quelques mebioctets suffisait a reclamer plusieurs gibioctets et a emporter la JVM —
+	 * donc le Radar en pleine partie. Seul l'en-tete est desormais lu, et la surface annoncee
+	 * est plafonnee par {@link #validateDimensions}.
+	 *
+	 * <p>Consequence assumee : un fichier a l'en-tete valide mais au corps corrompu n'est plus
+	 * detecte ici. Il ne s'affichera pas dans le navigateur, sans autre consequence — c'est le
+	 * compromis deja retenu pour WebP, dont les dimensions ont toujours ete lues ainsi.
+	 */
+	private ImageDimensions headerDimensions(byte[] bytes) {
+		var dimensions = readHeaderDimensions(bytes);
+		if (dimensions == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image invalide.");
 		}
-		catch (IOException ex) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image invalide.", ex);
+		return dimensions;
+	}
+
+	/** @return les dimensions declarees, ou {@code null} si l'en-tete est illisible */
+	private ImageDimensions readHeaderDimensions(byte[] bytes) {
+		try (var input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+			if (input == null) {
+				return null;
+			}
+			var readers = ImageIO.getImageReaders(input);
+			if (!readers.hasNext()) {
+				return null;
+			}
+			var reader = readers.next();
+			try {
+				reader.setInput(input);
+				var width = reader.getWidth(0);
+				var height = reader.getHeight(0);
+				return width > 0 && height > 0 ? new ImageDimensions(width, height) : null;
+			}
+			finally {
+				reader.dispose();
+			}
+		}
+		// Un en-tete tronque ou incoherent fait lever les lecteurs de facons variees, y compris
+		// des exceptions non verifiees : toutes signifient la meme chose, l'image est refusee.
+		catch (IOException | RuntimeException exception) {
+			return null;
 		}
 	}
 
