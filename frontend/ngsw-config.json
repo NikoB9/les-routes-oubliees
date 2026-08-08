@@ -5,6 +5,7 @@
     "/**",
     "!/**/*.*",
     "!/cdn-cgi/**",
+    "!/reconnexion",
     "!/radar",
     "!/admin",
     "!/admin/**"

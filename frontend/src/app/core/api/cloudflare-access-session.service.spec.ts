@@ -1,101 +1,101 @@
 import { TestBed } from '@angular/core/testing';
 
-import { CloudflareAccessSessionService } from './cloudflare-access-session.service';
+import {
+  ACCESS_RECONNECT_PATH,
+  CloudflareAccessSessionService,
+  safeReturnUrl,
+} from './cloudflare-access-session.service';
 
 describe('CloudflareAccessSessionService', () => {
   let service: CloudflareAccessSessionService;
-  let assign: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    sessionStorage.clear();
-    assign = vi.fn();
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { href: 'https://routes.example.invalid/radar', assign },
-    });
-
     TestBed.configureTestingModule({});
     service = TestBed.inject(CloudflareAccessSessionService);
   });
 
-  afterEach(() => {
-    sessionStorage.clear();
+  it('starts with a session assumed valid', () => {
+    expect(service.sessionExpired()).toBe(false);
   });
 
-  it('reloads the page once on the first Access expiry', () => {
-    service.reauthenticate();
+  /** L'intercepteur appelle sur chaque `401` : l'appel doit rester sans effet de bord. */
+  it('records the expiry and stays idempotent across a burst of 401s', () => {
+    service.noteExpiredSession();
+    service.noteExpiredSession();
+    service.noteExpiredSession();
 
-    expect(assign).toHaveBeenCalledTimes(1);
-    expect(assign).toHaveBeenCalledWith('https://routes.example.invalid/radar');
-    expect(service.reconnectRequired()).toBe(false);
+    expect(service.sessionExpired()).toBe(true);
   });
 
-  it('never reloads twice and offers a stable reconnection action instead', () => {
-    service.reauthenticate();
-    service.reauthenticate();
-    service.reauthenticate();
-
-    expect(assign).toHaveBeenCalledTimes(1);
-    expect(service.reconnectRequired()).toBe(true);
-  });
-
-  it('keeps the lock across a page load until a valid session is confirmed', () => {
-    service.reauthenticate();
-    expect(assign).toHaveBeenCalledTimes(1);
-
-    // Nouvelle instance : le verrou survit dans sessionStorage.
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({});
-    const reloaded = TestBed.inject(CloudflareAccessSessionService);
-
-    reloaded.reauthenticate();
-
-    expect(assign).toHaveBeenCalledTimes(1);
-    expect(reloaded.reconnectRequired()).toBe(true);
-  });
-
-  it('clears the lock only when a valid session is confirmed', () => {
-    service.reauthenticate();
+  it('clears the expiry only when a valid session is confirmed', () => {
+    service.noteExpiredSession();
     service.confirmValidSession();
 
-    expect(service.reconnectRequired()).toBe(false);
-
-    service.reauthenticate();
-
-    expect(assign).toHaveBeenCalledTimes(2);
+    expect(service.sessionExpired()).toBe(false);
   });
 
-  it('still prevents a loop when sessionStorage is unavailable', () => {
-    // Stockage refusé : seul le verrou mémoire peut empêcher la boucle.
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-      throw new Error('storage disabled');
+  /**
+   * Garde central du correctif : le service ne navigue jamais de lui-même. C'est ce qui rend
+   * toute boucle de rechargement impossible, et ce qui laisse la reprise à un lien ordinaire —
+   * seule forme de navigation que le service worker laisse atteindre le réseau.
+   */
+  it('never navigates by itself', () => {
+    const assign = vi.fn();
+    const original = Object.getOwnPropertyDescriptor(window, 'location');
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { href: 'https://routes.example.invalid/', assign },
     });
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('storage disabled');
-    });
 
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({});
-    const restricted = TestBed.inject(CloudflareAccessSessionService);
+    try {
+      service.noteExpiredSession();
+      service.confirmValidSession();
 
-    restricted.reauthenticate();
-    restricted.reauthenticate();
-    restricted.reauthenticate();
-
-    expect(assign).toHaveBeenCalledTimes(1);
-    expect(restricted.reconnectRequired()).toBe(true);
-
-    vi.restoreAllMocks();
+      expect(assign).not.toHaveBeenCalled();
+    }
+    finally {
+      if (original) {
+        Object.defineProperty(window, 'location', original);
+      }
+    }
   });
 
-  it('retries the Cloudflare journey on explicit user request', () => {
-    service.reauthenticate();
-    service.reauthenticate();
-    expect(service.reconnectRequired()).toBe(true);
+  it('carries the consulted page as the return address', () => {
+    expect(service.reconnectHref('/notebook/quete-1')).toBe(
+      `${ACCESS_RECONNECT_PATH}?retour=%2Fnotebook%2Fquete-1`,
+    );
+  });
 
-    service.retryNow();
+  it('never sends the recovery page back to itself', () => {
+    expect(service.reconnectHref(`${ACCESS_RECONNECT_PATH}?retour=%2Fmap`)).toBe(
+      `${ACCESS_RECONNECT_PATH}?retour=%2F`,
+    );
+  });
 
-    expect(assign).toHaveBeenCalledTimes(2);
-    expect(service.reconnectRequired()).toBe(false);
+  describe('safeReturnUrl', () => {
+    it('keeps a route of this site', () => {
+      expect(safeReturnUrl('/map')).toBe('/map');
+      expect(safeReturnUrl('/notebook/quete-1?page=2')).toBe('/notebook/quete-1?page=2');
+    });
+
+    it('refuses anything that could leave the site', () => {
+      expect(safeReturnUrl('//ailleurs.example')).toBe('/');
+      expect(safeReturnUrl('https://ailleurs.example')).toBe('/');
+      expect(safeReturnUrl('/\\ailleurs.example')).toBe('/');
+      expect(safeReturnUrl('javascript:alert(1)')).toBe('/');
+      expect(safeReturnUrl('map')).toBe('/');
+    });
+
+    /** Le navigateur retire les caractères de contrôle : `/\t/ailleurs` deviendrait `//ailleurs`. */
+    it('refuses an address the browser would rewrite into an absolute one', () => {
+      expect(safeReturnUrl('/\t/ailleurs.example')).toBe('/');
+      expect(safeReturnUrl('/\n/ailleurs.example')).toBe('/');
+    });
+
+    it('falls back on a missing address', () => {
+      expect(safeReturnUrl(null)).toBe('/');
+      expect(safeReturnUrl(undefined)).toBe('/');
+      expect(safeReturnUrl('')).toBe('/');
+    });
   });
 });

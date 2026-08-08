@@ -674,11 +674,12 @@ Le releve tresor Home Assistant reste applique par une mise a jour atomique stri
 
 ### Navigations et service worker
 
-Le service worker sert le shell Angular pour les navigations, **sauf** `/radar`, `/admin` et `/admin/**`, et sauf les URL de fichiers. Cet arbitrage remplace une exclusion totale des navigations, qui rendait le mode hors ligne annoncé dans `PLAN_FINAL` entièrement inopérant : sans navigation servie, la coquille applicative ne se chargeait jamais et le snapshot de contenu public mis en cache restait inatteignable.
+Le service worker sert le shell Angular pour les navigations, **sauf** `/radar`, `/admin`, `/admin/**` et `/reconnexion`, et sauf les URL de fichiers. Cet arbitrage remplace une exclusion totale des navigations, qui rendait le mode hors ligne annoncé dans `PLAN_FINAL` entièrement inopérant : sans navigation servie, la coquille applicative ne se chargeait jamais et le snapshot de contenu public mis en cache restait inatteignable.
 
 Ce que l'arbitrage préserve et ce qu'il concède :
 
 * **Préservé** : `/radar` et `/admin` passent toujours par le réseau. Cloudflare Access peut donc intercepter une session absente ou expirée avant qu'une page sensible ne soit rendue, et aucune vue d'administration ni aucune position ne sort d'un cache local.
+* **Rendu possible** : `/reconnexion` passe par le réseau pour la même raison, et n'existe que pour cela. Une reprise de session est une navigation qui doit atteindre Cloudflare ; servie depuis le cache, elle ne quitte pas le navigateur et ne déclenche aucune authentification. C'est ce qui rendait le lien « Se reconnecter » inerte sur toutes les pages publiques, alors qu'il fonctionnait depuis `/radar` — seule différence entre les deux : ce motif. La page ne fait que rebondir vers l'adresse consultée, portée par le paramètre `retour`.
 * **Concédé** : les pages publiques — accueil, carte, carnet — se rechargent hors ligne, y compris après une déconnexion Cloudflare Access, avec le dernier contenu public synchronisé. Ce contenu est celui que tout aventurier authentifié voit déjà ; il reste néanmoins lisible sur l'appareil jusqu'à l'expiration du cache, fixée à 24 heures.
 
 Les motifs sont figés par un test : voir `frontend/src/app/core/offline/ngsw-config.spec.ts`. Une erreur de motif ne casse aucun autre test et ne se voit qu'en navigateur, réseau coupé.

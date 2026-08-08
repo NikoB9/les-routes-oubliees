@@ -9,12 +9,12 @@ describe('cloudflareAccessInterceptor', () => {
   let http: HttpClient;
   let httpMock: HttpTestingController;
   let session: {
-    reauthenticate: ReturnType<typeof vi.fn>;
+    noteExpiredSession: ReturnType<typeof vi.fn>;
     confirmValidSession: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
-    session = { reauthenticate: vi.fn(), confirmValidSession: vi.fn() };
+    session = { noteExpiredSession: vi.fn(), confirmValidSession: vi.fn() };
 
     TestBed.configureTestingModule({
       providers: [
@@ -59,7 +59,7 @@ describe('cloudflareAccessInterceptor', () => {
     request.flush({});
   });
 
-  it('keeps an application 401 without triggering a reload', () => {
+  it('keeps an application 401 without reporting a lost session', () => {
     let received: number | null = null;
     http.get('/api/portal/me').subscribe({ error: (error: { status: number }) => (received = error.status) });
 
@@ -73,7 +73,7 @@ describe('cloudflareAccessInterceptor', () => {
     );
 
     expect(received).toBe(401);
-    expect(session.reauthenticate).not.toHaveBeenCalled();
+    expect(session.noteExpiredSession).not.toHaveBeenCalled();
   });
 
   it('recognises the application marker carried by the response body alone', () => {
@@ -83,7 +83,7 @@ describe('cloudflareAccessInterceptor', () => {
       .expectOne('/api/portal/me')
       .flush({ code: 'application-unauthenticated' }, { status: 401, statusText: 'Unauthorized' });
 
-    expect(session.reauthenticate).not.toHaveBeenCalled();
+    expect(session.noteExpiredSession).not.toHaveBeenCalled();
   });
 
   it('delegates Cloudflare reauthentication on an unmarked 401', () => {
@@ -91,7 +91,7 @@ describe('cloudflareAccessInterceptor', () => {
 
     httpMock.expectOne('/api/portal/me').flush({}, { status: 401, statusText: 'Unauthorized' });
 
-    expect(session.reauthenticate).toHaveBeenCalledTimes(1);
+    expect(session.noteExpiredSession).toHaveBeenCalledTimes(1);
   });
 
   it('delegates once per failing request when several 401 arrive together', () => {
@@ -101,11 +101,11 @@ describe('cloudflareAccessInterceptor', () => {
     httpMock.expectOne('/api/portal/me').flush({}, { status: 401, statusText: 'Unauthorized' });
     httpMock.expectOne('/api/radar/snapshot').flush({}, { status: 401, statusText: 'Unauthorized' });
 
-    // La protection anti-boucle est portee par le service, pas par l'intercepteur.
-    expect(session.reauthenticate).toHaveBeenCalledTimes(2);
+    // Le service absorbe la rafale : constater deux fois une expiration est sans effet.
+    expect(session.noteExpiredSession).toHaveBeenCalledTimes(2);
   });
 
-  it('never clears the reauthentication lock because a request succeeded', () => {
+  it('never clears the expiry because a request succeeded', () => {
     http.get('/api/public/home').subscribe();
 
     httpMock.expectOne('/api/public/home').flush({});
@@ -120,6 +120,6 @@ describe('cloudflareAccessInterceptor', () => {
     httpMock.expectOne('/api/radar/snapshot').flush({}, { status: 403, statusText: 'Forbidden' });
 
     expect(received).toBe(403);
-    expect(session.reauthenticate).not.toHaveBeenCalled();
+    expect(session.noteExpiredSession).not.toHaveBeenCalled();
   });
 });

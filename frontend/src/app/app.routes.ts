@@ -38,6 +38,17 @@ export const routes: Routes = [
     path: 'admin',
     loadChildren: () => import('./features/admin/admin.routes').then((module) => module.adminRoutes),
   },
+  /*
+   * Reprise de session. Cette route n'a d'intérêt que par son adresse : `!/reconnexion` dans
+   * `ngsw-config.json` la tient hors du cache de navigation, seule façon pour Cloudflare Access
+   * de voir passer la demande et de redemander une authentification.
+   */
+  {
+    path: 'reconnexion',
+    loadComponent: () =>
+      import('./features/access/reconnect-page/reconnect-page').then((module) => module.ReconnectPage),
+    title: 'Reprise de session - Les Routes Oubliées',
+  },
   {
     path: '**',
     loadComponent: () =>

@@ -454,4 +454,12 @@ Référence : https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/
 
 ### Reconnexion Cloudflare Access
 
-Lorsqu'une session Cloudflare Access expire deux fois de suite, l'application affiche un message `role="alert"` accompagné d'un bouton « Se reconnecter » stable, plutôt que de recharger la page en boucle.
+Lorsqu'une session Cloudflare Access expire, l'en-tête remplace le menu de profil par un lien « Se reconnecter ». Le menu disparaît entièrement : proposer « Se déconnecter » à quelqu'un qui ne l'est plus n'a pas de sens, et l'action serait sans effet.
+
+Un changement d'en-tête n'étant annoncé par aucun lecteur d'écran, une région `role="status"` visuellement masquée porte l'annonce. Elle est présente dès le chargement et reste vide : une région créée au moment où elle se remplit n'est pas annoncée.
+
+Sans réseau, une session expirée n'offre aucun lien de reprise : l'en-tête indique « Hors ligne ». Le suivre emmènerait sur une adresse volontairement exclue du cache, donc sur la page d'erreur du navigateur, en faisant perdre l'application ouverte. L'annonce ne promet donc jamais un lien immédiat, seulement une reprise « dès que le réseau est disponible ».
+
+Une identité déjà chargée, elle, reste affichée hors ligne. Elle n'a rien perdu de sa validité, et la masquer priverait l'aventurier de son nom et de l'accès administration sans rien apporter.
+
+Lorsque le portail échoue sans expiration Access — panne applicative, ou jeton refusé à l'origine —, l'en-tête propose « Réessayer » plutôt qu'un constat sans issue. Son nom accessible, « Portail indisponible, réessayer », donne le contexte que le libellé visible ne peut pas porter, et contient ce libellé comme l'exige le critère « Label in Name ».

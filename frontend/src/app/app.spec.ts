@@ -143,6 +143,26 @@ describe('App', () => {
     expect(profileButton?.hasAttribute('aria-haspopup')).toBe(false);
   });
 
+  /**
+   * Le bandeau d'expiration a disparu : l'action vit désormais dans l'en-tête. La région
+   * d'annonce le remplace, et doit préexister vide — une région créée au moment où elle se
+   * remplit n'est annoncée par aucun lecteur d'écran.
+   */
+  it('should replace the expiry banner with a always-present live region', async () => {
+    const fixture = TestBed.createComponent(App);
+    flushSettings();
+    flushPortal();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const live = compiled.querySelector('p.sr-only[role="status"]');
+
+    expect(compiled.querySelector('.access-reconnect')).toBeNull();
+    expect(live).not.toBeNull();
+    expect(live?.textContent?.trim()).toBe('');
+  });
+
   it('should render the maintenance banner', async () => {
     const fixture = TestBed.createComponent(App);
     flushSettings('MAINTENANCE');
