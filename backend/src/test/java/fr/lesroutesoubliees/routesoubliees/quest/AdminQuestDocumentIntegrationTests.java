@@ -159,11 +159,12 @@ class AdminQuestDocumentIntegrationTests {
 			.andExpect(jsonPath("$", hasSize(0)));
 	}
 
+	/** Valeurs assertees sans accent : la reponse est relue via l'encodage par defaut de MockMvc. */
 	@Test
 	void trimsTheLabelBeforeStoringIt() throws Exception {
-		upload("QUEST_4", "   Consignes aux comédiens   ", pdfPart())
+		upload("QUEST_4", "   Consignes aux comediens   ", pdfPart())
 			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.label").value("Consignes aux comédiens"));
+			.andExpect(jsonPath("$.label").value("Consignes aux comediens"));
 	}
 
 	@Test
@@ -236,7 +237,7 @@ class AdminQuestDocumentIntegrationTests {
 	void rejectsABlankLabel() throws Exception {
 		upload("QUEST_1", "   ", pdfPart())
 			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.detail").value(containsString("libellé")));
+			.andExpect(jsonPath("$.detail").value(containsString("obligatoire")));
 	}
 
 	@Test
@@ -280,14 +281,14 @@ class AdminQuestDocumentIntegrationTests {
 
 	@Test
 	void listsDocumentsNewestFirst() throws Exception {
-		upload("QUEST_1", "Premier dépôt", pdfPart()).andExpect(status().isCreated());
-		upload("QUEST_1", "Second dépôt", pdfPart()).andExpect(status().isCreated());
+		upload("QUEST_1", "Premier depot", pdfPart()).andExpect(status().isCreated());
+		upload("QUEST_1", "Second depot", pdfPart()).andExpect(status().isCreated());
 
 		mvc.perform(get("/api/admin/quest-tabs/QUEST_1/documents").with(user(ADMIN).roles("ADMIN")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$", hasSize(2)))
-			.andExpect(jsonPath("$[0].label").value("Second dépôt"))
-			.andExpect(jsonPath("$[1].label").value("Premier dépôt"));
+			.andExpect(jsonPath("$[0].label").value("Second depot"))
+			.andExpect(jsonPath("$[1].label").value("Premier depot"));
 	}
 
 	@Test

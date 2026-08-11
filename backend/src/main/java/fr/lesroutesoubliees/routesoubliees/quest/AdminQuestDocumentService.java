@@ -1,7 +1,6 @@
 package fr.lesroutesoubliees.routesoubliees.quest;
 
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -221,10 +220,9 @@ class AdminQuestDocumentService {
 			}
 			return writtenBytes;
 		}
-		catch (FileAlreadyExistsException exception) {
-			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-				"Le document ne peut pas être stocké.", exception);
-		}
+		// Une collision de nom leve une FileAlreadyExistsException, sous-classe d'IOException :
+		// le nom derivant d'un UUID neuf, ce cas releve du defaut et n'appelle pas sa propre
+		// reponse.
 		catch (IOException exception) {
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
 				"Le document ne peut pas être stocké.", exception);

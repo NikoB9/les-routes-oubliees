@@ -226,6 +226,9 @@ describe('AdminShell', () => {
             listPortalIdentities: () => of(PORTAL_IDENTITIES),
             listAdventurers: () => of(ADVENTURERS),
             listAuditLogs: () => of([]),
+            // Enregistrer une quête rafraîchit le tableau de bord : sans ce stub, le scénario
+            // de sauvegarde échoue sur une fonction absente, loin de ce qu'il vérifie.
+            getDashboard: () => of({}),
             updatePortalAssignment: (_id: string, payload: unknown) => {
               portalAssignmentPayloads.push(payload);
               return updatePortalAssignmentResponse();
