@@ -15,6 +15,8 @@ import {
 import { NotebookApiService } from '../../notebook/notebook-api.service';
 import { AdminMedia } from '../media-api.models';
 import { MediaApiService } from '../media-api.service';
+import { AdminQuestDocument } from '../quest-document-api.models';
+import { QuestDocumentApiService } from '../quest-document-api.service';
 import {
   AdminAllowedEmail,
   AdminAdventurer,
@@ -90,6 +92,21 @@ const MEDIA_ERROR_GENERIC = 'Impossible de traiter les médias pour le moment.';
 const PORTAL_GENERIC_ERROR = 'Impossible de mettre à jour les identités.';
 const PORTAL_ADVENTURER_TAKEN_ERROR = 'Cet aventurier est déjà attribué à une autre identité.';
 
+/**
+ * Messages des documents d'organisation.
+ *
+ * Distincts de ceux de la médiathèque bien que la mécanique se ressemble : il n'y a pas de texte
+ * alternatif ici, le plafond n'est pas le même, et un message emprunté enverrait l'organisateur
+ * corriger un champ qui n'existe pas dans ce formulaire.
+ */
+const QUEST_DOCUMENT_ERROR_REQUIRED_FIELDS = 'Le fichier PDF et le libellé sont obligatoires.';
+const QUEST_DOCUMENT_ERROR_FILE_TOO_LARGE =
+  "Le document est trop volumineux pour être envoyé. La limite est de 9 Mio par fichier : scindez le dossier, ou réduisez la définition des pages scannées.";
+const QUEST_DOCUMENT_ERROR_GENERIC = "Impossible de traiter les documents d'organisation pour le moment.";
+
+/** Unités binaires : le plafond serveur est exprimé en mébioctets, l'affichage doit suivre. */
+const BYTE_UNITS = ['o', 'Kio', 'Mio', 'Gio'];
+
 @Component({
   selector: 'app-admin-shell',
   imports: [FormsModule, LoadingIndicatorComponent, MarkdownToolbarComponent, RouterLink, TabBarComponent],
@@ -101,6 +118,7 @@ export class AdminShell {
   private readonly adminApi = inject(AdminApiService);
   private readonly notebookApi = inject(NotebookApiService);
   private readonly mediaApi = inject(MediaApiService);
+  private readonly questDocumentApi = inject(QuestDocumentApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly questErrorSummary = viewChild<ElementRef<HTMLElement>>('questErrorSummary');
@@ -109,7 +127,10 @@ export class AdminShell {
   private readonly allowedEmailErrorSummary = viewChild<ElementRef<HTMLElement>>('allowedEmailErrorSummary');
   private readonly settingsErrorSummary = viewChild<ElementRef<HTMLElement>>('settingsErrorSummary');
   private readonly imageSearchInput = viewChild<ElementRef<HTMLInputElement>>('imageSearchInput');
+  private readonly questDocumentErrorSummary = viewChild<ElementRef<HTMLElement>>('questDocumentErrorSummary');
+  private readonly questDocumentCancelButton = viewChild<ElementRef<HTMLElement>>('questDocumentCancelButton');
   private imageDialogTrigger: HTMLElement | null = null;
+  private questDocumentDialogTrigger: HTMLElement | null = null;
 
   protected readonly session = signal<AdminSession | null>(null);
   protected readonly section = signal<string>('dashboard');
@@ -145,6 +166,13 @@ export class AdminShell {
     );
   });
   protected readonly statuses: QuestStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+  protected readonly questDocuments = signal<AdminQuestDocument[]>([]);
+  protected readonly questDocumentError = signal(false);
+  protected readonly questDocumentErrorMessage = signal(QUEST_DOCUMENT_ERROR_GENERIC);
+  protected readonly questDocumentSaved = signal(false);
+  protected readonly questDocumentFile = signal<File | null>(null);
+  protected readonly questDocumentLabel = signal('');
+  protected readonly questDocumentPendingDeletion = signal<AdminQuestDocument | null>(null);
   protected readonly media = signal<AdminMedia[]>([]);
   protected readonly mediaError = signal(false);
   protected readonly mediaErrorMessage = signal(MEDIA_ERROR_GENERIC);
@@ -643,9 +671,19 @@ export class AdminShell {
   }
 
   protected handleImageDialogKeydown(event: KeyboardEvent) {
+    this.handleDialogKeydown(event, () => this.closeImageDialog());
+  }
+
+  /**
+   * Échap ferme, Tab tourne en rond.
+   *
+   * Partagé par les deux boîtes de dialogue : un piège de focus recopié dérive, et une seule des
+   * deux copies finit corrigée.
+   */
+  private handleDialogKeydown(event: KeyboardEvent, close: () => void) {
     if (event.key === 'Escape') {
       event.preventDefault();
-      this.closeImageDialog();
+      close();
       return;
     }
 
@@ -987,6 +1025,101 @@ export class AdminShell {
     });
   }
 
+  protected selectQuestDocumentFile(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.questDocumentFile.set(input.files?.item(0) ?? null);
+    this.questDocumentSaved.set(false);
+    this.questDocumentError.set(false);
+  }
+
+  protected updateQuestDocumentLabel(value: string) {
+    this.questDocumentLabel.set(value);
+    this.questDocumentSaved.set(false);
+  }
+
+  protected uploadQuestDocument() {
+    const quest = this.selectedQuest();
+    const file = this.questDocumentFile();
+    const label = this.questDocumentLabel().trim();
+    if (!quest || !file || !label) {
+      this.showQuestDocumentError(QUEST_DOCUMENT_ERROR_REQUIRED_FIELDS);
+      return;
+    }
+    this.questDocumentApi.uploadQuestDocument(quest.code, file, label).subscribe({
+      next: (created) => {
+        this.questDocuments.update((items) => [created, ...items]);
+        this.resetQuestDocumentForm();
+        this.questDocumentSaved.set(true);
+        this.loadAuditLogs();
+      },
+      error: (error: unknown) => this.showQuestDocumentError(this.questDocumentUploadErrorMessage(error)),
+    });
+  }
+
+  /**
+   * Demande confirmation avant de supprimer.
+   *
+   * La médiathèque supprime sans confirmer, mais une image y est remplaçable. Un dossier
+   * d'organisation déposé une fois peut n'exister nulle part ailleurs, et la suppression emporte
+   * le fichier.
+   */
+  protected askQuestDocumentDeletion(target: AdminQuestDocument, event: Event) {
+    this.questDocumentDialogTrigger = event.currentTarget as HTMLElement;
+    this.questDocumentPendingDeletion.set(target);
+    window.setTimeout(() => this.questDocumentCancelButton()?.nativeElement.focus());
+  }
+
+  protected cancelQuestDocumentDeletion() {
+    this.questDocumentPendingDeletion.set(null);
+    this.questDocumentDialogTrigger?.focus();
+    this.questDocumentDialogTrigger = null;
+  }
+
+  protected confirmQuestDocumentDeletion() {
+    const quest = this.selectedQuest();
+    const pending = this.questDocumentPendingDeletion();
+    if (!quest || !pending) {
+      return;
+    }
+    this.questDocumentApi.deleteQuestDocument(quest.code, pending.id).subscribe({
+      next: () => {
+        this.questDocuments.update((items) => items.filter((item) => item.id !== pending.id));
+        this.questDocumentSaved.set(true);
+        this.questDocumentError.set(false);
+        this.cancelQuestDocumentDeletion();
+        this.loadAuditLogs();
+      },
+      error: () => {
+        this.cancelQuestDocumentDeletion();
+        this.showQuestDocumentError();
+      },
+    });
+  }
+
+  protected handleQuestDocumentDialogKeydown(event: KeyboardEvent) {
+    this.handleDialogKeydown(event, () => this.cancelQuestDocumentDeletion());
+  }
+
+  /** Taille lisible : l'organisateur juge un dossier en mébioctets, pas en octets. */
+  protected formatFileSize(sizeBytes: number): string {
+    let size = sizeBytes;
+    let unit = 0;
+    while (size >= 1024 && unit < BYTE_UNITS.length - 1) {
+      size /= 1024;
+      unit += 1;
+    }
+    const rounded = unit === 0 ? size : Math.round(size * 10) / 10;
+    return `${rounded.toLocaleString('fr-FR')} ${BYTE_UNITS[unit]}`;
+  }
+
+  private resetQuestDocumentForm() {
+    this.questDocumentFile.set(null);
+    this.questDocumentLabel.set('');
+    this.questDocumentSaved.set(false);
+    this.questDocumentError.set(false);
+    this.questDocumentPendingDeletion.set(null);
+  }
+
   protected updateSettingsField<K extends keyof AdminSiteSettingsUpdate>(
     field: K,
     value: AdminSiteSettingsUpdate[K],
@@ -1217,9 +1350,33 @@ export class AdminShell {
     });
   }
 
+  private loadQuestDocuments(questCode: string) {
+    this.questDocumentApi.listQuestDocuments(questCode).subscribe({
+      next: (documents) => {
+        this.questDocuments.set(documents);
+        this.questDocumentError.set(false);
+      },
+      error: () => this.showQuestDocumentError(),
+    });
+  }
+
+  /**
+   * Point de passage unique de la sélection d'une quête.
+   *
+   * Les documents ne sont rechargés que si la quête change réellement. Six appelants aboutissent
+   * ici : le clic d'onglet, la sélection initiale, et les quatre retours d'action éditoriale.
+   * Recharger sans condition rejouerait la requête après chaque enregistrement ; la brancher sur
+   * le seul clic d'onglet laisserait la section vide au premier affichage.
+   */
   private setSelectedQuest(quest: AdminQuest) {
+    const previousCode = this.selectedQuest()?.code ?? null;
     this.selectedQuest.set(quest);
     this.questPreview.set(null);
+    if (quest.code !== previousCode) {
+      this.questDocuments.set([]);
+      this.resetQuestDocumentForm();
+      this.loadQuestDocuments(quest.code);
+    }
     this.editor.set({
       title: quest.title,
       summary: quest.summary,
@@ -1657,6 +1814,30 @@ export class AdminShell {
     const detail = typeof problem?.detail === 'string' ? problem.detail.trim() : '';
     // Bornée aux 4xx : un 5xx ne doit jamais laisser filtrer un détail technique.
     return error.status >= 400 && error.status < 500 && detail ? detail : MEDIA_ERROR_GENERIC;
+  }
+
+  private showQuestDocumentError(message: string = QUEST_DOCUMENT_ERROR_GENERIC) {
+    this.questDocumentErrorMessage.set(message);
+    this.questDocumentError.set(true);
+    this.focusSummary(this.questDocumentErrorSummary());
+  }
+
+  /**
+   * Traduit un refus de dépôt de document.
+   *
+   * Même raisonnement que pour les médias — `413` sans corps, `detail` relayé sur les seules
+   * `4xx` — mais un plafond et des motifs propres : signature PDF, type refusé, libellé manquant.
+   */
+  private questDocumentUploadErrorMessage(error: unknown): string {
+    if (!(error instanceof HttpErrorResponse)) {
+      return QUEST_DOCUMENT_ERROR_GENERIC;
+    }
+    if (error.status === 413) {
+      return QUEST_DOCUMENT_ERROR_FILE_TOO_LARGE;
+    }
+    const problem = error.error as { detail?: unknown } | null;
+    const detail = typeof problem?.detail === 'string' ? problem.detail.trim() : '';
+    return error.status >= 400 && error.status < 500 && detail ? detail : QUEST_DOCUMENT_ERROR_GENERIC;
   }
 
   private showAllowedEmailError() {

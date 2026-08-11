@@ -439,14 +439,14 @@ Répertoire logique de production :
 /var/lib/les-routes-oubliees/media/
 ```
 
-Organisation possible :
+Organisation :
 
 ```text
 media/
 ├── group/
 ├── adventurers/
-├── quests/
-└── misc/
+├── quests/     <- documents d'organisation (PDF), réservés à l'organisateur
+└── misc/       <- images de la médiathèque
 ```
 
 Le nom stocké est généré par le serveur.
@@ -455,7 +455,7 @@ Le nom original est uniquement une métadonnée.
 
 #### Validation à l'entrée
 
-Trois plafonds encadrent un téléversement, et un seul réglage les gouverne. `MEDIA_MAX_UPLOAD_BYTES` fixe le plafond applicatif ; `MediaUploadConfiguration` en **dérive** celui du conteneur servlet, avec une marge pour le champ `altText` et les délimiteurs multipart. Laissée à son défaut, cette limite du conteneur valait 1 Mio et rejetait toute photo de téléphone bien avant le plafond annoncé : ne jamais la reposer en parallèle, ce serait rouvrir l'écart. `client_max_body_size` côté Nginx doit rester au moins aussi permissif, faute de quoi le proxy refuse en premier sans passer par l'application.
+Trois plafonds encadrent un téléversement. Deux réglages applicatifs les gouvernent — `MEDIA_MAX_UPLOAD_BYTES` pour les images, `QUEST_DOCUMENT_MAX_UPLOAD_BYTES` pour les documents d'organisation — et `UploadCeilingConfiguration` **dérive** de leur **maximum** celui du conteneur servlet, avec une marge pour le champ texte et les délimiteurs multipart. Le conteneur n'ayant qu'un réglage pour toutes les requêtes, retenir le minimum ferait rejeter par lui des fichiers que l'application accepte, et son refus arrive sans corps applicatif ; chaque endpoint applique ensuite le sien. Laissée à son défaut, cette limite du conteneur valait 1 Mio et rejetait toute photo de téléphone bien avant le plafond annoncé : ne jamais la reposer en parallèle, ce serait rouvrir l'écart. `client_max_body_size` côté Nginx doit rester au moins aussi permissif que le plus élevé des deux, faute de quoi le proxy refuse en premier sans passer par l'application.
 
 Les dimensions sont lues **dans l'en-tête**, jamais par un décodage. `ImageIO.read` allouait `largeur × hauteur × 4` octets pour n'en retirer que deux entiers : PNG et JPEG atteignant des taux de compression extrêmes sur une image uniforme, un fichier de quelques mébioctets suffisait à réclamer plusieurs gibioctets et à emporter la JVM — donc le Radar en pleine partie. WebP était déjà lu ainsi ; les trois formats le sont désormais, et la surface annoncée est plafonnée à cinquante millions de pixels. Ce plafond ne protège plus le serveur, qui ne décode rien, mais les navigateurs qui afficheront le fichier.
 
@@ -481,6 +481,21 @@ Interdire :
 * remontée de chemin ;
 * fichiers cachés ;
 * types non autorisés.
+
+#### Documents d'organisation des quêtes
+
+Ces PDF ne passent **pas** par `/media/{id}` : cette route n'exige que `ROLE_USER`, donc tout aventurier authentifié par Cloudflare Access pourrait les lire en devinant un identifiant. Ils vivent sous `/api/admin/quest-tabs/{code}/documents`, couvert par `hasRole("ADMIN")`, l'interception de liste blanche et le jeton CSRF pour les écritures.
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| GET | `/api/admin/quest-tabs/{code}/documents` | liste des documents de la quête |
+| POST | `/api/admin/quest-tabs/{code}/documents` | dépôt, `multipart/form-data` : `file` et `label` |
+| GET | `/api/admin/quest-tabs/{code}/documents/{id}/content` | diffusion du PDF |
+| DELETE | `/api/admin/quest-tabs/{code}/documents/{id}` | suppression de la ligne et du fichier |
+
+Le couple `(id, quest_id)` est toujours exigé : un document lu à travers le code d'une autre quête répond `404`, pour que l'URL ne mente jamais sur son contenu. La diffusion impose `application/pdf`, `nosniff` et `Cache-Control: no-store` — ce document décrit l'organisation d'une partie et n'a rien à laisser sur le poste consulté.
+
+Risque résiduel assumé : un PDF peut porter du JavaScript. Il est atténué par l'accès administrateur seul, le type imposé par le serveur, `nosniff` et la visionneuse native du navigateur. Ne pas ajouter d'en-tête `Content-Security-Policy: sandbox` sur cette réponse, il casserait l'affichage.
 
 ## 9. Markdown
 

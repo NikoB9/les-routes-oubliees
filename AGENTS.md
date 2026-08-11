@@ -524,6 +524,17 @@ Pour le MVP :
 * empêcher la traversée de répertoires ;
 * exiger un texte alternatif pour les images informatives.
 
+### 12.1 Documents d'organisation
+
+Les documents d'organisation d'une quête sont une extension explicite de ces règles, et non des médias :
+
+* format PDF uniquement, signature `%PDF-` vérifiée à l'offset zéro ;
+* plafond dédié, distinct de celui des images ;
+* réservés à l'organisateur : jamais servis sous `/media/**`, qui n'exige que `ROLE_USER` et laisse donc passer tout aventurier authentifié ;
+* jamais référencés par un contenu Markdown, jamais exposés par une route publique, jamais présents dans l'instantané hors ligne ;
+* pas de texte alternatif : ce n'est pas une image ;
+* servis en `inline` avec le type imposé par le serveur, `nosniff` et `Cache-Control: no-store`.
+
 ## 13. Contenu Markdown
 
 Les contenus des quêtes sont écrits en Markdown.

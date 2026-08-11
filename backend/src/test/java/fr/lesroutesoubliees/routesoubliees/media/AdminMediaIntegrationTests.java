@@ -74,6 +74,7 @@ class AdminMediaIntegrationTests {
 	static void mediaProperties(DynamicPropertyRegistry registry) {
 		registry.add("routes-oubliees.media-storage-path", () -> MEDIA_STORAGE.toString());
 		registry.add("routes-oubliees.media-max-upload-bytes", () -> "1024");
+		registry.add("routes-oubliees.quest-document-max-upload-bytes", () -> "2048");
 	}
 
 	@BeforeEach
@@ -83,19 +84,24 @@ class AdminMediaIntegrationTests {
 	}
 
 	/**
-	 * Le plafond du conteneur servlet doit suivre le plafond applicatif.
+	 * Le plafond du conteneur servlet doit suivre les plafonds applicatifs.
 	 *
 	 * <p>Laisse au defaut de Spring Boot, il valait 1 Mio quel que soit
 	 * {@code media-max-upload-bytes} : le conteneur rejetait pendant l'analyse du multipart et
 	 * la valeur configuree n'avait aucun effet au-dela. L'ecart etait invisible en test,
 	 * {@code MockMvc} n'appliquant pas les limites du conteneur — d'ou cette verification sur
 	 * la configuration elle-meme plutot que sur une requete.
+	 *
+	 * <p>Le conteneur n'a qu'un reglage pour deux plafonds applicatifs : c'est le plus permissif
+	 * qui doit passer, sans quoi le controle applicatif du plus large — ici les documents
+	 * d'organisation, a 2048 octets — resterait hors d'atteinte. Les valeurs sont volontairement
+	 * differentes pour que le test distingue un maximum d'un minimum.
 	 */
 	@Test
-	void alignsTheServletUploadCeilingWithTheApplicationCeiling() {
-		assertThat(multipartConfig.getMaxFileSize()).isEqualTo(1024);
+	void alignsTheServletUploadCeilingWithTheWidestApplicationCeiling() {
+		assertThat(multipartConfig.getMaxFileSize()).isEqualTo(2048);
 		assertThat(multipartConfig.getMaxRequestSize())
-			.isEqualTo(1024 + MediaUploadConfiguration.MULTIPART_OVERHEAD_BYTES);
+			.isEqualTo(2048 + UploadCeilingConfiguration.MULTIPART_OVERHEAD_BYTES);
 	}
 
 	@Test
