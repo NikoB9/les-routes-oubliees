@@ -495,6 +495,8 @@ Ces PDF ne passent **pas** par `/media/{id}` : cette route n'exige que `ROLE_USE
 
 Le couple `(id, quest_id)` est toujours exigé : un document lu à travers le code d'une autre quête répond `404`, pour que l'URL ne mente jamais sur son contenu. La diffusion impose `application/pdf`, `nosniff` et `Cache-Control: no-store` — ce document décrit l'organisation d'une partie et n'a rien à laisser sur le poste consulté.
 
+Le lien qui ouvre un document est une **navigation**, et le service worker arbitre les navigations avant le réseau : `navigationUrls` doit donc exclure `/api/**` (`frontend/ngsw-config.json`). Sans cette exclusion, la coquille applicative est servie depuis le cache à la place du PDF et l'organisateur voit « Page introuvable » — le motif `!/**/*.*` ne rattrape pas le cas, le dernier segment `content` ne portant aucun point. Toute route servie par le serveur et atteinte autrement que par `fetch` relève de la même règle.
+
 Risque résiduel assumé : un PDF peut porter du JavaScript. Il est atténué par l'accès administrateur seul, le type imposé par le serveur, `nosniff` et la visionneuse native du navigateur. Ne pas ajouter d'en-tête `Content-Security-Policy: sandbox` sur cette réponse, il casserait l'affichage.
 
 ## 9. Markdown
