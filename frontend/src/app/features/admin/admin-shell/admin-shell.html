@@ -742,6 +742,112 @@
             </div>
           </form>
 
+          <section class="quest-documents" aria-labelledby="quest-documents-title">
+            <h3 id="quest-documents-title">Documents d'organisation</h3>
+            <p class="quest-documents-intro">
+              Réservés à l'organisation de la partie. Les aventuriers n'y ont jamais accès, en ligne
+              comme hors ligne.
+            </p>
+
+            @if (questDocumentError()) {
+              <p #questDocumentErrorSummary class="alert" role="alert" tabindex="-1">
+                {{ questDocumentErrorMessage() }}
+              </p>
+            }
+            @if (questDocumentSaved()) {
+              <p class="status" role="status">Documents d'organisation mis à jour.</p>
+            }
+
+            <form class="quest-document-form" (ngSubmit)="uploadQuestDocument()">
+              <label>
+                Libellé du document
+                <input
+                  type="text"
+                  name="questDocumentLabel"
+                  maxlength="160"
+                  [ngModel]="questDocumentLabel()"
+                  [attr.aria-invalid]="questDocumentError() ? 'true' : null"
+                  (ngModelChange)="updateQuestDocumentLabel($event)"
+                />
+              </label>
+
+              <label>
+                Fichier PDF
+                <input
+                  type="file"
+                  name="questDocumentFile"
+                  accept="application/pdf,.pdf"
+                  aria-describedby="quest-document-constraints"
+                  [attr.aria-invalid]="questDocumentError() ? 'true' : null"
+                  (change)="selectQuestDocumentFile($event)"
+                />
+              </label>
+              <p id="quest-document-constraints" class="field-hint">
+                Format PDF uniquement, 9 Mio au maximum par fichier.
+              </p>
+
+              <div class="button-row">
+                <button type="submit">Déposer le document</button>
+              </div>
+            </form>
+
+            <ul class="admin-list quest-document-list" aria-label="Documents d'organisation de la quête">
+              @for (document of questDocuments(); track document.id) {
+                <li>
+                  <a [href]="document.contentUrl" target="_blank" rel="noopener noreferrer">
+                    {{ document.label }}<span class="sr-only"> (nouvelle fenêtre)</span>
+                  </a>
+                  <small>{{ document.originalFilename }} - {{ formatFileSize(document.sizeBytes) }}</small>
+                  <button
+                    type="button"
+                    class="danger"
+                    [attr.aria-label]="'Supprimer le document « ' + document.label + ' »'"
+                    (click)="askQuestDocumentDeletion(document, $event)"
+                  >
+                    Supprimer
+                  </button>
+                </li>
+              } @empty {
+                <li class="empty-media">Aucun document d'organisation pour cette quête.</li>
+              }
+            </ul>
+          </section>
+
+          @if (questDocumentPendingDeletion(); as pending) {
+            <div class="modal-backdrop">
+              <section
+                class="media-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="quest-document-deletion-title"
+                (keydown)="handleQuestDocumentDialogKeydown($event)"
+              >
+                <div class="modal-heading">
+                  <h3 id="quest-document-deletion-title">Supprimer ce document ?</h3>
+                </div>
+
+                <p>
+                  « {{ pending.label }} » sera définitivement supprimé, fichier compris. Cette action
+                  est irréversible.
+                </p>
+
+                <div class="button-row">
+                  <button type="button" class="danger" (click)="confirmQuestDocumentDeletion()">
+                    Supprimer définitivement
+                  </button>
+                  <button
+                    #questDocumentCancelButton
+                    type="button"
+                    class="secondary"
+                    (click)="cancelQuestDocumentDeletion()"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </section>
+            </div>
+          }
+
           @if (imageDialogOpen()) {
             <div class="modal-backdrop">
               <section

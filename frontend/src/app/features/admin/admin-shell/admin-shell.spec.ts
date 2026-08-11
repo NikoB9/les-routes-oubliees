@@ -7,6 +7,7 @@ import { AdminAuthService } from '../../../core/auth/admin-auth.service';
 import { NotebookApiService } from '../../notebook/notebook-api.service';
 import { AdminApiService } from '../admin-api.service';
 import { MediaApiService } from '../media-api.service';
+import { QuestDocumentApiService } from '../quest-document-api.service';
 import { AdminShell } from './admin-shell';
 
 interface DateConversionHarness {
@@ -19,6 +20,49 @@ interface MediaUploadHarness {
   mediaAltText: { set(value: string): void };
   mediaErrorMessage: () => string;
   uploadMedia: () => void;
+}
+
+interface QuestDocumentHarness {
+  questDocumentFile: { set(value: File | null): void };
+  questDocumentLabel: { set(value: string): void };
+  questDocumentErrorMessage: () => string;
+  uploadQuestDocument: () => void;
+  selectQuest: (code: string) => void;
+  saveQuest: () => void;
+}
+
+const QUEST_DOCUMENT = {
+  id: '90000000-0000-0000-0000-000000000001',
+  label: "Feuille de route",
+  originalFilename: 'organisation.pdf',
+  sizeBytes: 2_516_582,
+  contentUrl: '/api/admin/quest-tabs/QUEST_1/documents/90000000-0000-0000-0000-000000000001/content',
+  createdAt: '2026-08-11T10:00:00Z',
+  uploadedBy: 'admin@example.test',
+};
+
+function questFixture(code: string, displayOrder: number) {
+  return {
+    id: `50000000-0000-0000-0000-00000000000${displayOrder}`,
+    code,
+    title: `Quete ${displayOrder}`,
+    summary: 'Resume public',
+    importantEventsMarkdown: '',
+    importantEventsHtml: '',
+    discoveredCluesMarkdown: '',
+    discoveredCluesHtml: '',
+    completedTrialsMarkdown: '',
+    completedTrialsHtml: '',
+    extraContentMarkdown: '',
+    extraContentHtml: '',
+    adminDraftMarkdown: '',
+    adminDraftHtml: '',
+    status: 'DRAFT',
+    visibleToPlayers: false,
+    displayOrder,
+    createdAt: '2026-07-13T10:00:00Z',
+    updatedAt: '2026-07-13T10:00:00Z',
+  };
 }
 
 class ResizeObserverStub {
@@ -96,12 +140,22 @@ describe('AdminShell', () => {
   let uploadMediaResponse: () => Observable<unknown>;
   let updatePortalAssignmentResponse: () => Observable<unknown>;
   let portalAssignmentPayloads: unknown[];
+  let uploadQuestDocumentResponse: () => Observable<unknown>;
+  let deleteQuestDocumentResponse: () => Observable<unknown>;
+  let listedQuestDocumentCodes: string[];
+  let deletedQuestDocuments: { questCode: string; id: string }[];
+  let questDocumentsByQuest: Record<string, unknown[]>;
 
   beforeEach(async () => {
     sectionParam = 'home';
     uploadMediaResponse = () => of({});
     updatePortalAssignmentResponse = () => of({});
     portalAssignmentPayloads = [];
+    uploadQuestDocumentResponse = () => of(QUEST_DOCUMENT);
+    deleteQuestDocumentResponse = () => of(undefined);
+    listedQuestDocumentCodes = [];
+    deletedQuestDocuments = [];
+    questDocumentsByQuest = { QUEST_1: [QUEST_DOCUMENT], QUEST_2: [] };
     globalThis.ResizeObserver = ResizeObserverStub as typeof ResizeObserver;
 
     await TestBed.configureTestingModule({
@@ -181,30 +235,9 @@ describe('AdminShell', () => {
         {
           provide: NotebookApiService,
           useValue: {
-            listAdminQuests: () =>
-              of([
-                {
-                  id: '50000000-0000-0000-0000-000000000001',
-                  code: 'QUEST_1',
-                  title: 'Quete 1',
-                  summary: 'Resume public',
-                  importantEventsMarkdown: '',
-                  importantEventsHtml: '',
-                  discoveredCluesMarkdown: '',
-                  discoveredCluesHtml: '',
-                  completedTrialsMarkdown: '',
-                  completedTrialsHtml: '',
-                  extraContentMarkdown: '',
-                  extraContentHtml: '',
-                  adminDraftMarkdown: '',
-                  adminDraftHtml: '',
-                  status: 'DRAFT',
-                  visibleToPlayers: false,
-                  displayOrder: 1,
-                  createdAt: '2026-07-13T10:00:00Z',
-                  updatedAt: '2026-07-13T10:00:00Z',
-                },
-              ]),
+            listAdminQuests: () => of([questFixture('QUEST_1', 1), questFixture('QUEST_2', 2)]),
+            getAdminQuest: (code: string) => of(questFixture(code, code === 'QUEST_1' ? 1 : 2)),
+            updateAdminQuest: (code: string) => of(questFixture(code, code === 'QUEST_1' ? 1 : 2)),
           },
         },
         {
@@ -212,6 +245,20 @@ describe('AdminShell', () => {
           useValue: {
             listAdminMedia: () => of([]),
             uploadAdminMedia: () => uploadMediaResponse(),
+          },
+        },
+        {
+          provide: QuestDocumentApiService,
+          useValue: {
+            listQuestDocuments: (questCode: string) => {
+              listedQuestDocumentCodes.push(questCode);
+              return of(questDocumentsByQuest[questCode] ?? []);
+            },
+            uploadQuestDocument: () => uploadQuestDocumentResponse(),
+            deleteQuestDocument: (questCode: string, id: string) => {
+              deletedQuestDocuments.push({ questCode, id });
+              return deleteQuestDocumentResponse();
+            },
           },
         },
       ],
@@ -440,5 +487,160 @@ describe('AdminShell', () => {
     const logoutLink = compiled.querySelector<HTMLAnchorElement>('.logout-button');
 
     expect(logoutLink).toBeNull();
+  });
+
+  function renderNotebookSection() {
+    sectionParam = 'notebook';
+    const fixture = TestBed.createComponent(AdminShell);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('keeps the organiser documents inside the quest section only', () => {
+    const notebook = renderNotebookSection();
+    expect(notebook.nativeElement.querySelector('.quest-documents')).not.toBeNull();
+
+    sectionParam = 'media';
+    const media = TestBed.createComponent(AdminShell);
+    media.detectChanges();
+
+    expect(media.nativeElement.querySelector('.quest-documents')).toBeNull();
+  });
+
+  it('loads the documents of the quest that becomes selected', () => {
+    const fixture = renderNotebookSection();
+    const shell = fixture.componentInstance as unknown as QuestDocumentHarness;
+    expect(listedQuestDocumentCodes).toEqual(['QUEST_1']);
+
+    shell.selectQuest('QUEST_2');
+    fixture.detectChanges();
+
+    expect(listedQuestDocumentCodes).toEqual(['QUEST_1', 'QUEST_2']);
+  });
+
+  /**
+   * Enregistrer une quête la resélectionne. Recharger à cette occasion rejouerait la requête
+   * après chaque sauvegarde, pour une liste que rien n'a touchée.
+   */
+  it('does not reload the documents when the same quest is saved again', () => {
+    const fixture = renderNotebookSection();
+    const shell = fixture.componentInstance as unknown as QuestDocumentHarness;
+
+    shell.saveQuest();
+    fixture.detectChanges();
+
+    expect(listedQuestDocumentCodes).toEqual(['QUEST_1']);
+  });
+
+  it('opens a document in a new tab without leaking the opener', () => {
+    const fixture = renderNotebookSection();
+    const compiled = fixture.nativeElement as HTMLElement;
+    const link = compiled.querySelector<HTMLAnchorElement>('.quest-document-list a');
+
+    expect(link?.getAttribute('href')).toBe(QUEST_DOCUMENT.contentUrl);
+    expect(link?.getAttribute('target')).toBe('_blank');
+    expect(link?.getAttribute('rel')).toContain('noopener');
+    expect(link?.textContent).toContain('nouvelle fenêtre');
+  });
+
+  it('shows a readable size rather than raw bytes', () => {
+    const fixture = renderNotebookSection();
+    const details = fixture.nativeElement.querySelector('.quest-document-list small');
+
+    expect(details?.textContent).toContain('Mio');
+    expect(details?.textContent).not.toContain('2516582');
+  });
+
+  it('gives each delete button a name that identifies its document', () => {
+    const fixture = renderNotebookSection();
+    const button = fixture.nativeElement.querySelector('.quest-document-list button.danger');
+
+    expect(button?.getAttribute('aria-label')).toContain('Feuille de route');
+  });
+
+  it('explains a rejected document upload by its size', () => {
+    uploadQuestDocumentResponse = () => throwError(() => new HttpErrorResponse({ status: 413 }));
+    const fixture = renderNotebookSection();
+    const shell = fixture.componentInstance as unknown as QuestDocumentHarness;
+
+    shell.questDocumentFile.set(new File(['x'], 'dossier.pdf', { type: 'application/pdf' }));
+    shell.questDocumentLabel.set('Dossier complet');
+    shell.uploadQuestDocument();
+
+    expect(shell.questDocumentErrorMessage()).toContain('9 Mio');
+  });
+
+  it('shows the reason the server gives for a rejected document', () => {
+    uploadQuestDocumentResponse = () =>
+      throwError(() => new HttpErrorResponse({ status: 400, error: { detail: 'Signature PDF invalide.' } }));
+    const fixture = renderNotebookSection();
+    const shell = fixture.componentInstance as unknown as QuestDocumentHarness;
+
+    shell.questDocumentFile.set(new File(['x'], 'dossier.pdf', { type: 'application/pdf' }));
+    shell.questDocumentLabel.set('Dossier complet');
+    shell.uploadQuestDocument();
+
+    expect(shell.questDocumentErrorMessage()).toBe('Signature PDF invalide.');
+  });
+
+  it('never relays a server-side failure detail for a document', () => {
+    uploadQuestDocumentResponse = () =>
+      throwError(() => new HttpErrorResponse({ status: 500, error: { detail: 'Table quest_documents absente.' } }));
+    const fixture = renderNotebookSection();
+    const shell = fixture.componentInstance as unknown as QuestDocumentHarness;
+
+    shell.questDocumentFile.set(new File(['x'], 'dossier.pdf', { type: 'application/pdf' }));
+    shell.questDocumentLabel.set('Dossier complet');
+    shell.uploadQuestDocument();
+
+    expect(shell.questDocumentErrorMessage()).not.toContain('quest_documents');
+  });
+
+  it('names the missing fields when the document form is incomplete', () => {
+    const fixture = renderNotebookSection();
+    const shell = fixture.componentInstance as unknown as QuestDocumentHarness;
+
+    shell.uploadQuestDocument();
+
+    expect(shell.questDocumentErrorMessage()).toContain('libellé');
+  });
+
+  it('asks for confirmation before deleting a document', () => {
+    const fixture = renderNotebookSection();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    compiled.querySelector<HTMLButtonElement>('.quest-document-list button.danger')!.click();
+    fixture.detectChanges();
+
+    const dialog = compiled.querySelector('[role="dialog"]');
+    expect(dialog?.textContent).toContain('Feuille de route');
+    expect(deletedQuestDocuments).toEqual([]);
+  });
+
+  it('deletes nothing when the confirmation is dismissed', () => {
+    const fixture = renderNotebookSection();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    compiled.querySelector<HTMLButtonElement>('.quest-document-list button.danger')!.click();
+    fixture.detectChanges();
+    compiled.querySelector<HTMLButtonElement>('[role="dialog"] .secondary')!.click();
+    fixture.detectChanges();
+
+    expect(deletedQuestDocuments).toEqual([]);
+    expect(compiled.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('removes the document from the list after a confirmed delete', () => {
+    const fixture = renderNotebookSection();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    compiled.querySelector<HTMLButtonElement>('.quest-document-list button.danger')!.click();
+    fixture.detectChanges();
+    compiled.querySelector<HTMLButtonElement>('[role="dialog"] .danger')!.click();
+    fixture.detectChanges();
+
+    expect(deletedQuestDocuments).toEqual([{ questCode: 'QUEST_1', id: QUEST_DOCUMENT.id }]);
+    expect(compiled.querySelector('.quest-document-list a')).toBeNull();
+    expect(compiled.querySelector('.empty-media')?.textContent).toContain('Aucun document');
   });
 });

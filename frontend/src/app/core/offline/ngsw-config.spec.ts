@@ -79,4 +79,15 @@ describe('ngsw-config.json', () => {
     // service worker attende d'abord l'expiration d'un délai réseau.
     expect(media?.cacheConfig.strategy).toBe('performance');
   });
+
+  /**
+   * Aucune réponse d'administration ne doit être conservée sur le poste. Les documents
+   * d'organisation d'une quête y transitent : mis en cache, ils survivraient à la fin de la
+   * partie sur une machine que l'organisateur ne contrôle pas forcément.
+   */
+  it('keeps administration APIs out of every data group', () => {
+    const cachedUrls = config.dataGroups.flatMap((group) => group.urls);
+
+    expect(cachedUrls.some((url) => url.includes('/api/admin'))).toBe(false);
+  });
 });

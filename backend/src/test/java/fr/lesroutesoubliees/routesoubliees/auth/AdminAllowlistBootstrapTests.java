@@ -18,7 +18,7 @@ class AdminAllowlistBootstrapTests {
 	@Test
 	void importsBootstrapEmailsWhenNoAdminExists() {
 		when(allowlistService.hasAnyAdmin()).thenReturn(false);
-		var properties = new SiteProperties("./media", 5_242_880, "http://localhost:4200", "Europe/Paris",
+		var properties = new SiteProperties("./media", 5_242_880, 9_437_184, "http://localhost:4200", "Europe/Paris",
 			List.of("admin@example.com", "second@example.com"));
 		var bootstrap = new AdminAllowlistBootstrap(properties, allowlistService);
 
@@ -31,7 +31,7 @@ class AdminAllowlistBootstrapTests {
 	@Test
 	void doesNotImportBootstrapEmailsWhenAnyAdminExists() {
 		when(allowlistService.hasAnyAdmin()).thenReturn(true);
-		var properties = new SiteProperties("./media", 5_242_880, "http://localhost:4200", "Europe/Paris",
+		var properties = new SiteProperties("./media", 5_242_880, 9_437_184, "http://localhost:4200", "Europe/Paris",
 			List.of("admin@example.com"));
 		var bootstrap = new AdminAllowlistBootstrap(properties, allowlistService);
 

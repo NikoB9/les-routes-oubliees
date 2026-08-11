@@ -283,17 +283,27 @@ ADMIN_BOOTSTRAP_EMAILS=admin@example.invalid
 
 MEDIA_STORAGE_PATH=/var/lib/les-routes-oubliees/media
 MEDIA_MAX_UPLOAD_BYTES=5242880
+QUEST_DOCUMENT_MAX_UPLOAD_BYTES=9437184
 SITE_PUBLIC_URL=https://example.invalid
 SITE_TIMEZONE=Europe/Paris
 ```
 
 Le fichier `.env.example` du dépôt contient uniquement des valeurs factices.
 
-### Plafond de téléversement des médias
+### Plafonds de téléversement
 
-`MEDIA_MAX_UPLOAD_BYTES` est le seul réglage à modifier : `MediaUploadConfiguration` en dérive la limite du conteneur servlet, avec une marge de 16 Kio pour le champ `altText` et les délimiteurs multipart. Ne pas poser de `spring.servlet.multipart.max-file-size` en parallèle, ce serait rouvrir l'écart que ce calcul referme — laissée à son défaut, cette propriété valait 1 Mio et rejetait toute photo de téléphone bien avant le plafond applicatif annoncé.
+Deux réglages applicatifs, et eux seuls, gouvernent les tailles acceptées :
 
-Seule contrainte externe : `client_max_body_size` côté Nginx doit rester **au moins aussi permissif**, sinon c'est Nginx qui refuse en premier, avec son propre `413` et sans passer par l'application. La valeur versionnée est `10m`, ce qui couvre les 5 Mio par défaut ; en cas d'augmentation, remonter les deux.
+* `MEDIA_MAX_UPLOAD_BYTES` — images de la médiathèque, 5 Mio par défaut ;
+* `QUEST_DOCUMENT_MAX_UPLOAD_BYTES` — documents d'organisation des quêtes, 9 Mio par défaut.
+
+`UploadCeilingConfiguration` en dérive la limite du conteneur servlet, qui est unique pour toutes les requêtes : c'est le **maximum** des deux qui est retenu, avec une marge de 16 Kio pour le champ texte et les délimiteurs multipart. Borner au minimum ferait rejeter par le conteneur des fichiers que l'application accepte, et son refus arrive sans corps applicatif. Chaque endpoint applique ensuite son propre plafond, avec son propre message.
+
+Ne pas poser de `spring.servlet.multipart.max-file-size` en parallèle, ce serait rouvrir l'écart que ce calcul referme — laissée à son défaut, cette propriété valait 1 Mio et rejetait toute photo de téléphone bien avant le plafond applicatif annoncé.
+
+Seule contrainte externe : `client_max_body_size` côté Nginx doit rester **au moins aussi permissif que le plus élevé des deux**, sinon c'est Nginx qui refuse en premier, avec son propre `413` et sans passer par l'application. La valeur versionnée est `10m`, ce qui couvre les 9 Mio des documents, délimiteurs compris — c'est précisément pourquoi ce plafond a été fixé à 9 et non à 10. Toute augmentation au-delà impose de remonter les deux.
+
+Effet de bord à connaître : le plafond du conteneur suivant désormais les documents, une image dépassant les 5 Mio est refusée par l'application avec un `413` **et un message explicite**, là où le conteneur la rejetait auparavant sans corps.
 
 Ne jamais placer le fichier de production dans Git.
 
@@ -408,6 +418,8 @@ Sauvegarder :
 ```text
 /var/lib/les-routes-oubliees/media/
 ```
+
+Ce volume ne contient plus seulement des images publiques : le sous-répertoire `quests/` porte les **documents d'organisation** des quêtes, qui décrivent le déroulé de la partie et les réponses aux énigmes. La sauvegarde hérite donc d'un contenu sensible que les autres médias n'avaient pas. Sa destination et sa durée de rétention doivent être choisies à ce titre, et non sur le seul critère du volume.
 
 ### 14.3 Cohérence
 
