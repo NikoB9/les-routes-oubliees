@@ -57,6 +57,16 @@ describe('ngsw-config.json', () => {
   });
 
   /**
+   * `/reconnexion` n'a de valeur que s'il atteint le réseau : c'est la seule façon pour
+   * Cloudflare Access de voir passer la demande et de redemander une authentification. Servi
+   * depuis le cache, il ne ferait rien du tout — et le lien « Se reconnecter » redeviendrait
+   * inerte partout sauf sur `/radar` et `/admin`, défaut invisible hors production.
+   */
+  it('keeps the session recovery path out of the offline shell', () => {
+    expect(negatives).toContain('!/reconnexion');
+  });
+
+  /**
    * Tout le contenu visuel public passe par `/media/{uuid}` : la carte révélée, les avatars,
    * l'emblème, le logo. Sans ce groupe, l'instantané hors ligne arrive complet et toutes les
    * images sont cassées — la page Carte se retrouve vide de sa carte.

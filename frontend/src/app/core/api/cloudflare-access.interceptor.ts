@@ -22,7 +22,7 @@ const APPLICATION_AUTH_ERROR_CODE = 'application-unauthenticated';
  *
  * Un `401` n'est donc traité comme une expiration Access que s'il ne porte pas le
  * marqueur applicatif : les refus émis par le backend lui-même ne doivent jamais
- * provoquer de rechargement.
+ * faire croire à une session perdue.
  */
 export const cloudflareAccessInterceptor: HttpInterceptorFn = (request, next) => {
   const session = inject(CloudflareAccessSessionService);
@@ -44,7 +44,7 @@ export const cloudflareAccessInterceptor: HttpInterceptorFn = (request, next) =>
         error.status === 401 &&
         !isApplicationAuthError(error)
       ) {
-        session.reauthenticate();
+        session.noteExpiredSession();
       }
       return throwError(() => error);
     }),

@@ -28,6 +28,7 @@
 }
 
 .brand:focus-visible,
+.header-action:focus-visible,
 .profile-button:focus-visible,
 .profile-panel a:focus-visible,
 .profile-panel button:focus-visible {
@@ -67,6 +68,34 @@
   flex: 0 1 auto;
   min-width: 0;
   margin-inline-end: 1rem;
+}
+
+/* Les quatre etats sans menu occupent la meme place que le bouton de profil. */
+.header-action,
+.header-state {
+  flex: 0 0 auto;
+  margin: 0 1rem 0 0;
+  padding: 0.7rem 1rem;
+  border: 1px solid #776142;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.header-action {
+  background: #5b3d24;
+  color: #f8f0df;
+  text-decoration: none;
+}
+
+.header-action:hover {
+  background: #6f4b2c;
+}
+
+.header-state {
+  background: none;
+  border-color: #5c4b33;
+  color: #dbc69e;
+  font-weight: 700;
 }
 
 .profile-button {
@@ -204,6 +233,12 @@
 
   .profile-menu {
     margin-inline-end: 0.75rem;
+  }
+
+  .header-action,
+  .header-state {
+    margin-inline-end: 0.75rem;
+    padding-inline: 0.75rem;
   }
 
   .profile-button {

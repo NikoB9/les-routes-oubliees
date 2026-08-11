@@ -14,46 +14,79 @@
     </span>
   </a>
 
-  <!--
-    Panneau de divulgation et non modèle ARIA « menu » : deux actions au plus, donc du HTML
-    natif (bouton, lien, bouton) plutôt qu'un modèle clavier complet à réimplémenter.
-  -->
-  <div class="profile-menu" #profileMenu>
-    <button
-      #profileButton
-      type="button"
-      class="profile-button"
-      [attr.aria-expanded]="profileMenuOpen()"
-      aria-controls="profile-panel"
-      [attr.aria-label]="profileLabel()"
-      (click)="toggleProfileMenu()"
-    >
-      <span class="profile-avatar" [class.guest]="portal.identity()?.accessMode === 'GUEST'">
-        @if (portal.identity()?.avatarPath; as avatarPath) {
-          <img [src]="avatarPath" alt="" />
-        }
-        @else if (portal.identity()?.accessMode === 'GUEST') {
-          <span aria-hidden="true">?</span>
-        }
-        @else {
-          <span aria-hidden="true">{{ profileInitials() }}</span>
-        }
-      </span>
-      <span class="profile-name">{{ profileName() }}</span>
-    </button>
+  @switch (mode()) {
+    @case ('expired') {
+      <!--
+        Lien HTML ordinaire, et surtout jamais `routerLink` : une navigation interne au routeur
+        ne quitterait pas le navigateur, Cloudflare ne verrait rien passer et le lien serait
+        inerte — le défaut même que cette page corrige. Un test refuse la directive sur cette
+        ancre, faute de quoi la régression serait invisible partout ailleurs.
+      -->
+      <a class="header-action" [href]="reconnectHref()">Se reconnecter</a>
+    }
+    @case ('offline') {
+      <p class="header-state">Hors ligne</p>
+    }
+    @case ('loading') {
+      <p class="header-state">Portail</p>
+    }
+    @case ('unavailable') {
+      <!--
+        Le portail a échoué sans `401` Cloudflare : panne applicative, ou refus du JWT à
+        l'origine alors que la session de bord est valide. Le second cas se répare par une
+        navigation à travers Cloudflare, qui frappe un jeton neuf ; le premier n'en souffre pas.
+        Cet état était la seule impasse de l'en-tête — un constat sans issue — alors qu'il en
+        existe une, gratuite. Même ancre réseau que la reprise, jamais `routerLink`.
+      -->
+      <a
+        class="header-action"
+        [href]="reconnectHref()"
+        aria-label="Portail indisponible, réessayer"
+      >Réessayer</a>
+    }
+    @case ('identified') {
+      <!--
+        Panneau de divulgation et non modèle ARIA « menu » : deux actions au plus, donc du HTML
+        natif (bouton, lien, bouton) plutôt qu'un modèle clavier complet à réimplémenter.
+      -->
+      <div class="profile-menu" #profileMenu>
+        <button
+          #profileButton
+          type="button"
+          class="profile-button"
+          [attr.aria-expanded]="profilePanelOpen()"
+          aria-controls="profile-panel"
+          [attr.aria-label]="profileLabel()"
+          (click)="toggleProfileMenu()"
+        >
+          <span class="profile-avatar" [class.guest]="portal.identity()?.accessMode === 'GUEST'">
+            @if (portal.identity()?.avatarPath; as avatarPath) {
+              <img [src]="avatarPath" alt="" />
+            }
+            @else if (portal.identity()?.accessMode === 'GUEST') {
+              <span aria-hidden="true">?</span>
+            }
+            @else {
+              <span aria-hidden="true">{{ profileInitials() }}</span>
+            }
+          </span>
+          <span class="profile-name">{{ profileName() }}</span>
+        </button>
 
-    <!--
-      Le panneau reste dans le document, masqué par `hidden` : `aria-controls` doit désigner
-      un élément existant, y compris panneau fermé. `hidden` retire l'élément de l'ordre de
-      tabulation et de l'arbre d'accessibilité.
-    -->
-    <div class="profile-panel" id="profile-panel" [hidden]="!profileMenuOpen()">
-      @if (portal.canAccessAdmin()) {
-        <a routerLink="/admin" (click)="closeProfileMenu()">Administration</a>
-      }
-      <button type="button" class="profile-logout" (click)="logout()">Se déconnecter</button>
-    </div>
-  </div>
+        <!--
+          Le panneau reste dans le document, masqué par `hidden` : `aria-controls` doit désigner
+          un élément existant, y compris panneau fermé. `hidden` retire l'élément de l'ordre de
+          tabulation et de l'arbre d'accessibilité.
+        -->
+        <div class="profile-panel" id="profile-panel" [hidden]="!profilePanelOpen()">
+          @if (portal.canAccessAdmin()) {
+            <a routerLink="/admin" (click)="closeProfileMenu()">Administration</a>
+          }
+          <button type="button" class="profile-logout" (click)="logout()">Se déconnecter</button>
+        </div>
+      </div>
+    }
+  }
 </header>
 
 @if (settings().status === 'MAINTENANCE') {

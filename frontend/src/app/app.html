@@ -2,12 +2,18 @@
 
 <a class="skip-link" href="#main-content">Aller au contenu principal</a>
 
-@if (accessSession.reconnectRequired()) {
-  <div class="access-reconnect" role="alert">
-    <p>Votre session sécurisée a expiré.</p>
-    <button type="button" (click)="accessSession.retryNow()">Se reconnecter</button>
-  </div>
-}
+<!--
+  L'expiration est portée visuellement par l'en-tête, qui remplace le menu de profil par un lien
+  de reprise. Un changement d'en-tête n'étant annoncé par aucun lecteur d'écran, cette région
+  s'en charge. Elle est toujours présente et vide : une région créée au moment où elle se remplit
+  n'est pas annoncée.
+-->
+<p class="sr-only" role="status">
+  @if (accessSession.sessionExpired()) {
+    Votre session sécurisée a expiré. La reprise se fait depuis l'en-tête, dès que le réseau est
+    disponible.
+  }
+</p>
 
 <app-public-header />
 
