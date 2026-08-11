@@ -4,6 +4,7 @@
   "navigationUrls": [
     "/**",
     "!/**/*.*",
+    "!/api/**",
     "!/cdn-cgi/**",
     "!/reconnexion",
     "!/radar",

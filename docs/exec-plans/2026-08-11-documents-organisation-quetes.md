@@ -397,7 +397,25 @@ Nouveau `quest-document-api.service.spec.ts` avec `provideHttpClientTesting` : U
 
 Dans `frontend/src/app/core/offline/ngsw-config.spec.ts` : ajouter
 `keeps admin APIs out of every data group`. L'assertion n'existe pas aujourd'hui ; les `dataGroups`
-ne couvrent que `/api/public/**` et `/media/**`, donc `ngsw-config.json` reste inchangé.
+ne couvrent que `/api/public/**` et `/media/**`, rien n'est donc à retirer de ce côté.
+
+**Correctif du 2026-08-11, après essai en production.** L'affirmation « `ngsw-config.json` reste
+inchangé » était fausse, et le lot est parti avec le défaut. Les `dataGroups` n'étaient effectivement
+pas en cause — c'est `navigationUrls` qui l'était. Ouvrir un document dans un onglet est une
+**navigation** : le service worker la compare à ses motifs, `/api/admin/quest-tabs/{code}/documents/
+{id}/content` passe le `/**` positif sans être repris par aucun motif négatif — `!/**/*.*` exige un
+point dans le dernier segment, or celui-ci est `content` — et il répond la coquille applicative
+depuis son cache. Angular n'a pas de route `/api/…`, l'organisateur voyait donc « Page introuvable »
+et la requête n'atteignait jamais le serveur.
+
+Le dépôt, lui, fonctionnait : un `POST` en `FormData` est une requête `fetch`, jamais une navigation.
+C'est ce qui rend le défaut invisible au reste de l'application, dont aucun appel d'API ne passe par
+une navigation — et invisible aux tests, qui ne montent pas de service worker.
+
+Correctif : ajouter `!/api/**` à `navigationUrls`, plus l'assertion
+`never serves the shell for API requests`. Aucun effet sur le mode hors ligne : `navigationUrls` ne
+décide que du sort des navigations, la mise en cache de `/api/public/**` restant l'affaire des
+`dataGroups`. Même piège que `!/cdn-cgi/**`, déjà documenté dans ce fichier de test.
 
 Validation, via Docker — le Node de la machine est trop ancien pour Angular 22 :
 
@@ -434,6 +452,10 @@ Pas d'ADR : aucune décision d'architecture n'est renversée.
    * `/admin/notebook`, onglet `QUEST_1`, déposer un PDF avec un libellé → il apparaît dans la liste
      avec sa taille lisible ;
    * clic sur le libellé → le PDF s'ouvre dans un nouvel onglet et **s'affiche** ;
+   * **vérifier avec le service worker actif**, et pas seulement en navigation privée : c'est
+     précisément la configuration où le défaut de `navigationUrls` se manifestait. Un service worker
+     déjà installé garde son ancien manifeste jusqu'à sa mise à jour ; après déploiement, recharger
+     la page d'administration une fois de plus avant de conclure ;
    * **vérifier en Chrome et en Firefox** : la CSP `default-src 'self'` posée par Nginx sur
      `location ~ ^/api/` s'applique aussi à la réponse PDF, et un `object-src`/`frame-src` hérité a
      historiquement cassé la visionneuse intégrée de Chrome. Aucun test automatisé ne le détectera.

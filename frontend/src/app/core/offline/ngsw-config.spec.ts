@@ -46,6 +46,19 @@ describe('ngsw-config.json', () => {
   });
 
   /**
+   * Une adresse d'API ouverte dans un onglet est une navigation : sans ce motif négatif, le
+   * service worker y répond la coquille applicative et l'utilisateur voit « Page introuvable »
+   * à la place de la réponse du serveur. Le cas se produit dès que le dernier segment ne
+   * contient pas de point — `/api/admin/quest-tabs/QUEST_1/documents/{uuid}/content`, ouvert
+   * par le lien d'un document d'organisation, en est l'exemple. Les requêtes `fetch` du reste
+   * de l'application ne sont pas concernées : elles ne sont pas des navigations, ce qui rend
+   * le défaut invisible partout ailleurs.
+   */
+  it('never serves the shell for API requests', () => {
+    expect(negatives).toContain('!/api/**');
+  });
+
+  /**
    * `/cdn-cgi/access/logout` est servi par l'edge Cloudflare, jamais par l'application. Sans
    * ce motif négatif, le service worker répond la coquille depuis son cache : la requête ne
    * quitte pas le navigateur, la session Access survit et l'utilisateur voit « Page
