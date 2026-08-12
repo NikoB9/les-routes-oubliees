@@ -20,7 +20,6 @@ const HOME_KEY = 'home';
 const MAP_KEY = 'map';
 const QUESTS_KEY = 'quests';
 const QUEST_DETAIL_PREFIX = 'quest:';
-const OFFLINE_FALLBACK_HTTP_STATUSES = new Set([0, 401, 403, 502, 503, 504]);
 
 /**
  * Repère une URL de média dans l'instantané, quel que soit l'endroit où elle figure.
@@ -109,7 +108,7 @@ export class PublicContentCacheService {
     }
 
     const browserReportsOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-    return browserReportsOffline || OFFLINE_FALLBACK_HTTP_STATUSES.has(error.status);
+    return browserReportsOffline || error.status === 0 || error.status === 504;
   }
 
   async readSettings(): Promise<PublicSiteSettings | null> {
