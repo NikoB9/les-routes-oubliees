@@ -48,18 +48,22 @@ describe('PublicContentCacheService', () => {
     vi.restoreAllMocks();
   });
 
-  it('uses offline fallback for service worker gateway timeout responses', () => {
-    expect(
-      service.shouldUseOfflineFallback(
-        new HttpErrorResponse({
-          status: 504,
-          statusText: 'Gateway Timeout',
-        }),
-      ),
-    ).toBe(true);
+  it.each([
+    [0, 'Offline'],
+    [401, 'Unauthorized'],
+    [403, 'Forbidden'],
+    [502, 'Bad Gateway'],
+    [503, 'Service Unavailable'],
+    [504, 'Gateway Timeout'],
+  ])('uses offline fallback for status %i responses', (status, statusText) => {
+    expect(service.shouldUseOfflineFallback(new HttpErrorResponse({ status, statusText }))).toBe(
+      true,
+    );
   });
 
-  it('does not use offline fallback for regular server errors while online', () => {
+  it('uses offline fallback when the browser reports no network', () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+
     expect(
       service.shouldUseOfflineFallback(
         new HttpErrorResponse({
@@ -67,7 +71,26 @@ describe('PublicContentCacheService', () => {
           statusText: 'Server Error',
         }),
       ),
+    ).toBe(true);
+  });
+
+  it.each([
+    [400, 'Bad Request'],
+    [404, 'Not Found'],
+    [500, 'Server Error'],
+  ])('does not use offline fallback for status %i while online', (status, statusText) => {
+    expect(
+      service.shouldUseOfflineFallback(
+        new HttpErrorResponse({
+          status,
+          statusText,
+        }),
+      ),
     ).toBe(false);
+  });
+
+  it('does not use offline fallback for non-HTTP errors', () => {
+    expect(service.shouldUseOfflineFallback(new Error('regular failure'))).toBe(false);
   });
 
   /**
