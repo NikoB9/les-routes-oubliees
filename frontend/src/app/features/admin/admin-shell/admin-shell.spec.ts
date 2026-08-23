@@ -226,6 +226,27 @@ describe('AdminShell', () => {
             listPortalIdentities: () => of(PORTAL_IDENTITIES),
             listAdventurers: () => of(ADVENTURERS),
             listAuditLogs: () => of([]),
+            getRadarSettings: () => of({ treasureVisible: false, treasure: null }),
+            updateRadarSettings: () => of({ treasureVisible: true, treasure: null }),
+            listRadarPoints: () => of([]),
+            importRadarCarte: () => of([]),
+            updateRadarPoint: (_id: string, payload: { active: boolean; imageMediaId: string | null }) =>
+              of({
+                id: _id,
+                title: 'Point',
+                description: 'Description',
+                latitude: 48.6,
+                longitude: 3.1,
+                active: payload.active,
+                displayOrder: 1,
+                sourceImageKey: null,
+                imageMediaId: payload.imageMediaId,
+                imageUrl: null,
+                imageAltText: null,
+                createdAt: '2026-08-23T10:00:00Z',
+                updatedAt: '2026-08-23T10:00:00Z',
+              }),
+            deleteRadarPoint: () => of(undefined),
             // Enregistrer une quête rafraîchit le tableau de bord : sans ce stub, le scénario
             // de sauvegarde échoue sur une fonction absente, loin de ce qu'il vérifie.
             getDashboard: () => of({}),

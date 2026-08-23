@@ -6,7 +6,7 @@ import { EMPTY, Subscription, catchError, finalize, interval, switchMap, timer }
 import { PortalIdentityStore } from '../../../core/portal/portal-identity.store';
 import { LoadingIndicatorComponent } from '../../../shared/components/loading-indicator/loading-indicator';
 import { RadarApiService } from '../radar-api.service';
-import { RadarLocationPayload, RadarParticipant, RadarSnapshot, RadarStreamEvent } from '../radar.models';
+import { RadarLocationPayload, RadarParticipant, RadarPoint, RadarSnapshot, RadarStreamEvent } from '../radar.models';
 
 type LeafletModule = typeof import('leaflet');
 type LeafletMap = import('leaflet').Map;
@@ -50,6 +50,7 @@ export class RadarPage implements OnDestroy {
   private map: LeafletMap | null = null;
   private participantMarkers = new Map<string, LeafletMarker>();
   private participantCircles = new Map<string, LeafletCircle>();
+  private pointMarkers = new Map<string, LeafletMarker>();
   /** Apparence déjà posée sur chaque repère, pour ne le reconstruire que si elle change. */
   private participantAppearances = new Map<string, string>();
   private treasureMarker: LeafletMarker | null = null;
@@ -133,6 +134,11 @@ export class RadarPage implements OnDestroy {
     this.participantMarkers.get(participant.identityId)?.openPopup();
   }
 
+  protected focusPoint(point: RadarPoint) {
+    this.map?.setView([point.latitude, point.longitude], Math.max(this.map.getZoom(), 16));
+    this.pointMarkers.get(point.id)?.openPopup();
+  }
+
   protected recenter() {
     if (this.lastLocation && this.map) {
       this.map.setView([this.lastLocation.latitude, this.lastLocation.longitude], Math.max(this.map.getZoom(), 16));
@@ -147,6 +153,9 @@ export class RadarPage implements OnDestroy {
     const treasure = this.snapshot()?.treasure;
     if (treasure) {
       points.push([treasure.latitude, treasure.longitude]);
+    }
+    for (const point of this.snapshot()?.points ?? []) {
+      points.push([point.latitude, point.longitude]);
     }
     if (points.length > 0) {
       this.map.fitBounds(this.leaflet.latLngBounds(points), { padding: [32, 32], maxZoom: 17 });
@@ -429,6 +438,7 @@ export class RadarPage implements OnDestroy {
     }
     const currentId = snapshot.currentIdentity?.identityId ?? this.portal()?.identity.id ?? null;
     const activeIds = new Set(snapshot.participants.map((participant) => participant.identityId));
+    const activePointIds = new Set(snapshot.points.map((point) => point.id));
     for (const [id, marker] of this.participantMarkers) {
       if (!activeIds.has(id)) {
         marker.remove();
@@ -446,6 +456,15 @@ export class RadarPage implements OnDestroy {
     }
     for (const participant of snapshot.participants) {
       this.renderParticipant(participant, participant.identityId === currentId);
+    }
+    for (const [id, marker] of this.pointMarkers) {
+      if (!activePointIds.has(id)) {
+        marker.remove();
+        this.pointMarkers.delete(id);
+      }
+    }
+    for (const point of snapshot.points) {
+      this.renderPoint(point);
     }
     this.renderTreasure(snapshot);
   }
@@ -530,6 +549,27 @@ export class RadarPage implements OnDestroy {
     }
   }
 
+  private renderPoint(point: RadarPoint) {
+    if (!this.leaflet || !this.map) {
+      return;
+    }
+    const latLng: [number, number] = [point.latitude, point.longitude];
+    const icon = this.leaflet.divIcon({
+      className: 'radar-point-marker',
+      html: '<span aria-hidden="true">!</span>',
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+    });
+    const popup = this.pointPopup(point);
+    const marker = this.pointMarkers.get(point.id);
+    if (marker) {
+      marker.setLatLng(latLng).setIcon(icon).setPopupContent(popup);
+    }
+    else {
+      this.pointMarkers.set(point.id, this.leaflet.marker(latLng, { icon }).bindPopup(popup).addTo(this.map));
+    }
+  }
+
   private markerHtml(participant: RadarParticipant) {
     if (participant.accessMode === 'GUEST') {
       return '<span class="ghost-marker" aria-hidden="true">?</span>';
@@ -566,6 +606,32 @@ export class RadarPage implements OnDestroy {
       `Relevé: ${treasure.observedAt}`,
       treasure.stale ? 'Position ancienne' : '',
     ].filter(Boolean).join('\n');
+    return node;
+  }
+
+  private pointPopup(point: RadarPoint): HTMLElement {
+    const node = document.createElement('article');
+    node.className = 'radar-popup radar-point-popup';
+
+    const title = document.createElement('h3');
+    title.textContent = point.title;
+    node.append(title);
+
+    if (point.imageUrl) {
+      const image = document.createElement('img');
+      image.src = point.imageUrl;
+      image.alt = point.imageAltText || `Image associée au point ${point.title}`;
+      node.append(image);
+    }
+
+    const description = document.createElement('p');
+    description.textContent = point.description;
+    node.append(description);
+
+    const coordinates = document.createElement('p');
+    coordinates.textContent = `Latitude: ${point.latitude}\nLongitude: ${point.longitude}`;
+    node.append(coordinates);
+
     return node;
   }
 

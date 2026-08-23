@@ -30,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -67,6 +68,9 @@ class AdminMediaIntegrationTests {
 
 	@Autowired
 	private MultipartConfigElement multipartConfig;
+
+	@Autowired
+	private JdbcTemplate jdbc;
 
 	private MockMvc mvc;
 
@@ -284,6 +288,17 @@ class AdminMediaIntegrationTests {
 			.andExpect(status().isNotFound());
 	}
 
+	@Test
+	void refusesDeleteWhenRadarPointReferencesMediaEvenWhenInactive() throws Exception {
+		var id = idFrom(uploadPng("Point Radar").andExpect(status().isCreated()).andReturn());
+		useMediaAsRadarPoint(id, false);
+
+		mvc.perform(delete("/api/admin/media/" + id)
+				.with(user("admin@example.invalid").roles("ADMIN"))
+				.with(csrf()))
+			.andExpect(status().isConflict());
+	}
+
 	private void useMediaAsSiteLogo(String id) throws Exception {
 		mvc.perform(put("/api/admin/settings")
 				.with(user("admin@example.invalid").roles("ADMIN"))
@@ -319,6 +334,16 @@ class AdminMediaIntegrationTests {
 					}
 					""".formatted(id)))
 			.andExpect(status().is2xxSuccessful());
+	}
+
+	private void useMediaAsRadarPoint(String id, boolean active) {
+		jdbc.update("""
+			insert into radar_points(
+				id, title, description, latitude, longitude, active, display_order,
+				source_image_key, image_media_id, created_at, updated_at
+			)
+			values (?, 'Point test', 'Description test', 48.6, 3.1, ?, 999, 'img_test', ?::uuid, now(), now())
+			""", UUID.randomUUID(), active, id);
 	}
 
 	private org.springframework.test.web.servlet.ResultActions uploadPng(String altText) throws Exception {

@@ -65,6 +65,7 @@ class MediaService {
 		new MediaReference("company_profiles", "emblem_path", true, "active = true"),
 		new MediaReference("adventurers", "avatar_path", true, "visible = true"),
 		new MediaReference("map_visions", "asset_path", true, "active = true and status = 'PUBLISHED'"),
+		new MediaReference("radar_points", "image_media_id", true, "active = true"),
 		new MediaReference("site_settings", "accessibility_information_markdown", false, "true"),
 		new MediaReference("home_messages", "content_markdown", false, "active = true and status = 'PUBLISHED'"),
 		new MediaReference("company_profiles", "long_description_markdown", false, "active = true"),
@@ -185,7 +186,7 @@ class MediaService {
 		// Les parametres suivent le meme parcours de la liste que les sous-requetes : leur ordre
 		// ne peut pas diverger de celui des `?`.
 		var parameters = MEDIA_REFERENCES.stream()
-			.map(reference -> reference.exact() ? url : "%" + url + "%")
+			.map(reference -> reference.parameter(asset, url))
 			.toArray();
 		var total = jdbc.queryForObject(sql, Long.class, parameters);
 		return total == null ? 0 : total;
@@ -203,8 +204,18 @@ class MediaService {
 	private record MediaReference(String table, String column, boolean exact, String publicWhen) {
 
 		String countSubquery(boolean publicOnly) {
+			if ("image_media_id".equals(column)) {
+				return "(select count(*) from %s where %s and %s = ?)"
+					.formatted(table, publicOnly ? publicWhen : "true", column);
+			}
 			return "(select count(*) from %s where %s and %s %s ?)"
 				.formatted(table, publicOnly ? publicWhen : "true", column, exact ? "=" : "like");
+		}
+
+		Object parameter(MediaAsset asset, String url) {
+			return "image_media_id".equals(column)
+				? asset.id()
+				: exact ? url : "%" + url + "%";
 		}
 	}
 

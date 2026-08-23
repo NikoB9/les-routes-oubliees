@@ -1138,13 +1138,35 @@
     </div>
 
     @if (radarError()) {
-      <p class="alert" role="alert">Impossible de mettre à jour le Radar.</p>
+      <p id="radar-error-summary" #radarErrorSummary class="alert" role="alert" tabindex="-1">
+        {{ radarErrorMessage() }}
+      </p>
     }
     @if (radarSaved()) {
       <p class="status" role="status">Radar mis à jour.</p>
     }
 
     @if (radarSettings(); as radar) {
+      <form class="media-form" (ngSubmit)="importRadarCarte()" aria-labelledby="radar-import-title">
+        <h3 id="radar-import-title">Importer une carte IGN</h3>
+        <label>
+          Fichier .carte
+          <input
+            #radarCarteInput
+            type="file"
+            name="radarCarteFile"
+            accept=".carte,application/json"
+            [attr.aria-invalid]="radarError() ? 'true' : null"
+            [attr.aria-describedby]="radarError() ? 'radar-error-summary' : null"
+            (change)="selectRadarCarteFile($event)"
+          />
+        </label>
+        <p class="field-hint">
+          L'import remplace la liste actuelle des points. Les images IGN seront associées ensuite depuis la médiathèque.
+        </p>
+        <button type="submit">Importer la carte</button>
+      </form>
+
       <div class="form-grid">
         <label class="checkbox-label">
           <input
@@ -1178,6 +1200,61 @@
       } @else {
         <p class="empty-state">Aucun relevé de trésor reçu.</p>
       }
+
+      <section aria-labelledby="radar-points-title">
+        <h3 id="radar-points-title">Points d'attention importés</h3>
+        @if (radarPoints().length) {
+          <ul class="admin-list">
+            @for (point of radarPoints(); track point.id) {
+              <li>
+                <article>
+                  <h4>{{ point.displayOrder }}. {{ point.title }}</h4>
+                  <p>{{ point.description }}</p>
+                  <p>
+                    {{ point.latitude | number:'1.5-6' }},
+                    {{ point.longitude | number:'1.5-6' }}
+                  </p>
+                  @if (point.sourceImageKey) {
+                    <p>Image IGN source : <code>{{ point.sourceImageKey }}</code></p>
+                  }
+                  @if (point.imageUrl) {
+                    <img class="admin-inline-image" [src]="point.imageUrl" [alt]="point.imageAltText || 'Image associée au point ' + point.title" />
+                  }
+
+                  <label class="checkbox-label">
+                    <input
+                      type="checkbox"
+                      [checked]="point.active"
+                      (change)="updateRadarPointActive(point, !point.active)"
+                    />
+                    Afficher dans le Radar
+                  </label>
+
+                  <label>
+                    Image associée
+                    <select
+                      [ngModel]="point.imageMediaId || ''"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="updateRadarPointMedia(point, $event)"
+                    >
+                      <option value="">Aucune image</option>
+                      @for (item of media(); track item.id) {
+                        <option [value]="item.id">{{ item.originalFilename }}</option>
+                      }
+                    </select>
+                  </label>
+
+                  <button type="button" class="danger" (click)="deleteRadarPoint(point)">
+                    Supprimer
+                  </button>
+                </article>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="empty-state">Aucun point Radar importé.</p>
+        }
+      </section>
     } @else {
       <app-loading-indicator label="Chargement du Radar." />
     }

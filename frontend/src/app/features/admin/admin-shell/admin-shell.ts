@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -35,6 +36,7 @@ import {
   AdminMapVisionUpsert,
   AdminPortalAssignmentUpdate,
   AdminPortalIdentity,
+  AdminRadarPoint,
   AdminRadarSettings,
   MapMarkerLabelPosition,
   AdminSiteSettings,
@@ -103,13 +105,15 @@ const QUEST_DOCUMENT_ERROR_REQUIRED_FIELDS = 'Le fichier PDF et le libellé sont
 const QUEST_DOCUMENT_ERROR_FILE_TOO_LARGE =
   "Le document est trop volumineux pour être envoyé. La limite est de 9 Mio par fichier : scindez le dossier, ou réduisez la définition des pages scannées.";
 const QUEST_DOCUMENT_ERROR_GENERIC = "Impossible de traiter les documents d'organisation pour le moment.";
+const RADAR_CARTE_ERROR_REQUIRED_FILE = 'Le fichier .carte est obligatoire.';
+const RADAR_CARTE_ERROR_GENERIC = 'Impossible de traiter le Radar pour le moment.';
 
 /** Unités binaires : le plafond serveur est exprimé en mébioctets, l'affichage doit suivre. */
 const BYTE_UNITS = ['o', 'Kio', 'Mio', 'Gio'];
 
 @Component({
   selector: 'app-admin-shell',
-  imports: [FormsModule, LoadingIndicatorComponent, MarkdownToolbarComponent, RouterLink, TabBarComponent],
+  imports: [DecimalPipe, FormsModule, LoadingIndicatorComponent, MarkdownToolbarComponent, RouterLink, TabBarComponent],
   templateUrl: './admin-shell.html',
   styleUrl: './admin-shell.css',
 })
@@ -126,6 +130,8 @@ export class AdminShell {
   private readonly mediaErrorSummary = viewChild<ElementRef<HTMLElement>>('mediaErrorSummary');
   private readonly allowedEmailErrorSummary = viewChild<ElementRef<HTMLElement>>('allowedEmailErrorSummary');
   private readonly settingsErrorSummary = viewChild<ElementRef<HTMLElement>>('settingsErrorSummary');
+  private readonly radarErrorSummary = viewChild<ElementRef<HTMLElement>>('radarErrorSummary');
+  private readonly radarCarteInput = viewChild<ElementRef<HTMLInputElement>>('radarCarteInput');
   private readonly imageSearchInput = viewChild<ElementRef<HTMLInputElement>>('imageSearchInput');
   private readonly questDocumentErrorSummary = viewChild<ElementRef<HTMLElement>>('questDocumentErrorSummary');
   private readonly questDocumentCancelButton = viewChild<ElementRef<HTMLElement>>('questDocumentCancelButton');
@@ -231,7 +237,10 @@ export class AdminShell {
   protected readonly settingsError = signal(false);
   protected readonly settingsSaved = signal(false);
   protected readonly radarSettings = signal<AdminRadarSettings | null>(null);
+  protected readonly radarPoints = signal<AdminRadarPoint[]>([]);
+  protected readonly radarCarteFile = signal<File | null>(null);
   protected readonly radarError = signal(false);
+  protected readonly radarErrorMessage = signal(RADAR_CARTE_ERROR_GENERIC);
   protected readonly radarSaved = signal(false);
   protected readonly portalIdentities = signal<AdminPortalIdentity[]>([]);
   protected readonly portalError = signal(false);
@@ -295,6 +304,8 @@ export class AdminShell {
         break;
       case 'radar':
         this.loadRadarSettings();
+        this.loadRadarPoints();
+        this.loadMedia();
         break;
       case 'portal':
         this.loadPortalIdentities();
@@ -1161,6 +1172,54 @@ export class AdminShell {
     });
   }
 
+  protected selectRadarCarteFile(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.radarCarteFile.set(input.files?.[0] ?? null);
+    this.radarSaved.set(false);
+    this.radarError.set(false);
+  }
+
+  protected importRadarCarte() {
+    const file = this.radarCarteFile();
+    if (!file) {
+      this.showRadarError(RADAR_CARTE_ERROR_REQUIRED_FILE);
+      return;
+    }
+    this.radarSaved.set(false);
+    this.adminApi.importRadarCarte(file).subscribe({
+      next: (points) => {
+        this.radarPoints.set(points);
+        this.radarCarteFile.set(null);
+        this.resetRadarCarteInput();
+        this.radarSaved.set(true);
+        this.radarError.set(false);
+        this.loadAuditLogs();
+      },
+      error: (error: unknown) => this.showRadarError(this.problemDetail(error)),
+    });
+  }
+
+  protected updateRadarPointActive(point: AdminRadarPoint, active: boolean) {
+    this.saveRadarPoint(point, { active, imageMediaId: point.imageMediaId });
+  }
+
+  protected updateRadarPointMedia(point: AdminRadarPoint, imageMediaId: string) {
+    this.saveRadarPoint(point, { active: point.active, imageMediaId: imageMediaId || null });
+  }
+
+  protected deleteRadarPoint(point: AdminRadarPoint) {
+    this.radarSaved.set(false);
+    this.adminApi.deleteRadarPoint(point.id).subscribe({
+      next: () => {
+        this.radarPoints.update((points) => points.filter((item) => item.id !== point.id));
+        this.radarSaved.set(true);
+        this.radarError.set(false);
+        this.loadAuditLogs();
+      },
+      error: (error: unknown) => this.showRadarError(this.problemDetail(error)),
+    });
+  }
+
   /**
    * Aventuriers qu'il est permis de proposer pour une identité.
    *
@@ -1333,6 +1392,16 @@ export class AdminShell {
     });
   }
 
+  private loadRadarPoints() {
+    this.adminApi.listRadarPoints().subscribe({
+      next: (points) => {
+        this.radarPoints.set(points);
+        this.radarError.set(false);
+      },
+      error: () => this.showRadarError(),
+    });
+  }
+
   private loadPortalIdentities() {
     this.adminApi.listPortalIdentities().subscribe({
       next: (identities) => {
@@ -1347,6 +1416,19 @@ export class AdminShell {
     this.mediaApi.listAdminMedia().subscribe({
       next: (media) => this.media.set(media),
       error: () => this.showMediaError(),
+    });
+  }
+
+  private saveRadarPoint(point: AdminRadarPoint, update: { active: boolean; imageMediaId: string | null }) {
+    this.radarSaved.set(false);
+    this.adminApi.updateRadarPoint(point.id, update).subscribe({
+      next: (saved) => {
+        this.radarPoints.update((points) => points.map((item) => (item.id === saved.id ? saved : item)));
+        this.radarSaved.set(true);
+        this.radarError.set(false);
+        this.loadAuditLogs();
+      },
+      error: (error: unknown) => this.showRadarError(this.problemDetail(error)),
     });
   }
 
@@ -1848,6 +1930,29 @@ export class AdminShell {
   private showSettingsError() {
     this.settingsError.set(true);
     this.focusSummary(this.settingsErrorSummary());
+  }
+
+  private showRadarError(message: string = RADAR_CARTE_ERROR_GENERIC) {
+    this.radarErrorMessage.set(message);
+    this.radarSaved.set(false);
+    this.radarError.set(true);
+    this.focusSummary(this.radarErrorSummary());
+  }
+
+  private resetRadarCarteInput() {
+    const input = this.radarCarteInput()?.nativeElement;
+    if (input) {
+      input.value = '';
+    }
+  }
+
+  private problemDetail(error: unknown): string {
+    if (!(error instanceof HttpErrorResponse)) {
+      return RADAR_CARTE_ERROR_GENERIC;
+    }
+    const problem = error.error as { detail?: unknown } | null;
+    const detail = typeof problem?.detail === 'string' ? problem.detail.trim() : '';
+    return error.status >= 400 && error.status < 500 && detail ? detail : RADAR_CARTE_ERROR_GENERIC;
   }
 
   private focusSummary(summary: ElementRef<HTMLElement> | undefined) {

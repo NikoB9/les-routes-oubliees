@@ -37,6 +37,7 @@ class RadarService {
 	private final JdbcTemplate jdbc;
 	private final PortalIdentityService identities;
 	private final RadarPresenceRegistry presence;
+	private final RadarPointService points;
 	private final AuditService audit;
 	private final RadarEventBroadcaster events;
 	private final Clock clock;
@@ -45,6 +46,7 @@ class RadarService {
 		JdbcTemplate jdbc,
 		PortalIdentityService identities,
 		RadarPresenceRegistry presence,
+		RadarPointService points,
 		AuditService audit,
 		RadarEventBroadcaster events,
 		Clock clock
@@ -52,6 +54,7 @@ class RadarService {
 		this.jdbc = jdbc;
 		this.identities = identities;
 		this.presence = presence;
+		this.points = points;
 		this.audit = audit;
 		this.events = events;
 		this.clock = clock;
@@ -159,6 +162,10 @@ class RadarService {
 		return removed;
 	}
 
+	void broadcastCurrentState() {
+		broadcast();
+	}
+
 	/**
 	 * Diffuse le nouvel etat aux flux ouverts.
 	 *
@@ -181,11 +188,11 @@ class RadarService {
 	}
 
 	private RadarSnapshotResponse buildSnapshot(PortalIdentity identity) {
-		return new RadarSnapshotResponse(now(), identityDisplay(identity), treasure(false), presence.snapshot());
+		return new RadarSnapshotResponse(now(), identityDisplay(identity), treasure(false), points.activePoints(), presence.snapshot());
 	}
 
 	private RadarSnapshotResponse buildAnonymousSnapshot() {
-		return new RadarSnapshotResponse(now(), null, treasure(false), presence.snapshot());
+		return new RadarSnapshotResponse(now(), null, treasure(false), points.activePoints(), presence.snapshot());
 	}
 
 	private RadarIdentityResponse identityDisplay(PortalIdentity identity) {

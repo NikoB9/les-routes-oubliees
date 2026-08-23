@@ -20,6 +20,8 @@ import {
   AdminMapVisionUpsert,
   AdminPortalAssignmentUpdate,
   AdminPortalIdentity,
+  AdminRadarPoint,
+  AdminRadarPointUpdate,
   AdminRadarSettings,
   AdminSiteSettings,
   AdminSiteSettingsUpdate,
@@ -178,6 +180,27 @@ export class AdminApiService {
 
   updateRadarSettings(treasureVisible: boolean) {
     return this.http.put<AdminRadarSettings>('/api/admin/radar/settings', { treasureVisible });
+  }
+
+  listRadarPoints() {
+    return this.http.get<AdminRadarPoint[]>('/api/admin/radar/points');
+  }
+
+  importRadarCarte(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<AdminRadarPoint[]>('/api/admin/radar/points/import-carte', formData);
+  }
+
+  updateRadarPoint(id: string, payload: AdminRadarPointUpdate) {
+    return this.http.put<AdminRadarPoint>(
+      `/api/admin/radar/points/${encodeURIComponent(id)}`,
+      payload,
+    );
+  }
+
+  deleteRadarPoint(id: string) {
+    return this.http.delete<void>(`/api/admin/radar/points/${encodeURIComponent(id)}`);
   }
 
   listPortalIdentities() {

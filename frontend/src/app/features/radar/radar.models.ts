@@ -26,10 +26,21 @@ export interface RadarParticipant extends RadarIdentity {
   stale: boolean;
 }
 
+export interface RadarPoint {
+  id: string;
+  title: string;
+  description: string;
+  latitude: number;
+  longitude: number;
+  imageUrl: string | null;
+  imageAltText: string | null;
+}
+
 export interface RadarSnapshot {
   serverTime: string;
   currentIdentity: RadarIdentity | null;
   treasure: RadarTreasure | null;
+  points: RadarPoint[];
   participants: RadarParticipant[];
 }
 
