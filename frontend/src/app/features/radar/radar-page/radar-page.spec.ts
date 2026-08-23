@@ -58,6 +58,7 @@ describe('RadarPage', () => {
       avatarPath: null,
     },
     treasure: null,
+    points: [],
     participants: [],
   };
 

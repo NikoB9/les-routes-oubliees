@@ -77,6 +77,7 @@ Le MVP comprend :
 * le carnet des quêtes ;
 * l’administration ;
 * la gestion des médias hors cartes ;
+* l'import de points d'attention IGN dans le Radar depuis un fichier `.carte` ;
 * la prévisualisation ;
 * l'installation PWA des pages de contenu ;
 * la consultation hors ligne du dernier contenu public synchronise ;

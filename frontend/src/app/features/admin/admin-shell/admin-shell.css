@@ -137,6 +137,14 @@
   color: #5c4632;
 }
 
+.admin-inline-image {
+  width: min(100%, 18rem);
+  max-height: 12rem;
+  object-fit: cover;
+  border: 1px solid #d1ad68;
+  border-radius: 6px;
+}
+
 .planned-modules strong {
   color: #211914;
 }

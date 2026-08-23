@@ -11,11 +11,14 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import fr.lesroutesoubliees.routesoubliees.auth.AdminIdentity;
@@ -102,6 +105,54 @@ class HomeAssistantRadarController {
 		return ResponseEntity.ok()
 			.cacheControl(CacheControl.noStore())
 			.body(TreasureUpdateStatusResponse.ignored());
+	}
+}
+
+@RestController
+@RequestMapping("/api/admin/radar/points")
+class AdminRadarPointController {
+
+	private final RadarPointService points;
+	private final RadarService radar;
+	private final AdminIdentity identity;
+
+	AdminRadarPointController(RadarPointService points, RadarService radar, AdminIdentity identity) {
+		this.points = points;
+		this.radar = radar;
+		this.identity = identity;
+	}
+
+	@GetMapping
+	ResponseEntity<java.util.List<AdminRadarPointResponse>> listPoints() {
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(points.listAdminPoints());
+	}
+
+	@PostMapping(path = "/import-carte", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	ResponseEntity<java.util.List<AdminRadarPointResponse>> importCarte(
+		@RequestParam("file") MultipartFile file,
+		Authentication authentication
+	) {
+		var imported = points.importCarte(file, identity.email(authentication));
+		radar.broadcastCurrentState();
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(imported);
+	}
+
+	@PutMapping("/{id}")
+	ResponseEntity<AdminRadarPointResponse> updatePoint(
+		@PathVariable UUID id,
+		@Valid @RequestBody AdminRadarPointUpdateRequest request,
+		Authentication authentication
+	) {
+		var updated = points.updatePoint(id, request, identity.email(authentication));
+		radar.broadcastCurrentState();
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(updated);
+	}
+
+	@DeleteMapping("/{id}")
+	ResponseEntity<Void> deletePoint(@PathVariable UUID id, Authentication authentication) {
+		points.deletePoint(id, identity.email(authentication));
+		radar.broadcastCurrentState();
+		return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
 	}
 }
 

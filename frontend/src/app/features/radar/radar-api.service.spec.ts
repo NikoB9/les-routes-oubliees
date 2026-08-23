@@ -15,6 +15,7 @@ describe('RadarApiService', () => {
     serverTime: '2026-08-06T12:00:00Z',
     currentIdentity: null,
     treasure: null,
+    points: [],
     participants: [],
   };
 

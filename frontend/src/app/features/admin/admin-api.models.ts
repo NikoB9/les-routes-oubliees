@@ -229,3 +229,24 @@ export interface AdminRadarSettings {
   treasureVisible: boolean;
   treasure: AdminRadarTreasure | null;
 }
+
+export interface AdminRadarPoint {
+  id: string;
+  title: string;
+  description: string;
+  latitude: number;
+  longitude: number;
+  active: boolean;
+  displayOrder: number;
+  sourceImageKey: string | null;
+  imageMediaId: string | null;
+  imageUrl: string | null;
+  imageAltText: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminRadarPointUpdate {
+  active: boolean;
+  imageMediaId: string | null;
+}

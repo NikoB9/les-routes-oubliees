@@ -56,6 +56,7 @@ record RadarSnapshotResponse(
 	OffsetDateTime serverTime,
 	RadarIdentityResponse currentIdentity,
 	RadarTreasureResponse treasure,
+	List<RadarPointResponse> points,
 	List<RadarParticipantResponse> participants
 ) {
 }
@@ -94,6 +95,17 @@ record RadarParticipantResponse(
 ) {
 }
 
+record RadarPointResponse(
+	UUID id,
+	String title,
+	String description,
+	double latitude,
+	double longitude,
+	String imageUrl,
+	String imageAltText
+) {
+}
+
 record AdminRadarSettingsResponse(
 	boolean treasureVisible,
 	RadarTreasureResponse treasure
@@ -102,4 +114,28 @@ record AdminRadarSettingsResponse(
 
 @JsonIgnoreProperties(ignoreUnknown = false)
 record AdminRadarSettingsUpdateRequest(boolean treasureVisible) {
+}
+
+record AdminRadarPointResponse(
+	UUID id,
+	String title,
+	String description,
+	double latitude,
+	double longitude,
+	boolean active,
+	int displayOrder,
+	String sourceImageKey,
+	UUID imageMediaId,
+	String imageUrl,
+	String imageAltText,
+	OffsetDateTime createdAt,
+	OffsetDateTime updatedAt
+) {
+}
+
+@JsonIgnoreProperties(ignoreUnknown = false)
+record AdminRadarPointUpdateRequest(
+	@NotNull Boolean active,
+	UUID imageMediaId
+) {
 }

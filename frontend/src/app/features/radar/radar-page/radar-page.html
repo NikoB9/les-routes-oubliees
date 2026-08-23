@@ -82,6 +82,21 @@
         </article>
       }
 
+      @for (point of snapshot()?.points ?? []; track point.id) {
+        <article class="position-row radar-point">
+          <h3>{{ point.title }}</h3>
+          @if (point.imageUrl) {
+            <img [src]="point.imageUrl" [alt]="point.imageAltText || 'Image associée au point ' + point.title" />
+          }
+          <p>{{ point.description }}</p>
+          <p>
+            {{ point.latitude | number:'1.5-6' }},
+            {{ point.longitude | number:'1.5-6' }}
+          </p>
+          <button type="button" [attr.aria-label]="'Focaliser ' + point.title + ' sur la carte'" (click)="focusPoint(point)">Focaliser</button>
+        </article>
+      }
+
       @for (participant of snapshot()?.participants ?? []; track participant.identityId) {
         <article class="position-row" [class.current]="participant.identityId === portal()?.identity?.id">
           <h3>{{ participant.displayName }}</h3>
@@ -93,7 +108,7 @@
           @if (participant.stale) {
             <p class="stale">Position ancienne</p>
           }
-          <button type="button" (click)="focusParticipant(participant)">Focaliser</button>
+          <button type="button" [attr.aria-label]="'Focaliser ' + participant.displayName + ' sur la carte'" (click)="focusParticipant(participant)">Focaliser</button>
         </article>
       }
     </section>
