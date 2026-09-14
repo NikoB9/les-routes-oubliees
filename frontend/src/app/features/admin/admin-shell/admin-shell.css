@@ -508,42 +508,6 @@
   clip-path: inset(50%);
 }
 
-.markdown-content :where(.markdown-image) {
-  display: grid;
-  gap: 0.45rem;
-  margin: 1rem auto;
-}
-
-.markdown-content :where(.markdown-image img) {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-}
-
-.markdown-content :where(.markdown-image figcaption) {
-  color: #5c4632;
-  font-size: 0.95rem;
-  font-weight: 800;
-  text-align: center;
-}
-
-.markdown-content :where(.markdown-image--small) {
-  max-width: 35%;
-}
-
-.markdown-content :where(.markdown-image--medium) {
-  max-width: 60%;
-}
-
-.markdown-content :where(.markdown-image--large) {
-  max-width: 80%;
-}
-
-.markdown-content :where(.markdown-image--full) {
-  max-width: 100%;
-}
-
 .quest-preview {
   display: grid;
   gap: 0.75rem;
@@ -903,9 +867,4 @@
     grid-template-columns: 1fr;
   }
 
-  .markdown-content :where(.markdown-image--small),
-  .markdown-content :where(.markdown-image--medium),
-  .markdown-content :where(.markdown-image--large) {
-    max-width: 100%;
-  }
 }

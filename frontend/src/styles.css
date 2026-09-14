@@ -31,6 +31,56 @@ textarea {
   font: inherit;
 }
 
+/*
+ * Le HTML Markdown est produit par le serveur puis injecte avec [innerHTML]. Ses noeuds ne
+ * recoivent donc pas les attributs d'encapsulation Angular des composants qui l'affichent.
+ */
+.markdown-content .markdown-image {
+  display: grid;
+  gap: 0.45rem;
+  max-width: 100%;
+  margin: 1rem auto;
+}
+
+.markdown-content .markdown-image img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-content .markdown-image figcaption {
+  color: #5c4632;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.markdown-content .markdown-image--small {
+  max-width: 35%;
+}
+
+.markdown-content .markdown-image--medium {
+  max-width: 60%;
+}
+
+.markdown-content .markdown-image--large {
+  max-width: 80%;
+}
+
+.markdown-content .markdown-image--full {
+  max-width: 100%;
+}
+
+app-notebook-page .markdown-content .markdown-image {
+  margin-block: 1.25rem;
+}
+
+
+app-notebook-page .markdown-content .markdown-image figcaption {
+  color: #3a2d21;
+}
+
 :focus-visible {
   outline: 3px solid #1c6dd0;
   outline-offset: 3px;
@@ -44,5 +94,21 @@ textarea {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .markdown-content .markdown-image--small,
+  .markdown-content .markdown-image--medium,
+  .markdown-content .markdown-image--large {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 960px) {
+  app-admin-shell .markdown-content .markdown-image--small,
+  app-admin-shell .markdown-content .markdown-image--medium,
+  app-admin-shell .markdown-content .markdown-image--large {
+    max-width: 100%;
   }
 }
