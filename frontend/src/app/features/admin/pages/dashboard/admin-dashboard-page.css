@@ -1,0 +1,43 @@
+.admin-panel {
+  display: grid;
+  gap: 1rem;
+  max-width: 82rem;
+}
+
+h1 {
+  margin: 0;
+  color: #211914;
+}
+
+.alert {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #9b2c2c;
+  background: #f9e8df;
+  color: #5c1717;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.dashboard-grid div {
+  padding: 1rem;
+  border: 1px solid #d1ad68;
+  background: #fff8e8;
+}
+
+.dashboard-grid dt {
+  color: #5c4632;
+  font-weight: 800;
+}
+
+.dashboard-grid dd {
+  margin: 0.25rem 0 0;
+  color: #211914;
+  font-size: 1.2rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}

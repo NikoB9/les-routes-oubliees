@@ -5,7 +5,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "lint": "eslint .",
+    "lint": "eslint src e2e playwright.config.ts",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "e2e": "playwright test",

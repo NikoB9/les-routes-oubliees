@@ -1,0 +1,138 @@
+<section class="admin-page" aria-labelledby="admin-radar-title">
+  <h1 id="admin-radar-title">Radar</h1>
+
+  @if (errorMessage()) {
+    <p id="radar-error-summary" #errorSummary class="alert" role="alert" tabindex="-1">
+      {{ errorMessage() }}
+    </p>
+  }
+  @if (saved()) {
+    <p class="status" role="status">Radar mis à jour.</p>
+  }
+
+  @switch (loadState()) {
+    @case ('loading') {
+      <app-loading-indicator label="Chargement du Radar." />
+    }
+    @case ('ready') {
+      <form
+        class="editor-form"
+        [formGroup]="importForm"
+        (ngSubmit)="importRadarCarte()"
+        aria-labelledby="radar-import-title"
+      >
+        <h2 id="radar-import-title">Importer une carte IGN</h2>
+        <label for="radar-carte-file">Fichier .carte (obligatoire)</label>
+        <input
+          #fileInput
+          id="radar-carte-file"
+          type="file"
+          accept=".carte,application/json"
+          required
+          [attr.aria-invalid]="importForm.controls.file.invalid && importForm.controls.file.touched ? 'true' : null"
+          [attr.aria-describedby]="importForm.controls.file.invalid && importForm.controls.file.touched ? 'radar-file-error radar-file-hint' : 'radar-file-hint'"
+          (change)="selectCarteFile($event)"
+        />
+        @if (importForm.controls.file.invalid && importForm.controls.file.touched) {
+          <p id="radar-file-error" class="field-error">Sélectionnez le fichier .carte à importer.</p>
+        }
+        <p id="radar-file-hint" class="field-hint">
+          L’import remplace la liste actuelle des points. Les images IGN seront associées ensuite
+          depuis la médiathèque.
+        </p>
+        <button type="submit">Importer la carte</button>
+      </form>
+
+      @if (radarSettings(); as radar) {
+        <form class="settings-form" [formGroup]="settingsForm">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              formControlName="treasureVisible"
+              (change)="updateTreasureVisibility()"
+            />
+            Afficher le trésor sur le Radar
+          </label>
+        </form>
+
+        @if (radar.treasure; as treasure) {
+          <dl class="dashboard-grid">
+            <div><dt>Dernière latitude</dt><dd>{{ treasure.latitude }}</dd></div>
+            <div><dt>Dernière longitude</dt><dd>{{ treasure.longitude }}</dd></div>
+            <div><dt>Précision</dt><dd>{{ treasure.accuracyM }} m</dd></div>
+            <div><dt>Relevé</dt><dd>{{ treasure.observedAt }}</dd></div>
+          </dl>
+        } @else {
+          <p class="empty-state">Aucun relevé de trésor reçu.</p>
+        }
+      }
+
+      <section class="points-section" aria-labelledby="radar-points-title">
+        <h2 id="radar-points-title">Points d’attention importés</h2>
+        @if (radarPoints().length > 0) {
+          <ul class="point-list">
+            @for (point of radarPoints(); track point.id) {
+              <li>
+                <article [formGroup]="pointForm(point.id)">
+                  <h3>{{ point.displayOrder }}. {{ point.title }}</h3>
+                  <p>{{ point.description }}</p>
+                  <p>
+                    {{ point.latitude | number: '1.5-6' }},
+                    {{ point.longitude | number: '1.5-6' }}
+                  </p>
+                  @if (point.sourceImageKey) {
+                    <p>Image IGN source : <code>{{ point.sourceImageKey }}</code></p>
+                  }
+                  @if (point.imageUrl) {
+                    <img
+                      class="point-image"
+                      [src]="point.imageUrl"
+                      [alt]="point.imageAltText || 'Image associée au point ' + point.title"
+                    />
+                  }
+
+                  <label class="checkbox-label">
+                    <input
+                      type="checkbox"
+                      formControlName="active"
+                      (change)="updateRadarPointActive(point, $any($event.target).checked)"
+                    />
+                    Afficher {{ point.title }} dans le Radar
+                  </label>
+
+                  <label [for]="'radar-point-image-' + point.id">Image associée à {{ point.title }}</label>
+                  <select
+                    [id]="'radar-point-image-' + point.id"
+                    formControlName="imageMediaId"
+                    (change)="updateRadarPointMedia(point, $any($event.target).value)"
+                  >
+                    <option value="">Aucune image</option>
+                    @for (item of media(); track item.id) {
+                      <option [value]="item.id">{{ item.originalFilename }}</option>
+                    }
+                  </select>
+
+                  <button type="button" class="danger" (click)="askDeletion(point, $event)">
+                    Supprimer le point {{ point.title }}
+                  </button>
+                </article>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="empty-state">Aucun point Radar importé.</p>
+        }
+      </section>
+    }
+  }
+</section>
+
+<app-admin-confirmation-dialog
+  #deleteDialog
+  dialogId="delete-radar-point"
+  title="Supprimer ce point Radar ?"
+  [message]="pendingDeletion() ? '« ' + pendingDeletion()!.title + ' » sera définitivement supprimé.' : ''"
+  confirmLabel="Supprimer définitivement"
+  (confirmed)="confirmDeletion()"
+  (cancelled)="cancelDeletion()"
+/>

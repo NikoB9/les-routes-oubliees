@@ -1,0 +1,89 @@
+<label [for]="controlId()">
+  {{ label() }}@if (required()) { <span> (obligatoire)</span> }
+</label>
+<app-markdown-toolbar
+  (markdownCommand)="applyMarkdown($event)"
+  (linkRequested)="insertLink()"
+  (imageRequested)="openImageDialog($event)"
+/>
+<textarea
+  #textarea
+  [id]="controlId()"
+  [rows]="rows()"
+  [required]="required()"
+  [disabled]="disabled()"
+  [attr.aria-invalid]="invalid() ? 'true' : null"
+  [attr.aria-describedby]="describedBy()"
+  [value]="value()"
+  (input)="updateValue($any($event.target).value)"
+  (blur)="onTouched()"
+></textarea>
+
+<dialog
+  #imageDialog
+  class="image-dialog"
+  [attr.aria-labelledby]="controlId() + '-image-dialog-title'"
+  (cancel)="cancelImageDialog($event)"
+>
+  <div class="dialog-heading">
+    <h2 [id]="controlId() + '-image-dialog-title'">Insérer une image</h2>
+    <button type="button" class="icon-button" aria-label="Fermer la sélection d’image" (click)="cancelImageDialog()">×</button>
+  </div>
+
+  <label [for]="controlId() + '-image-search'">Rechercher</label>
+  <input
+    #searchInput
+    [id]="controlId() + '-image-search'"
+    type="search"
+    [value]="imageSearch()"
+    (input)="imageSearch.set($any($event.target).value)"
+  />
+
+  @if (mediaState() === 'loading') {
+    <p role="status">Chargement des images.</p>
+  } @else if (mediaState() === 'error') {
+    <p class="alert" role="alert">Impossible de charger la médiathèque.</p>
+  } @else if (mediaState() === 'ready') {
+    <ul class="media-list" aria-label="Images disponibles">
+      @for (item of filteredMedia(); track item.id) {
+        <li>
+          <button
+            type="button"
+            [attr.aria-pressed]="selectedImage()?.id === item.id"
+            (click)="selectImage(item)"
+          >
+            <img [src]="item.url" [alt]="item.altText" />
+            <strong>{{ item.originalFilename }}</strong>
+            <small>{{ item.altText }}</small>
+          </button>
+        </li>
+      } @empty {
+        <li>Aucune image ne correspond à la recherche.</li>
+      }
+    </ul>
+  }
+
+  <label [for]="controlId() + '-image-title'">Titre affiché (obligatoire)</label>
+  <input
+    [id]="controlId() + '-image-title'"
+    type="text"
+    required
+    maxlength="160"
+    [value]="imageTitle()"
+    (input)="imageTitle.set($any($event.target).value)"
+  />
+
+  <label [for]="controlId() + '-image-size'">Taille</label>
+  <select [id]="controlId() + '-image-size'" [value]="imageSize()" (change)="updateImageSize($any($event.target).value)">
+    @for (size of imageSizes; track size.value) {
+      <option [value]="size.value">{{ size.label }}</option>
+    }
+  </select>
+
+  <div class="actions">
+    <button type="button" [disabled]="!selectedImage() || !imageTitle().trim()" (click)="insertSelectedImage()">
+      Insérer l’image
+    </button>
+    <button type="button" class="secondary" (click)="cancelImageDialog()">Annuler</button>
+  </div>
+</dialog>

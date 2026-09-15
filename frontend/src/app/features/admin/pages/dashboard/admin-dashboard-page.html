@@ -1,0 +1,46 @@
+<section class="admin-panel" aria-labelledby="admin-dashboard-title">
+  <h1 id="admin-dashboard-title">Tableau de bord</h1>
+
+  @switch (loadState()) {
+    @case ('loading') {
+      <app-loading-indicator label="Chargement de la synthèse." />
+    }
+    @case ('error') {
+      <p class="alert" role="alert">Impossible de charger la synthèse d'administration.</p>
+    }
+    @case ('ready') {
+      @if (dashboard(); as summary) {
+        <dl class="dashboard-grid">
+          <div>
+            <dt>Parchemin actif</dt>
+            <dd>{{ summary.activeHomeMessageTitle || 'Aucun' }}</dd>
+          </div>
+          <div>
+            <dt>Carte active</dt>
+            <dd>{{ summary.activeMapVisionName || 'Aucune' }}</dd>
+          </div>
+          <div>
+            <dt>Compagnie active</dt>
+            <dd>{{ summary.activeCompanyName || 'Aucune' }}</dd>
+          </div>
+          <div>
+            <dt>Quêtes visibles</dt>
+            <dd>{{ summary.visibleQuestCount }}</dd>
+          </div>
+          <div>
+            <dt>Aventuriers visibles</dt>
+            <dd>{{ summary.visibleAdventurerCount }}</dd>
+          </div>
+          <div>
+            <dt>Médias</dt>
+            <dd>{{ summary.mediaCount }}</dd>
+          </div>
+          <div>
+            <dt>Administrateurs actifs</dt>
+            <dd>{{ summary.activeAdministratorCount }}</dd>
+          </div>
+        </dl>
+      }
+    }
+  }
+</section>

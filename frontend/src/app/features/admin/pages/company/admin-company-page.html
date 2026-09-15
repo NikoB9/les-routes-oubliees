@@ -1,0 +1,50 @@
+<section class="admin-panel" aria-labelledby="admin-company-title">
+  <h1 id="admin-company-title">Compagnie</h1>
+
+  @if (errorMessage()) {
+    <p id="company-error-summary" #errorSummary class="alert" role="alert" tabindex="-1">{{ errorMessage() }}</p>
+  }
+  @if (saved()) { <p class="status" role="status">Compagnie mise à jour.</p> }
+
+  @switch (state()) {
+    @case ('loading') { <app-loading-indicator label="Chargement de la Compagnie." /> }
+    @case ('error') { <button type="button" class="primary-action" (click)="load()">Réessayer</button> }
+    @case ('ready') {
+      <form class="content-form" [formGroup]="form" (ngSubmit)="save()" novalidate aria-labelledby="company-form-title">
+        <h2 id="company-form-title">Présentation de la Compagnie</h2>
+        <p class="required-hint">Les champs indiqués « obligatoire » doivent être renseignés.</p>
+
+        <label for="company-name">Nom (obligatoire)</label>
+        <input id="company-name" type="text" maxlength="160" formControlName="name"
+          [attr.aria-invalid]="invalid('name') ? 'true' : null"
+          [attr.aria-describedby]="invalid('name') ? 'company-name-error' : null" />
+        @if (invalid('name')) { <small id="company-name-error" class="field-error">Saisissez un nom de 160 caractères maximum.</small> }
+
+        <label for="company-emblem">Chemin du logo</label>
+        <input id="company-emblem" type="text" maxlength="255" formControlName="emblemPath" />
+
+        <label for="company-alt">Texte alternatif</label>
+        <input id="company-alt" type="text" maxlength="280" formControlName="imageAlt" />
+
+        <label for="company-short-description">Description courte (obligatoire)</label>
+        <textarea id="company-short-description" maxlength="500" rows="3" formControlName="shortDescription"
+          [attr.aria-invalid]="invalid('shortDescription') ? 'true' : null"
+          [attr.aria-describedby]="invalid('shortDescription') ? 'company-short-error' : null"></textarea>
+        @if (invalid('shortDescription')) { <small id="company-short-error" class="field-error">Saisissez une description de 500 caractères maximum.</small> }
+
+        <app-admin-markdown-editor
+          label="Description longue Markdown"
+          controlId="company-long-description"
+          [rows]="6"
+          [required]="true"
+          formControlName="longDescriptionMarkdown"
+          [invalid]="invalid('longDescriptionMarkdown')"
+          [describedBy]="invalid('longDescriptionMarkdown') ? 'company-long-error' : null"
+        />
+        @if (invalid('longDescriptionMarkdown')) { <small id="company-long-error" class="field-error">Saisissez la présentation détaillée.</small> }
+
+        <button type="submit">Enregistrer la Compagnie</button>
+      </form>
+    }
+  }
+</section>

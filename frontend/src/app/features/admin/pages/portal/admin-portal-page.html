@@ -1,0 +1,65 @@
+<section class="admin-panel" aria-labelledby="admin-portal-title">
+  <h1 id="admin-portal-title">Identités du portail</h1>
+
+  @if (errorMessage()) {
+    <p id="portal-adventurers-unavailable" class="alert" role="alert">{{ errorMessage() }}</p>
+  }
+  @if (saved()) {
+    <p class="status" role="status">Attribution mise à jour.</p>
+  }
+
+  @switch (loadState()) {
+    @case ('loading') {
+      <app-loading-indicator label="Chargement des identités du portail." />
+    }
+    @case ('error') {}
+    @case ('ready') {
+      @if (portalIdentities().length > 0) {
+        <ul class="admin-list">
+          @for (identity of portalIdentities(); track identity.id) {
+            <li>
+              <article>
+                <h2>{{ identity.normalizedEmail }}</h2>
+                <p>{{ identity.adventurerName || (identity.accessMode | adminLabel) }}</p>
+                <label [for]="'portal-mode-' + identity.id">Mode</label>
+                <select
+                  [id]="'portal-mode-' + identity.id"
+                  name="portalMode"
+                  [formControl]="formFor(identity).controls.accessMode"
+                  (change)="updateIdentityMode(identity)"
+                >
+                  @for (mode of portalModes; track mode) {
+                    <option [value]="mode" [disabled]="mode === 'ADVENTURER' && !identity.adventurerId">
+                      {{ mode | adminLabel }}
+                    </option>
+                  }
+                </select>
+
+                <label [for]="'portal-adventurer-' + identity.id">Aventurier</label>
+                <select
+                  [id]="'portal-adventurer-' + identity.id"
+                  name="portalAdventurer"
+                  [formControl]="formFor(identity).controls.adventurerId"
+                  (change)="updateIdentityAdventurer(identity)"
+                  [attr.aria-describedby]="adventurersUnavailable() ? 'portal-adventurers-unavailable' : null"
+                >
+                  @if (adventurersUnavailable() && identity.adventurerId) {
+                    <option [value]="identity.adventurerId">{{ identity.adventurerName || 'Attribution actuelle' }}</option>
+                  }
+                  <option value="">Aucun</option>
+                  @for (adventurer of assignableAdventurers(identity); track adventurer.id) {
+                    <option [value]="adventurer.id">
+                      {{ adventurer.name }}{{ adventurer.visible ? '' : ' (masqué)' }}
+                    </option>
+                  }
+                </select>
+              </article>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="empty-state">Aucune identité portail connue.</p>
+      }
+    }
+  }
+</section>

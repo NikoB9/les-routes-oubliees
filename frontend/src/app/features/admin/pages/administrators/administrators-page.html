@@ -1,0 +1,112 @@
+<section class="admin-page" aria-labelledby="administrators-title">
+  <h1 id="administrators-title">Administrateurs autorisés</h1>
+
+  @if (errorMessage()) {
+    <p id="administrators-error-summary" #errorSummary class="alert" role="alert" tabindex="-1">
+      {{ errorMessage() }}
+    </p>
+  }
+  @if (saved()) {
+    <p class="status" role="status">Liste des administrateurs mise à jour.</p>
+  }
+
+  <form
+    class="editor-form"
+    [formGroup]="createForm"
+    (ngSubmit)="createAllowedEmail()"
+    aria-labelledby="administrator-create-title"
+  >
+    <h2 id="administrator-create-title">Ajouter un administrateur</h2>
+
+    <label for="administrator-email">Email administrateur vérifié (obligatoire)</label>
+    <input
+      id="administrator-email"
+      type="email"
+      formControlName="email"
+      autocomplete="email"
+      required
+      maxlength="320"
+      [attr.aria-invalid]="createForm.controls.email.invalid && createForm.controls.email.touched ? 'true' : null"
+      [attr.aria-describedby]="createForm.controls.email.invalid && createForm.controls.email.touched ? 'administrator-email-error' : null"
+      (input)="clearFeedback()"
+    />
+    @if (createForm.controls.email.invalid && createForm.controls.email.touched) {
+      <p id="administrator-email-error" class="field-error">
+        Saisissez une adresse email valide de 320 caractères au maximum.
+      </p>
+    }
+
+    <label for="administrator-label">Libellé interne</label>
+    <input
+      id="administrator-label"
+      type="text"
+      formControlName="label"
+      maxlength="120"
+      [attr.aria-invalid]="createForm.controls.label.invalid && createForm.controls.label.touched ? 'true' : null"
+      [attr.aria-describedby]="createForm.controls.label.invalid && createForm.controls.label.touched ? 'administrator-label-error' : null"
+      (input)="clearFeedback()"
+    />
+    @if (createForm.controls.label.invalid && createForm.controls.label.touched) {
+      <p id="administrator-label-error" class="field-error">
+        Le libellé interne ne peut pas dépasser 120 caractères.
+      </p>
+    }
+
+    <button type="submit">Ajouter l’administrateur</button>
+  </form>
+
+  @switch (loadState()) {
+    @case ('loading') {
+      <app-loading-indicator label="Chargement des administrateurs autorisés." />
+    }
+    @case ('ready') {
+      @if (allowedEmails().length > 0) {
+        <ul class="allowed-list" aria-label="Emails administrateurs autorisés">
+          @for (allowedEmail of allowedEmails(); track allowedEmail.id) {
+            <li>
+              <div class="allowed-heading">
+                <strong>{{ allowedEmail.email }}</strong>
+                <span>{{ allowedEmail.active ? 'actif' : 'inactif' }}</span>
+              </div>
+
+              <label [for]="'administrator-label-' + allowedEmail.id">
+                Libellé de {{ allowedEmail.email }}
+              </label>
+              <input
+                [id]="'administrator-label-' + allowedEmail.id"
+                type="text"
+                maxlength="120"
+                [formControl]="labelControl(allowedEmail.id)"
+                [attr.aria-invalid]="labelControl(allowedEmail.id).invalid && labelControl(allowedEmail.id).touched ? 'true' : null"
+              />
+
+              <div class="button-row">
+                <button type="button" (click)="updateAllowedEmailLabel(allowedEmail)">
+                  Enregistrer le libellé de {{ allowedEmail.email }}
+                </button>
+                <button type="button" (click)="toggleAllowedEmail(allowedEmail)">
+                  {{ allowedEmail.active ? 'Désactiver' : 'Activer' }} {{ allowedEmail.email }}
+                </button>
+                <button type="button" class="danger" (click)="askDeletion(allowedEmail, $event)">
+                  Supprimer {{ allowedEmail.email }}
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="empty-state">Aucun administrateur autorisé.</p>
+      }
+    }
+  }
+</section>
+
+<app-admin-confirmation-dialog
+  #deleteDialog
+  dialogId="delete-administrator"
+  title="Supprimer cet administrateur ?"
+  [message]="pendingDeletion() ? pendingDeletion()!.email + ' perdra définitivement son accès administrateur.' : ''"
+  confirmLabel="Supprimer l’accès"
+  (confirmed)="confirmDeletion()"
+  (cancelled)="cancelDeletion()"
+/>

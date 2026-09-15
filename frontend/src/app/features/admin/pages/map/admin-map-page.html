@@ -1,0 +1,243 @@
+<section class="admin-panel" aria-labelledby="admin-map-title">
+  <h1 id="admin-map-title">Carte</h1>
+
+  @if (errorMessage()) {
+    <p id="map-error-summary" #errorSummary class="alert" role="alert" tabindex="-1">{{ errorMessage() }}</p>
+  }
+  @if (savedMessage()) {
+    <p class="status" role="status">{{ savedMessage() }}</p>
+  }
+
+  @switch (state()) {
+    @case ('loading') {
+      <app-loading-indicator label="Chargement de la carte." />
+    }
+    @case ('error') {
+      <button type="button" class="primary-action" (click)="load()">Réessayer</button>
+    }
+    @case ('ready') {
+      <div class="map-admin-layout">
+        <section aria-labelledby="map-visions-title">
+          <h2 id="map-visions-title">Fonds de carte</h2>
+          @if (visions().length) {
+            <ul class="admin-list" aria-label="Fonds de carte disponibles">
+              @for (vision of visions(); track vision.id) {
+                <li>
+                  <button type="button" (click)="selectVision(vision)" [attr.aria-pressed]="selectedVision()?.id === vision.id">
+                    <span>{{ vision.displayOrder }}. {{ vision.name }}</span>
+                    <small>{{ vision.status | adminLabel }} — {{ vision.active ? 'actif' : 'inactif' }}</small>
+                  </button>
+                  <div class="button-row">
+                    <button type="button" (click)="previewVision(vision)">Prévisualiser {{ vision.name }}</button>
+                    <button type="button" [disabled]="vision.status !== 'PUBLISHED' || vision.active" (click)="activateVision(vision)">
+                      Activer {{ vision.name }}
+                    </button>
+                  </div>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="empty-state">Aucun fond de carte n’est encore disponible.</p>
+          }
+
+          <form class="content-form" [formGroup]="visionForm" (ngSubmit)="saveVision()" novalidate aria-labelledby="map-vision-form-title">
+            <h2 id="map-vision-form-title">{{ selectedVision() ? 'Modifier le fond' : 'Nouveau fond' }}</h2>
+            <p class="required-hint">Les champs indiqués « obligatoire » doivent être renseignés.</p>
+
+            <label for="map-vision-name">Nom (obligatoire)</label>
+            <input id="map-vision-name" type="text" maxlength="160" formControlName="name"
+              [attr.aria-invalid]="visionInvalid('name') ? 'true' : null"
+              [attr.aria-describedby]="visionInvalid('name') ? 'map-vision-name-error' : null" />
+            @if (visionInvalid('name')) { <small id="map-vision-name-error" class="field-error">Saisissez un nom de 160 caractères maximum.</small> }
+
+            <app-admin-markdown-editor
+              label="Description Markdown"
+              controlId="map-vision-description"
+              formControlName="descriptionMarkdown"
+              [required]="true"
+              [invalid]="visionInvalid('descriptionMarkdown')"
+              [describedBy]="visionInvalid('descriptionMarkdown') ? 'map-vision-description-error' : null"
+            />
+            @if (visionInvalid('descriptionMarkdown')) { <small id="map-vision-description-error" class="field-error">Saisissez une description.</small> }
+
+            <label for="map-vision-asset">Chemin du fond (obligatoire)</label>
+            <input id="map-vision-asset" type="text" maxlength="255" formControlName="assetPath"
+              [attr.aria-invalid]="visionInvalid('assetPath') ? 'true' : null"
+              [attr.aria-describedby]="visionInvalid('assetPath') ? 'map-vision-asset-help map-vision-asset-error' : 'map-vision-asset-help'" />
+            <small id="map-vision-asset-help">Chemin accepté : /assets/maps/... ou /media/uuid.</small>
+            @if (visionInvalid('assetPath')) { <small id="map-vision-asset-error" class="field-error">Saisissez un chemin de 255 caractères maximum.</small> }
+
+            @if (media().length) {
+              <section class="media-picker" aria-labelledby="map-media-title">
+                <h3 id="map-media-title">Images de la médiathèque</h3>
+                <ul>
+                  @for (item of media(); track item.id) {
+                    <li><button type="button" (click)="selectBackground(item)">Utiliser {{ item.originalFilename }} comme fond</button></li>
+                  }
+                </ul>
+              </section>
+            }
+
+            <label for="map-vision-alt">Texte alternatif (obligatoire)</label>
+            <input id="map-vision-alt" type="text" maxlength="280" formControlName="imageAlt"
+              [attr.aria-invalid]="visionInvalid('imageAlt') ? 'true' : null"
+              [attr.aria-describedby]="visionInvalid('imageAlt') ? 'map-vision-alt-error' : null" />
+            @if (visionInvalid('imageAlt')) { <small id="map-vision-alt-error" class="field-error">Saisissez un texte alternatif de 280 caractères maximum.</small> }
+
+            <div class="form-row">
+              <div class="form-field">
+                <label for="map-vision-order">Ordre (obligatoire)</label>
+                <input id="map-vision-order" type="number" min="1" max="999" formControlName="displayOrder"
+                  [attr.aria-invalid]="visionInvalid('displayOrder') ? 'true' : null"
+                  [attr.aria-describedby]="visionInvalid('displayOrder') ? 'map-vision-order-error' : null" />
+                @if (visionInvalid('displayOrder')) { <small id="map-vision-order-error" class="field-error">Choisissez un ordre entre 1 et 999.</small> }
+              </div>
+              <div class="form-field">
+                <label for="map-vision-status">Statut</label>
+                <select id="map-vision-status" formControlName="status">
+                  @for (status of statuses; track status) { <option [value]="status">{{ status | adminLabel }}</option> }
+                </select>
+              </div>
+            </div>
+
+            <div class="button-row">
+              <button type="submit">Enregistrer le fond</button>
+              <button type="button" (click)="selectVision(null)">Créer un nouveau fond</button>
+              @if (selectedVision(); as vision) {
+                  <button type="button" class="danger" [disabled]="vision.active" (click)="askVisionDeletion(vision, $event)">Supprimer {{ vision.name }}</button>
+              }
+            </div>
+          </form>
+        </section>
+
+        <section aria-labelledby="map-markers-title">
+          <h2 id="map-markers-title">Repères</h2>
+          @if (markers().length) {
+            <ul class="admin-list" aria-label="Repères de carte disponibles">
+              @for (marker of markers(); track marker.id) {
+                <li>
+                  <button type="button" (click)="selectMarker(marker)" [attr.aria-pressed]="selectedMarker()?.id === marker.id">
+                    <span>{{ marker.displayOrder }}. {{ marker.title }}</span>
+                    <small>{{ marker.questCode }} — {{ marker.active ? 'visible sur la carte' : 'masqué' }}</small>
+                  </button>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="empty-state">Aucun repère n’est encore disponible.</p>
+          }
+
+          <form class="content-form" [formGroup]="markerForm" (ngSubmit)="saveMarker()" novalidate aria-labelledby="map-marker-form-title">
+            <h2 id="map-marker-form-title">{{ selectedMarker() ? 'Modifier le repère' : 'Nouveau repère' }}</h2>
+            <p class="required-hint">Les champs indiqués « obligatoire » doivent être renseignés.</p>
+
+            <label for="map-marker-quest">Quête associée</label>
+            <select id="map-marker-quest" formControlName="questCode">
+              @for (questCode of questCodes; track questCode) { <option [value]="questCode">{{ questCode }}</option> }
+            </select>
+
+            <label for="map-marker-title">Titre (obligatoire)</label>
+            <input id="map-marker-title" type="text" maxlength="160" formControlName="title"
+              [attr.aria-invalid]="markerInvalid('title') ? 'true' : null"
+              [attr.aria-describedby]="markerInvalid('title') ? 'map-marker-title-error' : null" />
+            @if (markerInvalid('title')) { <small id="map-marker-title-error" class="field-error">Saisissez un titre de 160 caractères maximum.</small> }
+
+            <div class="form-row">
+              <div class="form-field">
+                <label for="map-marker-x">Position X (%) (obligatoire)</label>
+                <input id="map-marker-x" type="number" min="0" max="100" step="0.001" formControlName="positionX"
+                  [attr.aria-invalid]="markerInvalid('positionX') ? 'true' : null"
+                  [attr.aria-describedby]="markerInvalid('positionX') ? 'map-marker-x-error' : null" />
+                @if (markerInvalid('positionX')) { <small id="map-marker-x-error" class="field-error">Saisissez une position entre 0 et 100.</small> }
+              </div>
+              <div class="form-field">
+                <label for="map-marker-y">Position Y (%) (obligatoire)</label>
+                <input id="map-marker-y" type="number" min="0" max="100" step="0.001" formControlName="positionY"
+                  [attr.aria-invalid]="markerInvalid('positionY') ? 'true' : null"
+                  [attr.aria-describedby]="markerInvalid('positionY') ? 'map-marker-y-error' : null" />
+                @if (markerInvalid('positionY')) { <small id="map-marker-y-error" class="field-error">Saisissez une position entre 0 et 100.</small> }
+              </div>
+              <div class="form-field">
+                <label for="map-marker-label-position">Position du drapeau</label>
+                <select id="map-marker-label-position" formControlName="labelPosition">
+                  @for (position of labelPositions; track position.value) { <option [value]="position.value">{{ position.label }}</option> }
+                </select>
+              </div>
+              <div class="form-field">
+                <label for="map-marker-offset">Distance du drapeau (px) (obligatoire)</label>
+                <input id="map-marker-offset" type="number" min="0" max="120" formControlName="labelOffsetPx"
+                  [attr.aria-invalid]="markerInvalid('labelOffsetPx') ? 'true' : null"
+                  [attr.aria-describedby]="markerInvalid('labelOffsetPx') ? 'map-marker-offset-error' : null" />
+                @if (markerInvalid('labelOffsetPx')) { <small id="map-marker-offset-error" class="field-error">Choisissez une distance entre 0 et 120 pixels.</small> }
+              </div>
+              <div class="form-field">
+                <label for="map-marker-order">Ordre (obligatoire)</label>
+                <input id="map-marker-order" type="number" min="1" max="999" formControlName="displayOrder"
+                  [attr.aria-invalid]="markerInvalid('displayOrder') ? 'true' : null"
+                  [attr.aria-describedby]="markerInvalid('displayOrder') ? 'map-marker-order-error' : null" />
+                @if (markerInvalid('displayOrder')) { <small id="map-marker-order-error" class="field-error">Choisissez un ordre entre 1 et 999.</small> }
+              </div>
+            </div>
+
+            <label class="checkbox-field"><input type="checkbox" formControlName="active" />Afficher ce repère</label>
+
+            <div class="button-row">
+              <button type="submit">Enregistrer le repère</button>
+              <button type="button" (click)="selectMarker(null)">Créer un nouveau repère</button>
+              @if (selectedMarker(); as marker) {
+                  <button type="button" class="danger" (click)="askMarkerDeletion(marker, $event)">Supprimer {{ marker.title }}</button>
+              }
+            </div>
+          </form>
+        </section>
+      </div>
+
+      @if (preview(); as mapPreview) {
+        <section class="map-preview" aria-labelledby="map-preview-title">
+          <h2 id="map-preview-title">Prévisualisation</h2>
+          <p>Cette prévisualisation ne publie rien automatiquement.</p>
+          <div class="map-preview-frame">
+            <img [src]="mapPreview.vision.assetPath" [alt]="mapPreview.vision.imageAlt" />
+            @for (marker of mapPreview.markers; track marker.id) {
+              <span class="map-preview-marker"
+                [class.map-preview-marker--label-top]="marker.labelPosition === 'TOP'"
+                [class.map-preview-marker--label-bottom]="marker.labelPosition === 'BOTTOM'"
+                [class.map-preview-marker--label-left]="marker.labelPosition === 'LEFT'"
+                [class.map-preview-marker--label-right]="marker.labelPosition === 'RIGHT'"
+                [style.left]="marker.positionX + '%'" [style.top]="marker.positionY + '%'"
+                [style.--marker-label-offset]="marker.labelOffsetPx + 'px'" [attr.aria-label]="marker.title">
+                <span aria-hidden="true" class="map-preview-pin"></span>
+                <span class="map-preview-ribbon">{{ marker.displayOrder }}. {{ marker.title }}</span>
+              </span>
+            }
+          </div>
+          <ol class="marker-details">
+            @for (marker of mapPreview.markers; track marker.id) {
+              <li><strong>{{ marker.title }}</strong><small>{{ marker.questCode }} — X {{ marker.positionX }} %, Y {{ marker.positionY }} %, drapeau {{ marker.labelPosition | adminLabel }}, distance {{ marker.labelOffsetPx }} px</small></li>
+            }
+          </ol>
+        </section>
+      }
+    }
+  }
+</section>
+
+<app-admin-confirmation-dialog
+  #visionDeleteDialog
+  dialogId="delete-map-vision"
+  title="Supprimer ce fond de carte ?"
+  [message]="pendingVisionDeletion() ? '« ' + pendingVisionDeletion()!.name + ' » sera définitivement supprimé.' : ''"
+  confirmLabel="Supprimer définitivement"
+  (confirmed)="confirmVisionDeletion()"
+  (cancelled)="pendingVisionDeletion.set(null)"
+/>
+
+<app-admin-confirmation-dialog
+  #markerDeleteDialog
+  dialogId="delete-map-marker"
+  title="Supprimer ce repère ?"
+  [message]="pendingMarkerDeletion() ? '« ' + pendingMarkerDeletion()!.title + ' » sera définitivement supprimé.' : ''"
+  confirmLabel="Supprimer définitivement"
+  (confirmed)="confirmMarkerDeletion()"
+  (cancelled)="pendingMarkerDeletion.set(null)"
+/>

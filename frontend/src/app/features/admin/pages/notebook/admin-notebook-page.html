@@ -1,0 +1,272 @@
+<section class="admin-page" aria-labelledby="admin-notebook-title">
+  <h1 id="admin-notebook-title">Gestion des quêtes</h1>
+
+  @if (errorMessage()) {
+    <p id="quest-error-summary" #errorSummary class="alert" role="alert" tabindex="-1">
+      {{ errorMessage() }}
+    </p>
+  }
+  @if (saved()) {
+    <p class="status" role="status">Quête enregistrée.</p>
+  }
+
+  @switch (loadState()) {
+    @case ('loading') {
+      <app-loading-indicator label="Chargement des quêtes." />
+    }
+    @case ('ready') {
+      @if (quests().length > 0) {
+        <div class="quest-tabs" role="tablist" aria-label="Quêtes administrables">
+          @for (quest of quests(); track quest.id; let index = $index) {
+            <button
+              #questTab
+              type="button"
+              role="tab"
+              [id]="'quest-tab-' + quest.code"
+              [attr.aria-selected]="selectedQuest()?.code === quest.code"
+              [attr.aria-controls]="'quest-panel-' + quest.code"
+              [attr.tabindex]="selectedQuest()?.code === quest.code ? 0 : -1"
+              (click)="selectQuest(quest.code)"
+              (keydown)="handleTabKeydown($event, index)"
+            >
+              <span>{{ quest.title }}</span>
+              <small>{{ quest.status | adminLabel }} · {{ quest.visibleToPlayers ? 'visible' : 'masquée' }}</small>
+            </button>
+          }
+        </div>
+
+        @if (selectedQuest(); as quest) {
+          <div
+            class="quest-panel"
+            role="tabpanel"
+            tabindex="0"
+            [id]="'quest-panel-' + quest.code"
+            [attr.aria-labelledby]="'quest-tab-' + quest.code"
+          >
+            <div class="quest-workspace">
+              <form
+                class="quest-form"
+                [formGroup]="questForm"
+                (ngSubmit)="saveQuest()"
+                [attr.aria-labelledby]="'quest-editor-title-' + quest.code"
+              >
+                <h2 [id]="'quest-editor-title-' + quest.code">{{ quest.code }}</h2>
+
+                <label [for]="'quest-title-' + quest.code">Titre public (obligatoire)</label>
+                <input
+                  [id]="'quest-title-' + quest.code"
+                  type="text"
+                  formControlName="title"
+                  required
+                  maxlength="160"
+                  [attr.aria-invalid]="questForm.controls.title.invalid && questForm.controls.title.touched ? 'true' : null"
+                  [attr.aria-describedby]="questForm.controls.title.invalid && questForm.controls.title.touched ? 'quest-title-error' : null"
+                />
+                @if (questForm.controls.title.invalid && questForm.controls.title.touched) {
+                  <p id="quest-title-error" class="field-error">
+                    Le titre public est obligatoire et limité à 160 caractères.
+                  </p>
+                }
+
+                <label [for]="'quest-summary-' + quest.code">Résumé public (obligatoire)</label>
+                <textarea
+                  [id]="'quest-summary-' + quest.code"
+                  formControlName="summary"
+                  required
+                  maxlength="700"
+                  rows="3"
+                  [attr.aria-invalid]="questForm.controls.summary.invalid && questForm.controls.summary.touched ? 'true' : null"
+                  [attr.aria-describedby]="questForm.controls.summary.invalid && questForm.controls.summary.touched ? 'quest-summary-error' : null"
+                ></textarea>
+                @if (questForm.controls.summary.invalid && questForm.controls.summary.touched) {
+                  <p id="quest-summary-error" class="field-error">
+                    Le résumé public est obligatoire et limité à 700 caractères.
+                  </p>
+                }
+
+                <app-admin-markdown-editor
+                  formControlName="importantEventsMarkdown"
+                  label="Événements importants"
+                  [controlId]="'quest-important-events-' + quest.code"
+                  [rows]="5"
+                />
+                <app-admin-markdown-editor
+                  formControlName="discoveredCluesMarkdown"
+                  label="Indices découverts"
+                  [controlId]="'quest-discovered-clues-' + quest.code"
+                  [rows]="5"
+                />
+                <app-admin-markdown-editor
+                  formControlName="completedTrialsMarkdown"
+                  label="Épreuves réalisées"
+                  [controlId]="'quest-completed-trials-' + quest.code"
+                  [rows]="5"
+                />
+                <app-admin-markdown-editor
+                  formControlName="extraContentMarkdown"
+                  label="Notes complémentaires publiables"
+                  [controlId]="'quest-extra-content-' + quest.code"
+                  [rows]="5"
+                />
+                <app-admin-markdown-editor
+                  formControlName="adminDraftMarkdown"
+                  label="Brouillon administrateur"
+                  [controlId]="'quest-admin-draft-' + quest.code"
+                  [rows]="5"
+                />
+
+                <div class="form-row">
+                  <label [for]="'quest-status-' + quest.code">Statut</label>
+                  <select [id]="'quest-status-' + quest.code" formControlName="status">
+                    @for (status of statuses; track status) {
+                      <option [value]="status">{{ status | adminLabel }}</option>
+                    }
+                  </select>
+
+                  <label class="checkbox-field">
+                    <input type="checkbox" formControlName="visibleToPlayers" />
+                    Afficher aux aventuriers
+                  </label>
+                </div>
+
+                <div class="button-row">
+                  <button type="submit">Enregistrer {{ quest.title }}</button>
+                  <button type="button" (click)="previewQuest()">Prévisualiser {{ quest.title }}</button>
+                  <button type="button" (click)="publishQuest()">Publier et afficher {{ quest.title }}</button>
+                  <button type="button" (click)="hideQuest()">Masquer {{ quest.title }}</button>
+                  <button type="button" class="danger" (click)="askArchive($event)">
+                    Archiver {{ quest.title }}
+                  </button>
+                </div>
+              </form>
+
+              <section class="quest-documents" [attr.aria-labelledby]="'quest-documents-title-' + quest.code">
+                <h2 [id]="'quest-documents-title-' + quest.code">Documents d’organisation</h2>
+                <p>
+                  Réservés à l’organisation de la partie. Les aventuriers n’y ont jamais accès, en
+                  ligne comme hors ligne.
+                </p>
+
+                @if (documentErrorMessage()) {
+                  <p #documentErrorSummary class="alert" role="alert" tabindex="-1">
+                    {{ documentErrorMessage() }}
+                  </p>
+                }
+                @if (documentSaved()) {
+                  <p class="status" role="status">Documents d’organisation mis à jour.</p>
+                }
+
+                <form class="document-form" [formGroup]="documentForm" (ngSubmit)="uploadDocument()">
+                  <label [for]="'quest-document-label-' + quest.code">Libellé du document (obligatoire)</label>
+                  <input
+                    [id]="'quest-document-label-' + quest.code"
+                    type="text"
+                    formControlName="label"
+                    required
+                    maxlength="160"
+                    [attr.aria-invalid]="documentForm.controls.label.invalid && documentForm.controls.label.touched ? 'true' : null"
+                    [attr.aria-describedby]="documentForm.controls.label.invalid && documentForm.controls.label.touched ? 'quest-document-label-error' : null"
+                  />
+                  @if (documentForm.controls.label.invalid && documentForm.controls.label.touched) {
+                    <p id="quest-document-label-error" class="field-error">
+                      Le libellé est obligatoire et limité à 160 caractères.
+                    </p>
+                  }
+
+                  <label [for]="'quest-document-file-' + quest.code">Fichier PDF (obligatoire)</label>
+                  <input
+                    #documentFileInput
+                    [id]="'quest-document-file-' + quest.code"
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    required
+                    [attr.aria-describedby]="documentForm.controls.file.invalid && documentForm.controls.file.touched ? 'quest-document-file-error quest-document-constraints' : 'quest-document-constraints'"
+                    [attr.aria-invalid]="documentForm.controls.file.invalid && documentForm.controls.file.touched ? 'true' : null"
+                    (change)="selectDocumentFile($event)"
+                  />
+                  @if (documentForm.controls.file.invalid && documentForm.controls.file.touched) {
+                    <p id="quest-document-file-error" class="field-error">
+                      Sélectionnez le fichier PDF à déposer.
+                    </p>
+                  }
+                  <p id="quest-document-constraints" class="field-hint">
+                    Format PDF uniquement, 9 Mio au maximum par fichier.
+                  </p>
+
+                  <button type="submit">Déposer le document pour {{ quest.title }}</button>
+                </form>
+
+                @switch (documentsState()) {
+                  @case ('loading') {
+                    <app-loading-indicator label="Chargement des documents de la quête." />
+                  }
+                  @case ('ready') {
+                    @if (documents().length > 0) {
+                      <ul class="document-list" aria-label="Documents d’organisation de la quête">
+                        @for (document of documents(); track document.id) {
+                          <li>
+                            <a [href]="document.contentUrl" target="_blank" rel="noopener noreferrer">
+                              {{ document.label }}<span class="sr-only"> (nouvelle fenêtre)</span>
+                            </a>
+                            <small>
+                              {{ document.originalFilename }} · {{ formatFileSize(document.sizeBytes) }}
+                            </small>
+                            <button type="button" class="danger" (click)="askDocumentDeletion(document, $event)">
+                              Supprimer le document {{ document.label }}
+                            </button>
+                          </li>
+                        }
+                      </ul>
+                    } @else {
+                      <p class="empty-state">Aucun document d’organisation pour cette quête.</p>
+                    }
+                  }
+                }
+              </section>
+
+              <section class="quest-preview" [attr.aria-labelledby]="'quest-preview-title-' + quest.code">
+                <h2 [id]="'quest-preview-title-' + quest.code">Prévisualisation admin</h2>
+                <p>Cette prévisualisation ne change pas le statut de publication.</p>
+                <article>
+                  <h3>{{ questForm.controls.title.value }}</h3>
+                  <p>{{ questForm.controls.summary.value }}</p>
+                  <h4>Événements importants</h4>
+                  <div class="markdown-content" [innerHTML]="preview()?.importantEventsHtml || quest.importantEventsHtml"></div>
+                  <h4>Indices découverts</h4>
+                  <div class="markdown-content" [innerHTML]="preview()?.discoveredCluesHtml || quest.discoveredCluesHtml"></div>
+                  <h4>Épreuves réalisées</h4>
+                  <div class="markdown-content" [innerHTML]="preview()?.completedTrialsHtml || quest.completedTrialsHtml"></div>
+                  <h4>Notes complémentaires</h4>
+                  <div class="markdown-content" [innerHTML]="preview()?.extraContentHtml || quest.extraContentHtml"></div>
+                  <h4>Brouillon administrateur</h4>
+                  <div class="markdown-content" [innerHTML]="preview()?.adminDraftHtml || quest.adminDraftHtml"></div>
+                </article>
+              </section>
+            </div>
+          </div>
+        }
+      } @else {
+        <p class="empty-state">Aucune quête disponible dans l’administration.</p>
+      }
+    }
+  }
+</section>
+
+<app-admin-confirmation-dialog
+  #archiveDialog
+  dialogId="archive-quest"
+  title="Archiver cette quête ?"
+  [message]="selectedQuest() ? '« ' + selectedQuest()!.title + ' » ne sera plus modifiable ni visible publiquement.' : ''"
+  confirmLabel="Archiver la quête"
+  (confirmed)="confirmArchive()"
+/>
+
+<app-admin-confirmation-dialog
+  #documentDeleteDialog
+  dialogId="delete-quest-document"
+  title="Supprimer ce document ?"
+  [message]="pendingDocumentDeletion() ? '« ' + pendingDocumentDeletion()!.label + ' » et son fichier seront définitivement supprimés.' : ''"
+  confirmLabel="Supprimer définitivement"
+  (confirmed)="confirmDocumentDeletion()"
+  (cancelled)="pendingDocumentDeletion.set(null)"
+/>
