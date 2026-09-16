@@ -1,16 +1,35 @@
+import { adminAuthGuard } from '../../core/guards/admin-auth.guard';
 import { adminRoutes } from './admin.routes';
 
 describe('adminRoutes', () => {
-  it('registers the expected protected admin module paths', () => {
-    const paths = adminRoutes.map((route) => route.path);
-
-    expect(paths).toEqual(['forbidden', '']);
-    expect(adminRoutes[1].children?.map((route) => route.path)).toEqual(['', ':section']);
+  it('declares every admin section explicitly below the protected layout', () => {
+    expect(adminRoutes.map((route) => route.path)).toEqual(['forbidden', '']);
+    const protectedRoute = adminRoutes[1];
+    expect(protectedRoute.canActivate).toContain(adminAuthGuard);
+    expect(protectedRoute.children?.map((route) => route.path)).toEqual([
+      '',
+      'dashboard',
+      'home',
+      'group',
+      'adventurers',
+      'map',
+      'notebook',
+      'media',
+      'administrators',
+      'audit',
+      'settings',
+      'radar',
+      'portal',
+      '**',
+    ]);
   });
 
-  it('protects every admin module route except the forbidden page', () => {
-    const moduleRoutes = adminRoutes.filter((route) => route.path !== 'forbidden');
-
-    expect(moduleRoutes.every((route) => route.canActivate?.length === 1)).toBe(true);
+  it('lazy loads the layout and every concrete page', () => {
+    const protectedRoute = adminRoutes[1];
+    expect(protectedRoute.loadComponent).toBeTypeOf('function');
+    for (const route of protectedRoute.children?.filter((child) => child.path && child.path !== '**') ?? []) {
+      expect(route.loadComponent).toBeTypeOf('function');
+      expect(route.title).toBeTruthy();
+    }
   });
 });

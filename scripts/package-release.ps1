@@ -152,6 +152,13 @@ $FrontendIndex = $IndexFiles |
     Sort-Object @{ Expression = { if ($_.FullName -match "\\browser\\index\.html$") { 0 } else { 1 } } }, FullName |
     Select-Object -First 1
 $FrontendBuildDir = Split-Path -Parent $FrontendIndex.FullName
+$RequiredFrontendFiles = @("index.html", "ngsw.json", "ngsw-worker.js", "safety-worker.js")
+foreach ($requiredFile in $RequiredFrontendFiles) {
+    $requiredPath = Join-Path $FrontendBuildDir $requiredFile
+    if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
+        throw "Frontend release is missing required PWA file: $requiredFile"
+    }
+}
 Get-ChildItem -LiteralPath $FrontendBuildDir -Force |
     Copy-Item -Destination (Join-Path $StageDir "frontend") -Recurse -Force
 
@@ -189,6 +196,15 @@ if ($ArchiveEntries -notcontains "backend/app.jar") {
 }
 if ($ArchiveEntries -notcontains "frontend/index.html") {
     throw "Archive validation failed: frontend/index.html is missing."
+}
+if ($ArchiveEntries -notcontains "frontend/ngsw.json") {
+    throw "Archive validation failed: frontend/ngsw.json is missing."
+}
+if ($ArchiveEntries -notcontains "frontend/ngsw-worker.js") {
+    throw "Archive validation failed: frontend/ngsw-worker.js is missing."
+}
+if ($ArchiveEntries -notcontains "frontend/safety-worker.js") {
+    throw "Archive validation failed: frontend/safety-worker.js is missing."
 }
 
 Write-Host "Release archive created: $ArchivePath"

@@ -1,0 +1,39 @@
+.admin-header {
+  max-width: 82rem;
+}
+
+.alert {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #9b2c2c;
+  background: #f9e8df;
+  color: #5c1717;
+}
+
+.admin-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.admin-navigation a {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #8f7650;
+  color: #211914;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.admin-navigation a:hover,
+.admin-navigation a:focus-visible {
+  background: #f3dfb6;
+}
+
+.admin-navigation a.active {
+  border-color: #211914;
+  background: #211914;
+  color: #f8f0df;
+  text-decoration: underline;
+  text-decoration-thickness: 0.15em;
+  text-underline-offset: 0.2em;
+}

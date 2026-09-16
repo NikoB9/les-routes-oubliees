@@ -1,0 +1,39 @@
+.editor-form,
+.allowed-list,
+.allowed-list li {
+  display: grid;
+  gap: 1rem;
+}
+
+.editor-form,
+.allowed-list li {
+  padding: 1rem;
+  border: 1px solid #d1ad68;
+  background: #fffaf0;
+}
+
+.allowed-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.allowed-list li {
+  background: #fff8e8;
+}
+
+.allowed-heading,
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.allowed-heading {
+  justify-content: space-between;
+}
+
+.allowed-heading strong {
+  overflow-wrap: anywhere;
+}

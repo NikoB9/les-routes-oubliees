@@ -1,0 +1,49 @@
+.admin-panel {
+  display: grid;
+  gap: 1rem;
+  max-width: 82rem;
+}
+
+h1 {
+  margin: 0;
+  color: #211914;
+}
+
+.alert {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #9b2c2c;
+  background: #f9e8df;
+  color: #5c1717;
+}
+
+.audit-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audit-list li {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+  border: 1px solid #d1ad68;
+  background: #fff8e8;
+}
+
+.audit-list strong,
+.audit-list p,
+.audit-list small,
+.audit-list time {
+  overflow-wrap: anywhere;
+}
+
+.audit-list p {
+  margin: 0;
+}
+
+.audit-list time,
+.audit-list small {
+  color: #5c4632;
+}

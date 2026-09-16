@@ -7,6 +7,7 @@ import { App } from './app';
 import { routes } from './app.routes';
 import { PublicContentCacheService } from './core/offline/public-content-cache.service';
 import { PwaInstallPromptService } from './core/pwa/pwa-install-prompt.service';
+import { ApplicationUpdateService } from './core/pwa/application-update.service';
 
 describe('App', () => {
   let http: HttpTestingController;
@@ -18,6 +19,14 @@ describe('App', () => {
         provideRouter(routes),
         provideHttpClient(),
         provideHttpClientTesting(),
+        {
+          provide: ApplicationUpdateService,
+          useValue: {
+            isAvailable: () => false,
+            isRecoveryRequired: () => false,
+            reload: () => undefined,
+          },
+        },
         {
           provide: PublicContentCacheService,
           useValue: {

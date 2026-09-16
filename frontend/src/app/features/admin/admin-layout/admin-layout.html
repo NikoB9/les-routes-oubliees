@@ -1,0 +1,27 @@
+<section class="admin-header" aria-label="Administration">
+  @if (sessionError()) {
+    <p class="alert" role="alert">Vos droits d’éclaireur ne peuvent pas être vérifiés.</p>
+  } @else if (session(); as adminSession) {
+    <p>Accès éclaireur confirmé pour {{ adminSession.email }}.</p>
+    <nav class="admin-navigation" aria-label="Navigation administration">
+      <a routerLink="/admin/dashboard" routerLinkActive="active" ariaCurrentWhenActive="page">Tableau de bord</a>
+      <a routerLink="/admin/notebook" routerLinkActive="active" ariaCurrentWhenActive="page">Quêtes</a>
+      <a routerLink="/admin/media" routerLinkActive="active" ariaCurrentWhenActive="page">Médias</a>
+      <a routerLink="/admin/administrators" routerLinkActive="active" ariaCurrentWhenActive="page">Administrateurs</a>
+      <a routerLink="/admin/audit" routerLinkActive="active" ariaCurrentWhenActive="page">Audit</a>
+      <a routerLink="/admin/radar" routerLinkActive="active" ariaCurrentWhenActive="page">Radar</a>
+      <a routerLink="/admin/portal" routerLinkActive="active" ariaCurrentWhenActive="page">Portail</a>
+      <a routerLink="/admin/home" routerLinkActive="active" ariaCurrentWhenActive="page">Accueil</a>
+      <a routerLink="/admin/group" routerLinkActive="active" ariaCurrentWhenActive="page">Compagnie</a>
+      <a routerLink="/admin/adventurers" routerLinkActive="active" ariaCurrentWhenActive="page">Aventuriers</a>
+      <a routerLink="/admin/map" routerLinkActive="active" ariaCurrentWhenActive="page">Carte</a>
+      <a routerLink="/admin/settings" routerLinkActive="active" ariaCurrentWhenActive="page">Paramètres</a>
+    </nav>
+  } @else {
+    <p role="status">Vérification de vos droits d’éclaireur.</p>
+  }
+</section>
+
+@if (session()) {
+  <router-outlet />
+}

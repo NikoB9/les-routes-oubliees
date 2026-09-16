@@ -1,0 +1,92 @@
+<section class="admin-panel" aria-labelledby="admin-adventurers-title">
+  <h1 id="admin-adventurers-title">Aventuriers</h1>
+
+  @if (errorMessage()) {
+    <p id="adventurer-error-summary" #errorSummary class="alert" role="alert" tabindex="-1">{{ errorMessage() }}</p>
+  }
+  @if (saved()) { <p class="status" role="status">Aventuriers mis à jour.</p> }
+
+  @switch (state()) {
+    @case ('loading') { <app-loading-indicator label="Chargement des aventuriers." /> }
+    @case ('error') { <button type="button" class="primary-action" (click)="load()">Réessayer</button> }
+    @case ('ready') {
+      <div class="content-admin-layout">
+        <section aria-labelledby="adventurer-list-title">
+          <h2 id="adventurer-list-title">Aventuriers administrables</h2>
+          @if (adventurers().length) {
+            <ul class="admin-list">
+              @for (adventurer of adventurers(); track adventurer.id; let first = $first; let last = $last) {
+                <li>
+                  <button type="button" (click)="select(adventurer)" [attr.aria-pressed]="selected()?.id === adventurer.id">
+                    <span>{{ adventurer.displayOrder }}. {{ adventurer.name }}</span>
+                    <small>{{ adventurer.title }} — {{ adventurer.visible ? 'visible' : 'masqué' }}</small>
+                  </button>
+                  <div class="button-row">
+                    <button type="button" [disabled]="first" (click)="move(adventurer, -1)">Monter {{ adventurer.name }}</button>
+                    <button type="button" [disabled]="last" (click)="move(adventurer, 1)">Descendre {{ adventurer.name }}</button>
+                  </div>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="empty-state">Aucun aventurier n’est encore disponible.</p>
+          }
+        </section>
+
+        <form class="content-form" [formGroup]="form" (ngSubmit)="save()" novalidate aria-labelledby="adventurer-form-title">
+          <h2 id="adventurer-form-title">{{ selected() ? "Modifier l'aventurier" : 'Nouvel aventurier' }}</h2>
+          <p class="required-hint">Les champs indiqués « obligatoire » doivent être renseignés.</p>
+
+          <label for="adventurer-name">Nom (obligatoire)</label>
+          <input id="adventurer-name" type="text" maxlength="160" formControlName="name" [attr.aria-invalid]="invalid('name') ? 'true' : null" [attr.aria-describedby]="invalid('name') ? 'adventurer-name-error' : null" />
+          @if (invalid('name')) { <small id="adventurer-name-error" class="field-error">Saisissez un nom de 160 caractères maximum.</small> }
+
+          <label for="adventurer-title">Titre (obligatoire)</label>
+          <input id="adventurer-title" type="text" maxlength="160" formControlName="title" [attr.aria-invalid]="invalid('title') ? 'true' : null" [attr.aria-describedby]="invalid('title') ? 'adventurer-title-error' : null" />
+          @if (invalid('title')) { <small id="adventurer-title-error" class="field-error">Saisissez un titre de 160 caractères maximum.</small> }
+
+          <label for="adventurer-avatar">Chemin de l’avatar</label>
+          <input id="adventurer-avatar" type="text" maxlength="255" formControlName="avatarPath" />
+          <label for="adventurer-alt">Texte alternatif</label>
+          <input id="adventurer-alt" type="text" maxlength="280" formControlName="avatarAlt" />
+
+          <label for="adventurer-short">Description courte (obligatoire)</label>
+          <textarea id="adventurer-short" maxlength="500" rows="3" formControlName="shortDescription" [attr.aria-invalid]="invalid('shortDescription') ? 'true' : null" [attr.aria-describedby]="invalid('shortDescription') ? 'adventurer-short-error' : null"></textarea>
+          @if (invalid('shortDescription')) { <small id="adventurer-short-error" class="field-error">Saisissez une description de 500 caractères maximum.</small> }
+
+          <label for="adventurer-strengths">Forces (obligatoire)</label>
+          <textarea id="adventurer-strengths" rows="3" formControlName="strengths" [attr.aria-invalid]="invalid('strengths') ? 'true' : null" [attr.aria-describedby]="invalid('strengths') ? 'adventurer-strengths-error' : null"></textarea>
+          @if (invalid('strengths')) { <small id="adventurer-strengths-error" class="field-error">Saisissez les forces de l’aventurier.</small> }
+
+          <label for="adventurer-weaknesses">Faiblesses (obligatoire)</label>
+          <textarea id="adventurer-weaknesses" rows="3" formControlName="weaknesses" [attr.aria-invalid]="invalid('weaknesses') ? 'true' : null" [attr.aria-describedby]="invalid('weaknesses') ? 'adventurer-weaknesses-error' : null"></textarea>
+          @if (invalid('weaknesses')) { <small id="adventurer-weaknesses-error" class="field-error">Saisissez les faiblesses de l’aventurier.</small> }
+
+          <label for="adventurer-order">Ordre d’affichage (obligatoire)</label>
+          <input id="adventurer-order" type="number" min="1" formControlName="displayOrder" [attr.aria-invalid]="invalid('displayOrder') ? 'true' : null" [attr.aria-describedby]="invalid('displayOrder') ? 'adventurer-order-error' : null" />
+          @if (invalid('displayOrder')) { <small id="adventurer-order-error" class="field-error">Saisissez un ordre supérieur ou égal à 1.</small> }
+
+          <label class="checkbox-field"><input type="checkbox" formControlName="visible" /> Afficher publiquement</label>
+
+          <div class="button-row">
+            <button type="submit">Enregistrer</button>
+            <button type="button" (click)="select(null)">Nouveau</button>
+            @if (selected(); as adventurer) {
+              <button type="button" class="danger" (click)="askDeletion(adventurer, $event)">Supprimer {{ adventurer.name }}</button>
+            }
+          </div>
+        </form>
+      </div>
+    }
+  }
+</section>
+
+<app-admin-confirmation-dialog
+  #deleteDialog
+  dialogId="delete-adventurer"
+  title="Supprimer cet aventurier ?"
+  [message]="pendingDeletion() ? '« ' + pendingDeletion()!.name + ' » sera définitivement supprimé.' : ''"
+  confirmLabel="Supprimer définitivement"
+  (confirmed)="confirmDeletion()"
+  (cancelled)="cancelDeletion()"
+/>

@@ -1,0 +1,25 @@
+:host { display: block; }
+.admin-panel { display: grid; gap: 1rem; max-width: 82rem; margin-top: 2rem; }
+h1, h2 { margin: 0; color: #211914; }
+.content-admin-layout { display: grid; grid-template-columns: minmax(14rem, 22rem) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+.content-admin-layout > section { display: grid; gap: 1rem; }
+.admin-list { display: grid; gap: .75rem; margin: 0; padding: 0; list-style: none; }
+.admin-list li { display: grid; gap: .5rem; padding: 1rem; border: 1px solid #d1ad68; background: #fff8e8; }
+.admin-list > li > button { display: grid; gap: .2rem; width: 100%; padding: .6rem .75rem; border: 1px solid #8f7650; background: #fffaf0; color: #211914; text-align: left; cursor: pointer; }
+.admin-list > li > button[aria-pressed='true'] { border-color: #7a261d; box-shadow: inset 0 0 0 2px #7a261d; }
+.admin-list span { font-weight: 900; }
+.admin-list small, .required-hint, .form-meta { color: #5c4632; }
+.content-form { display: grid; gap: .75rem; padding: 1rem; border: 1px solid #d1ad68; background: #fffaf0; }
+.content-form label { color: #3a2d21; font-weight: 800; }
+.content-form input:not([type='checkbox']), .content-form textarea, .content-form select { width: 100%; box-sizing: border-box; padding: .7rem; border: 1px solid #8f7650; background: #fff; color: #211914; font: inherit; }
+.button-row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+button { min-height: 2.75rem; padding: .7rem 1rem; border: 0; background: #211914; color: #f8f0df; font: inherit; font-weight: 800; cursor: pointer; }
+button.danger { background: #7a261d; }
+button:disabled { cursor: not-allowed; opacity: .55; }
+:where(input, textarea, select, button):focus-visible, .alert:focus-visible { outline: 3px solid #7a261d; outline-offset: 2px; }
+.alert, .status { padding: .75rem 1rem; }
+.alert { border-left: 4px solid #9b2c2c; background: #f9e8df; color: #5c1717; }
+.status { border-left: 4px solid #356b35; background: #edf7e8; color: #244c24; }
+.field-error { color: #7a261d; font-weight: 800; }
+.required-hint, .form-meta { margin: 0; }
+@media (max-width: 960px) { .content-admin-layout { grid-template-columns: 1fr; } }

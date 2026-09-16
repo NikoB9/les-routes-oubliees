@@ -115,6 +115,8 @@ Le script cree `dist/les-routes-oubliees-release.tar.gz` avec :
 ```text
 backend/app.jar
 frontend/index.html
+frontend/ngsw.json
+frontend/ngsw-worker.js
 release-info.txt
 ```
 

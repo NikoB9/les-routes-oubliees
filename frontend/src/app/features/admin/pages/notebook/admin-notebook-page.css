@@ -1,0 +1,142 @@
+.quest-workspace,
+.quest-form,
+.quest-documents,
+.document-form,
+.quest-preview,
+.quest-preview article,
+.document-list li {
+  display: grid;
+  gap: 1rem;
+}
+
+.quest-tabs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.25rem 0.25rem 0.75rem;
+}
+
+.quest-tabs button {
+  display: grid;
+  flex: 0 0 min(13rem, 75vw);
+  gap: 0.25rem;
+  min-height: 3.5rem;
+  padding: 0.75rem;
+  border: 2px solid #8f7650;
+  background: #fff8e8;
+  color: #211914;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quest-tabs button[aria-selected='true'] {
+  border-color: #211914;
+  background: #e7cf9d;
+  box-shadow: inset 0 -0.25rem #7a261d;
+}
+
+.quest-tabs small {
+  color: #5c4632;
+}
+
+.quest-panel {
+  padding-block: 0.5rem;
+}
+
+.quest-workspace {
+  grid-template-columns: minmax(0, 1.2fr) minmax(18rem, 0.8fr);
+  align-items: start;
+}
+
+.quest-form,
+.quest-documents,
+.quest-preview {
+  padding: 1rem;
+  border: 1px solid #d1ad68;
+  background: #fffaf0;
+}
+
+.quest-documents,
+.quest-preview {
+  grid-column: 2;
+}
+
+.quest-preview {
+  background: #fff8e8;
+}
+
+.form-row,
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.form-row > label:not(.checkbox-field) {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.checkbox-field {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.checkbox-field input {
+  width: auto;
+}
+
+.document-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.document-list li {
+  padding: 0.85rem;
+  border: 1px solid #d1ad68;
+  background: #fff8e8;
+}
+
+.document-list a,
+.document-list small {
+  overflow-wrap: anywhere;
+}
+
+.document-list a {
+  color: #552419;
+  font-weight: 900;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip-path: inset(50%);
+}
+
+:is(.quest-panel):focus-visible {
+  outline: 3px solid #0f5f8f;
+  outline-offset: 3px;
+}
+
+@media (max-width: 960px) {
+  .quest-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .quest-documents,
+  .quest-preview {
+    grid-column: 1;
+  }
+}

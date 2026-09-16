@@ -1,0 +1,28 @@
+<section class="admin-panel" aria-labelledby="admin-audit-title">
+  <h1 id="admin-audit-title">Journal d'audit</h1>
+
+  @switch (loadState()) {
+    @case ('loading') {
+      <app-loading-indicator label="Chargement du journal d'audit." />
+    }
+    @case ('error') {
+      <p class="alert" role="alert">Impossible de charger le journal d'audit.</p>
+    }
+    @case ('ready') {
+      @if (auditLogs().length > 0) {
+        <ol class="audit-list" role="list">
+          @for (log of auditLogs(); track log.id) {
+            <li>
+              <strong>{{ log.action | adminLabel }}</strong>
+              <time [attr.datetime]="log.createdAt">{{ log.createdAt | adminDateTime }}</time>
+              <p>{{ log.summary }}</p>
+              <small>{{ log.actorEmail || 'acteur inconnu' }} - {{ log.entityType | adminLabel }} {{ log.entityId || '' }}</small>
+            </li>
+          }
+        </ol>
+      } @else {
+        <p class="empty-state">Aucune action auditée pour le moment.</p>
+      }
+    }
+  }
+</section>

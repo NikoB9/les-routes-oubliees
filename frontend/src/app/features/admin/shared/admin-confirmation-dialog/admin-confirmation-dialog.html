@@ -1,0 +1,8 @@
+<dialog #dialog class="confirmation-dialog" [attr.aria-labelledby]="dialogId() + '-title'" (cancel)="cancel($event)">
+  <h2 [id]="dialogId() + '-title'">{{ title() }}</h2>
+  <p>{{ message() }}</p>
+  <div class="actions">
+    <button type="button" class="danger" (click)="confirm()">{{ confirmLabel() }}</button>
+    <button type="button" class="secondary" (click)="cancel()">Annuler</button>
+  </div>
+</dialog>

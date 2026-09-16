@@ -1,0 +1,95 @@
+<section class="admin-page" aria-labelledby="admin-media-title">
+  <h1 id="admin-media-title">Médiathèque</h1>
+
+  @if (errorMessage()) {
+    <p id="media-error-summary" #errorSummary class="alert" role="alert" tabindex="-1">
+      {{ errorMessage() }}
+    </p>
+  }
+  @if (saved()) {
+    <p class="status" role="status">Médiathèque mise à jour.</p>
+  }
+
+  <form
+    class="editor-form"
+    [formGroup]="uploadForm"
+    (ngSubmit)="uploadMedia()"
+    aria-labelledby="media-upload-title"
+  >
+    <h2 id="media-upload-title">Ajouter une image</h2>
+
+    <label for="media-file">Fichier image PNG, JPEG ou WebP (obligatoire)</label>
+    <input
+      #fileInput
+      id="media-file"
+      type="file"
+      accept="image/png,image/jpeg,image/webp"
+      required
+      [attr.aria-invalid]="uploadForm.controls.file.invalid && uploadForm.controls.file.touched ? 'true' : null"
+      [attr.aria-describedby]="uploadForm.controls.file.invalid && uploadForm.controls.file.touched ? 'media-file-error' : null"
+      (change)="selectFile($event)"
+    />
+    @if (uploadForm.controls.file.invalid && uploadForm.controls.file.touched) {
+      <p id="media-file-error" class="field-error">Sélectionnez une image à envoyer.</p>
+    }
+
+    <label for="media-alt-text">Texte alternatif (obligatoire)</label>
+    <input
+      id="media-alt-text"
+      type="text"
+      formControlName="altText"
+      required
+      maxlength="280"
+      [attr.aria-invalid]="uploadForm.controls.altText.invalid && uploadForm.controls.altText.touched ? 'true' : null"
+      [attr.aria-describedby]="uploadForm.controls.altText.invalid && uploadForm.controls.altText.touched ? 'media-alt-error' : null"
+      (input)="clearFeedback()"
+    />
+    @if (uploadForm.controls.altText.invalid && uploadForm.controls.altText.touched) {
+      <p id="media-alt-error" class="field-error">
+        Indiquez en 280 caractères au maximum ce que montre l’image.
+      </p>
+    }
+
+    <button type="submit">Ajouter le média</button>
+  </form>
+
+  @switch (loadState()) {
+    @case ('loading') {
+      <app-loading-indicator label="Chargement de la médiathèque." />
+    }
+    @case ('ready') {
+      @if (media().length > 0) {
+        <ul class="media-grid" aria-label="Médias disponibles">
+          @for (item of media(); track item.id) {
+            <li>
+              <img [src]="item.url" [alt]="item.altText" />
+              <div>
+                <h2>{{ item.originalFilename }}</h2>
+                <p>
+                  {{ item.mimeType }} · {{ item.width }} × {{ item.height }} ·
+                  {{ formatFileSize(item.sizeBytes) }}
+                </p>
+                <p><code>{{ item.url }}</code></p>
+                <button type="button" class="danger" (click)="askDeletion(item, $event)">
+                  Supprimer le média {{ item.originalFilename }}
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="empty-state">Aucun média ajouté pour le moment.</p>
+      }
+    }
+  }
+</section>
+
+<app-admin-confirmation-dialog
+  #deleteDialog
+  dialogId="delete-media"
+  title="Supprimer ce média ?"
+  [message]="pendingDeletion() ? '« ' + pendingDeletion()!.originalFilename + ' » sera définitivement supprimé.' : ''"
+  confirmLabel="Supprimer définitivement"
+  (confirmed)="confirmDeletion()"
+  (cancelled)="cancelDeletion()"
+/>

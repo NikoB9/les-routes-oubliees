@@ -19,6 +19,7 @@ env_file="${LRO_ENV_FILE:-/etc/les-routes-oubliees/application.env}"
 backup_dir="${LRO_DB_BACKUP_DIR:-/var/backups/les-routes-oubliees/database}"
 service_name="${LRO_SERVICE_NAME:-les-routes-oubliees}"
 health_url="${LRO_HEALTH_URL:-http://127.0.0.1:8080/actuator/health}"
+frontend_url="${LRO_FRONTEND_URL:-http://127.0.0.1:8088}"
 keep_releases="${LRO_KEEP_RELEASES:-5}"
 timestamp="$(date -u +%Y%m%d%H%M%S)"
 release_dir="$releases_dir/$timestamp"
@@ -46,6 +47,21 @@ grep -qx "backend/app.jar" "$archive_list" || {
 }
 grep -qx "frontend/index.html" "$archive_list" || {
   echo "Invalid archive: frontend/index.html is missing." >&2
+  rm -f "$archive_list"
+  exit 2
+}
+grep -qx "frontend/ngsw.json" "$archive_list" || {
+  echo "Invalid archive: frontend/ngsw.json is missing." >&2
+  rm -f "$archive_list"
+  exit 2
+}
+grep -qx "frontend/ngsw-worker.js" "$archive_list" || {
+  echo "Invalid archive: frontend/ngsw-worker.js is missing." >&2
+  rm -f "$archive_list"
+  exit 2
+}
+grep -qx "frontend/safety-worker.js" "$archive_list" || {
+  echo "Invalid archive: frontend/safety-worker.js is missing." >&2
   rm -f "$archive_list"
   exit 2
 }
@@ -91,6 +107,9 @@ mkdir -p "$release_dir"
 tar -xzf "$archive" -C "$release_dir"
 test -f "$release_dir/backend/app.jar"
 test -f "$release_dir/frontend/index.html"
+test -f "$release_dir/frontend/ngsw.json"
+test -f "$release_dir/frontend/ngsw-worker.js"
+test -f "$release_dir/frontend/safety-worker.js"
 
 if [[ -L "$current_link" || -e "$current_link" ]]; then
   previous_release="$(readlink -f "$current_link" || true)"
@@ -106,6 +125,29 @@ rollback() {
   rm -f "$archive"
 }
 
+frontend_is_ready() {
+  local index_headers normalized_index_headers manifest_body manifest_headers normalized_manifest_headers worker_body worker_headers normalized_worker_headers safety_headers normalized_safety_headers
+
+  curl -fsS "${frontend_url}/index.html?release=${timestamp}" >/dev/null || return 1
+  manifest_body="$(curl -fsS "${frontend_url}/ngsw.json?release=${timestamp}")" || return 1
+  worker_body="$(curl -fsS "${frontend_url}/ngsw-worker.js?release=${timestamp}")" || return 1
+  [[ "$manifest_body" == *'"configVersion"'* ]] || return 1
+  [[ "$worker_body" == *'Driver'* ]] || return 1
+
+  index_headers="$(curl -fsSI "${frontend_url}/index.html?release=${timestamp}")" || return 1
+  manifest_headers="$(curl -fsSI "${frontend_url}/ngsw.json?release=${timestamp}")" || return 1
+  worker_headers="$(curl -fsSI "${frontend_url}/ngsw-worker.js?release=${timestamp}")" || return 1
+  safety_headers="$(curl -fsSI "${frontend_url}/safety-worker.js?release=${timestamp}")" || return 1
+  normalized_index_headers="${index_headers,,}"
+  normalized_manifest_headers="${manifest_headers,,}"
+  normalized_worker_headers="${worker_headers,,}"
+  normalized_safety_headers="${safety_headers,,}"
+  [[ "$normalized_index_headers" == *'cache-control:'*'no-store'* ]] || return 1
+  [[ "$normalized_manifest_headers" == *'cache-control:'*'no-store'* ]] || return 1
+  [[ "$normalized_worker_headers" == *'cache-control:'*'no-store'* ]] || return 1
+  [[ "$normalized_safety_headers" == *'cache-control:'*'no-store'* ]] || return 1
+}
+
 trap rollback ERR
 
 echo "Stopping service: $service_name"
@@ -119,7 +161,7 @@ systemctl start "$service_name"
 
 echo "Waiting for health check: $health_url"
 for _ in $(seq 1 30); do
-  if curl -fsS "$health_url" >/dev/null; then
+  if curl -fsS "$health_url" >/dev/null && frontend_is_ready; then
     trap - ERR
     echo "Deployment succeeded: $release_dir"
     rm -f "$archive"

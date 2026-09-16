@@ -18,12 +18,15 @@ import { PublicContentCacheService } from './core/offline/public-content-cache.s
 import { PortalIdentityDialogComponent } from './core/portal/portal-identity-dialog';
 import { PortalIdentityStore } from './core/portal/portal-identity.store';
 import { PwaInstallPromptService } from './core/pwa/pwa-install-prompt.service';
+import { ApplicationUpdateService } from './core/pwa/application-update.service';
+import { ApplicationUpdatePromptComponent } from './shared/components/application-update-prompt/application-update-prompt';
 import { LoadingIndicatorComponent } from './shared/components/loading-indicator/loading-indicator';
 import { PwaInstallPromptComponent } from './shared/components/pwa-install-prompt/pwa-install-prompt';
 
 @Component({
   selector: 'app-root',
   imports: [
+    ApplicationUpdatePromptComponent,
     DesktopNavigationComponent,
     LoadingIndicatorComponent,
     MobileNavigationComponent,
@@ -38,6 +41,7 @@ import { PwaInstallPromptComponent } from './shared/components/pwa-install-promp
 export class App {
   protected readonly isNavigating = signal(false);
   protected readonly pwaPrompt = inject(PwaInstallPromptService);
+  protected readonly applicationUpdate = inject(ApplicationUpdateService);
   protected readonly accessSession = inject(CloudflareAccessSessionService);
 
   private readonly router = inject(Router);

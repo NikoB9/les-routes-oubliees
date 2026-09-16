@@ -1,0 +1,65 @@
+<section class="admin-panel" aria-labelledby="admin-settings-title">
+  <h1 id="admin-settings-title">Paramètres du site</h1>
+
+  @if (errorMessage()) {
+    <p id="settings-error-summary" #errorSummary class="alert" role="alert" tabindex="-1">{{ errorMessage() }}</p>
+  }
+  @if (saved()) { <p class="status" role="status">Paramètres du site mis à jour.</p> }
+
+  @switch (state()) {
+    @case ('loading') { <app-loading-indicator label="Chargement des paramètres." /> }
+    @case ('error') { <button type="button" class="primary-action" (click)="load()">Réessayer</button> }
+    @case ('ready') {
+      <form class="content-form" [formGroup]="form" (ngSubmit)="save()" novalidate aria-labelledby="settings-form-title">
+        <h2 id="settings-form-title">Identité et disponibilité</h2>
+        <p class="required-hint">Les champs indiqués « obligatoire » doivent être renseignés.</p>
+
+        <label for="settings-name">Nom du site (obligatoire)</label>
+        <input id="settings-name" type="text" maxlength="120" formControlName="siteName" [attr.aria-invalid]="invalid('siteName') ? 'true' : null" [attr.aria-describedby]="invalid('siteName') ? 'settings-name-error' : null" />
+        @if (invalid('siteName')) { <small id="settings-name-error" class="field-error">Saisissez un nom de 120 caractères maximum.</small> }
+
+        <label for="settings-subtitle">Sous-titre</label>
+        <input id="settings-subtitle" type="text" maxlength="180" formControlName="subtitle" />
+
+        <label for="settings-logo">Chemin du logo</label>
+        <input id="settings-logo" type="text" maxlength="255" placeholder="/assets/brand/logo.png" formControlName="logoPath" aria-describedby="settings-logo-help" />
+        <small id="settings-logo-help">Chemin public attendu : /assets/... ou /media/uuid.</small>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="settings-timezone">Fuseau horaire (obligatoire)</label>
+            <input id="settings-timezone" type="text" maxlength="80" formControlName="timezone" [attr.aria-invalid]="invalid('timezone') ? 'true' : null" [attr.aria-describedby]="invalid('timezone') ? 'settings-timezone-error' : null" />
+            @if (invalid('timezone')) { <small id="settings-timezone-error" class="field-error">Saisissez un fuseau horaire valide.</small> }
+          </div>
+          <div class="form-field">
+            <label for="settings-status">État du site</label>
+            <select id="settings-status" formControlName="status">
+              @for (status of statuses; track status) { <option [value]="status">{{ status | adminLabel }}</option> }
+            </select>
+          </div>
+        </div>
+
+        <label for="settings-maintenance">Message de maintenance{{ form.controls.status.value === 'MAINTENANCE' ? ' (obligatoire)' : '' }}</label>
+        <textarea id="settings-maintenance" rows="3" maxlength="500" formControlName="maintenanceMessage" [required]="form.controls.status.value === 'MAINTENANCE'" [attr.aria-invalid]="invalid('maintenanceMessage') ? 'true' : null" [attr.aria-describedby]="invalid('maintenanceMessage') ? 'settings-maintenance-error' : null"></textarea>
+        @if (invalid('maintenanceMessage')) { <small id="settings-maintenance-error" class="field-error">Saisissez le message affiché pendant la maintenance.</small> }
+
+        <app-admin-markdown-editor
+          label="Informations d'accessibilité Markdown"
+          controlId="settings-accessibility"
+          [rows]="7"
+          [required]="true"
+          formControlName="accessibilityInformationMarkdown"
+          [invalid]="invalid('accessibilityInformationMarkdown')"
+          [describedBy]="invalid('accessibilityInformationMarkdown') ? 'settings-accessibility-error' : null"
+        />
+        @if (invalid('accessibilityInformationMarkdown')) { <small id="settings-accessibility-error" class="field-error">Saisissez les informations d’accessibilité, sans dépasser 4 000 caractères.</small> }
+
+        <button type="submit">Enregistrer les paramètres</button>
+
+        @if (settings(); as current) {
+          <p class="form-meta">Dernière modification : {{ current.updatedAt }} par {{ current.updatedBy || 'acteur inconnu' }}.</p>
+        }
+      </form>
+    }
+  }
+</section>

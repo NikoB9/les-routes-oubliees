@@ -1,0 +1,112 @@
+:host {
+  display: grid;
+  gap: 0.45rem;
+}
+
+label {
+  color: #3a2d21;
+  font-weight: 800;
+}
+
+textarea,
+input,
+select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem;
+  border: 1px solid #8f7650;
+  background: #fff;
+  color: #211914;
+  font: inherit;
+}
+
+.image-dialog {
+  width: min(42rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: 1rem;
+  border: 1px solid #d1ad68;
+  background: #fffaf0;
+  color: #211914;
+  box-shadow: 0 1rem 2.5rem rgb(33 25 20 / 45%);
+}
+
+.image-dialog::backdrop {
+  background: rgb(33 25 20 / 72%);
+}
+
+.dialog-heading,
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.dialog-heading h2 {
+  margin: 0;
+}
+
+.icon-button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+.media-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+  max-height: 18rem;
+  overflow: auto;
+  padding: 0;
+  list-style: none;
+}
+
+.media-list button {
+  display: grid;
+  width: 100%;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border: 1px solid #d1ad68;
+  background: #fff8e8;
+  color: #211914;
+  text-align: left;
+}
+
+.media-list button[aria-pressed='true'] {
+  border-color: #7a261d;
+  box-shadow: inset 0 0 0 2px #7a261d;
+}
+
+.media-list img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  background: #f1e4c9;
+}
+
+.actions {
+  justify-content: flex-start;
+  margin-top: 1rem;
+}
+
+button {
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border: 0;
+  background: #211914;
+  color: #f8f0df;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+button.secondary {
+  border: 1px solid #8f7650;
+  background: #fff8e8;
+  color: #211914;
+}
+
+.alert {
+  color: #7a261d;
+  font-weight: 800;
+}

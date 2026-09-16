@@ -4,6 +4,9 @@ const tseslint = require('typescript-eslint');
 
 module.exports = tseslint.config(
   {
+    ignores: ['dist/**', 'node_modules/**', 'test-results/**', 'playwright-report/**', '.angular/**'],
+  },
+  {
     files: ['**/*.ts'],
     extends: [
       eslint.configs.recommended,
