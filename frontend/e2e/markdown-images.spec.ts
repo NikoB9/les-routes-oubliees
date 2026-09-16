@@ -96,3 +96,60 @@ test('quest Markdown images respect their selected size without overflowing', as
     expect(figureBox!.width / contentBox!.width).toBeCloseTo(1, 1);
   }
 });
+
+test('admin quest previews keep every Markdown image inside the editor at tablet width', async ({
+  page,
+}) => {
+  const quest = {
+    id: '50000000-0000-0000-0000-000000000001',
+    code: 'QUEST_1',
+    title: 'Quête administrée',
+    summary: 'Contrôle responsive des illustrations',
+    displayOrder: 1,
+    importantEventsMarkdown: '',
+    discoveredCluesMarkdown: '',
+    completedTrialsMarkdown: '',
+    extraContentMarkdown: '',
+    adminDraftMarkdown: '',
+    importantEventsHtml: markdownImage('small'),
+    discoveredCluesHtml: markdownImage('medium'),
+    completedTrialsHtml: markdownImage('large'),
+    extraContentHtml: markdownImage('full'),
+    adminDraftHtml: '',
+    status: 'DRAFT',
+    visibleToPlayers: false,
+    createdAt: '2026-09-15T10:00:00Z',
+    updatedAt: '2026-09-15T10:00:00Z',
+  };
+
+  await page.route('**/api/admin/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ authenticated: true, email: 'admin@example.test' }),
+    });
+  });
+  await page.route('**/api/admin/quest-tabs', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([quest]) });
+  });
+  await page.route('**/api/admin/quest-tabs/QUEST_1/documents', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  });
+
+  await page.setViewportSize({ width: 800, height: 1000 });
+  await page.goto('/admin/notebook');
+  await expect(page.getByRole('heading', { level: 1, name: 'Gestion des quêtes' })).toBeVisible();
+
+  for (const size of ['small', 'medium', 'large', 'full']) {
+    const figure = page.locator(`.quest-preview .markdown-image--${size}`);
+    const content = figure.locator('xpath=..');
+    const [figureBox, contentBox] = await Promise.all([figure.boundingBox(), content.boundingBox()]);
+
+    expect(figureBox).not.toBeNull();
+    expect(contentBox).not.toBeNull();
+    expect(figureBox!.width / contentBox!.width).toBeCloseTo(1, 1);
+    expect(figureBox!.x + figureBox!.width).toBeLessThanOrEqual(
+      contentBox!.x + contentBox!.width + 1,
+    );
+  }
+});

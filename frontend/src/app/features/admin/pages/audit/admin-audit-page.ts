@@ -4,12 +4,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LoadingIndicatorComponent } from '../../../../shared/components/loading-indicator/loading-indicator';
 import { AdminAuditLog } from '../../admin-api.models';
 import { AdminApiService } from '../../admin-api.service';
+import { AdminDateTimePipe } from '../../shared/admin-date-time.pipe';
+import { AdminLabelPipe } from '../../shared/admin-label.pipe';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
 @Component({
   selector: 'app-admin-audit-page',
-  imports: [LoadingIndicatorComponent],
+  imports: [LoadingIndicatorComponent, AdminDateTimePipe, AdminLabelPipe],
   templateUrl: './admin-audit-page.html',
   styleUrl: './admin-audit-page.css',
 })

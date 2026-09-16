@@ -50,7 +50,7 @@ const DOCUMENT_ERROR_GENERIC =
     ReactiveFormsModule,
   ],
   templateUrl: './admin-notebook-page.html',
-  styleUrl: './admin-notebook-page.css',
+  styleUrls: ['../../shared/admin-page-base.css', './admin-notebook-page.css'],
 })
 export class AdminNotebookPage {
   private readonly notebookApi = inject(NotebookApiService);

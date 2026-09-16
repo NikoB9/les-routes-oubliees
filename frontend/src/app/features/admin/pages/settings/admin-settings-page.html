@@ -26,19 +26,21 @@
         <small id="settings-logo-help">Chemin public attendu : /assets/... ou /media/uuid.</small>
 
         <div class="form-row">
-          <label>Fuseau horaire (obligatoire)
-            <input type="text" maxlength="80" formControlName="timezone" [attr.aria-invalid]="invalid('timezone') ? 'true' : null" [attr.aria-describedby]="invalid('timezone') ? 'settings-timezone-error' : null" />
+          <div class="form-field">
+            <label for="settings-timezone">Fuseau horaire (obligatoire)</label>
+            <input id="settings-timezone" type="text" maxlength="80" formControlName="timezone" [attr.aria-invalid]="invalid('timezone') ? 'true' : null" [attr.aria-describedby]="invalid('timezone') ? 'settings-timezone-error' : null" />
             @if (invalid('timezone')) { <small id="settings-timezone-error" class="field-error">Saisissez un fuseau horaire valide.</small> }
-          </label>
-          <label>État du site
-            <select formControlName="status">
+          </div>
+          <div class="form-field">
+            <label for="settings-status">État du site</label>
+            <select id="settings-status" formControlName="status">
               @for (status of statuses; track status) { <option [value]="status">{{ status | adminLabel }}</option> }
             </select>
-          </label>
+          </div>
         </div>
 
         <label for="settings-maintenance">Message de maintenance{{ form.controls.status.value === 'MAINTENANCE' ? ' (obligatoire)' : '' }}</label>
-        <textarea id="settings-maintenance" rows="3" maxlength="500" formControlName="maintenanceMessage" [attr.aria-invalid]="invalid('maintenanceMessage') ? 'true' : null" [attr.aria-describedby]="invalid('maintenanceMessage') ? 'settings-maintenance-error' : null"></textarea>
+        <textarea id="settings-maintenance" rows="3" maxlength="500" formControlName="maintenanceMessage" [required]="form.controls.status.value === 'MAINTENANCE'" [attr.aria-invalid]="invalid('maintenanceMessage') ? 'true' : null" [attr.aria-describedby]="invalid('maintenanceMessage') ? 'settings-maintenance-error' : null"></textarea>
         @if (invalid('maintenanceMessage')) { <small id="settings-maintenance-error" class="field-error">Saisissez le message affiché pendant la maintenance.</small> }
 
         <app-admin-markdown-editor

@@ -26,7 +26,7 @@ const RADAR_ERROR_GENERIC = 'Impossible de traiter le Radar pour le moment.';
   selector: 'app-admin-radar-page',
   imports: [DecimalPipe, LoadingIndicatorComponent, ReactiveFormsModule, AdminConfirmationDialogComponent],
   templateUrl: './radar-page.html',
-  styleUrl: './radar-page.css',
+  styleUrls: ['../../shared/admin-page-base.css', './radar-page.css'],
 })
 export class AdminRadarPage {
   private readonly adminApi = inject(AdminApiService);

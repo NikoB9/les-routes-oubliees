@@ -19,7 +19,7 @@ const MEDIA_ERROR_GENERIC = 'Impossible de traiter les médias pour le moment.';
   selector: 'app-admin-media-page',
   imports: [LoadingIndicatorComponent, ReactiveFormsModule, AdminConfirmationDialogComponent],
   templateUrl: './media-page.html',
-  styleUrl: './media-page.css',
+  styleUrls: ['../../shared/admin-page-base.css', './media-page.css'],
 })
 export class AdminMediaPage {
   private readonly mediaApi = inject(MediaApiService);

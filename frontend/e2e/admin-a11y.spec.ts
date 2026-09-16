@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 
 async function seriousAccessibilityViolations(page: Page) {
   const results = await new AxeBuilder({ page })
@@ -39,13 +39,56 @@ const siteSettings = {
   updatedAt: '2026-09-14T10:00:00Z',
 };
 
+const company = {
+  id: 'company-e2e',
+  name: 'Compagnie E2E',
+  emblemPath: null,
+  imageAlt: null,
+  shortDescription: 'Compagnie de test',
+  longDescriptionMarkdown: 'Présentation de test',
+  active: true,
+  createdAt: '2026-09-14T10:00:00Z',
+  updatedAt: '2026-09-14T10:00:00Z',
+};
+
+async function fulfillJson(route: Route, body: unknown) {
+  await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+}
+
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/admin/me', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ authenticated: true, email: 'admin@example.test' }),
-    });
+  await page.route('**/api/admin/**', async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const responses: Readonly<Record<string, unknown>> = {
+      '/api/admin/me': { authenticated: true, email: 'admin@example.test' },
+      '/api/admin/group': company,
+      '/api/admin/adventurers': [],
+      '/api/admin/map-views': [],
+      '/api/admin/map-markers': [],
+      '/api/admin/quest-tabs': [],
+      '/api/admin/media': [],
+      '/api/admin/allowed-emails': [],
+      '/api/admin/audit-logs': [
+        {
+          id: 'audit-e2e',
+          actorEmail: 'admin@example.test',
+          action: 'QUEST_PUBLISHED',
+          entityType: 'QUEST',
+          entityId: 'QUEST_1',
+          summary: 'Quête publiée',
+          createdAt: '2026-09-14T10:00:00Z',
+        },
+      ],
+      '/api/admin/settings': siteSettings,
+      '/api/admin/radar/settings': { treasureVisible: false, treasure: null },
+      '/api/admin/radar/points': [],
+      '/api/admin/portal-identities': [],
+    };
+
+    if (!(pathname in responses)) {
+      await route.fulfill({ status: 404, contentType: 'application/problem+json', body: '{}' });
+      return;
+    }
+    await fulfillJson(route, responses[pathname]);
   });
 });
 
@@ -67,7 +110,7 @@ test('@a11y admin dashboard is lazy-loaded and has no serious accessibility viol
     });
   });
 
-  await page.goto('/admin/dashboard');
+  await page.goto('/admin/dashboard', { waitUntil: 'domcontentloaded' });
 
   await expect(page.getByRole('heading', { level: 1, name: 'Tableau de bord' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Tableau de bord' })).toHaveAttribute(
@@ -123,7 +166,7 @@ test('@a11y home editor exposes validation, media insertion and deletion confirm
     await route.fulfill({ status: 204 });
   });
 
-  await page.goto('/admin/home');
+  await page.goto('/admin/home', { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { level: 1, name: "Parchemins d'accueil" })).toBeVisible();
   expect(await seriousAccessibilityViolations(page)).toEqual([]);
 
@@ -152,3 +195,34 @@ test('@a11y home editor exposes validation, media insertion and deletion confirm
   await expect(deleteButton).toBeFocused();
   expect(deleteRequests).toBe(0);
 });
+
+const remainingAdminPages = [
+  ['/admin/group', 'Compagnie'],
+  ['/admin/adventurers', 'Aventuriers'],
+  ['/admin/map', 'Carte'],
+  ['/admin/notebook', 'Gestion des quêtes'],
+  ['/admin/media', 'Médiathèque'],
+  ['/admin/administrators', 'Administrateurs autorisés'],
+  ['/admin/audit', "Journal d'audit"],
+  ['/admin/settings', 'Paramètres du site'],
+  ['/admin/radar', 'Radar'],
+  ['/admin/portal', 'Identités du portail'],
+] as const;
+
+for (const [path, heading] of remainingAdminPages) {
+  test(`@a11y ${path} has no serious accessibility violations once loaded`, async ({ page }) => {
+    await page.goto(path, { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+
+    if (path === '/admin/settings') {
+      await expect(page.getByRole('textbox', { name: 'Fuseau horaire (obligatoire)' })).toBeVisible();
+      await expect(page.getByRole('combobox', { name: 'État du site' })).toBeVisible();
+    }
+    if (path === '/admin/audit') {
+      await expect(page.locator('.audit-list strong')).toHaveText('Quête publiée');
+      await expect(page.locator('.audit-list small')).toContainText('Quête QUEST_1');
+    }
+
+    expect(await seriousAccessibilityViolations(page)).toEqual([]);
+  });
+}

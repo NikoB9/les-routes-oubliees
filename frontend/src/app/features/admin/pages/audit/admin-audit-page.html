@@ -10,13 +10,13 @@
     }
     @case ('ready') {
       @if (auditLogs().length > 0) {
-        <ol class="audit-list">
+        <ol class="audit-list" role="list">
           @for (log of auditLogs(); track log.id) {
             <li>
-              <strong>{{ log.action }}</strong>
-              <time [attr.datetime]="log.createdAt">{{ log.createdAt }}</time>
+              <strong>{{ log.action | adminLabel }}</strong>
+              <time [attr.datetime]="log.createdAt">{{ log.createdAt | adminDateTime }}</time>
               <p>{{ log.summary }}</p>
-              <small>{{ log.actorEmail || 'acteur inconnu' }} - {{ log.entityType }} {{ log.entityId || '' }}</small>
+              <small>{{ log.actorEmail || 'acteur inconnu' }} - {{ log.entityType | adminLabel }} {{ log.entityId || '' }}</small>
             </li>
           }
         </ol>

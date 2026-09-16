@@ -106,9 +106,9 @@ app-notebook-page .markdown-content .markdown-image figcaption {
 }
 
 @media (max-width: 960px) {
-  app-admin-shell .markdown-content .markdown-image--small,
-  app-admin-shell .markdown-content .markdown-image--medium,
-  app-admin-shell .markdown-content .markdown-image--large {
+  app-admin-layout .markdown-content .markdown-image--small,
+  app-admin-layout .markdown-content .markdown-image--medium,
+  app-admin-layout .markdown-content .markdown-image--large {
     max-width: 100%;
   }
 }

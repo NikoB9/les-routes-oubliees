@@ -23,4 +23,14 @@ describe('AdminSettingsPage', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[role="alert"]')).not.toBeNull();
   });
+
+  it('associe explicitement les libellés du fuseau horaire et de l’état du site', async () => {
+    await TestBed.configureTestingModule({ imports: [AdminSettingsPage], providers: [{ provide: AdminApiService, useValue: { getSiteSettings: () => of(SETTINGS) } }] }).compileComponents();
+    const fixture = TestBed.createComponent(AdminSettingsPage);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('label[for="settings-timezone"]')?.textContent).toContain('Fuseau horaire');
+    expect(fixture.nativeElement.querySelector('#settings-timezone')?.getAttribute('aria-describedby')).toBeNull();
+    expect(fixture.nativeElement.querySelector('label[for="settings-status"]')?.textContent).toContain('État du site');
+  });
 });

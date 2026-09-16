@@ -1,19 +1,8 @@
-:host {
-  display: block;
-}
-
-.admin-page,
 .editor-form,
 .media-grid li,
 .media-grid li > div {
   display: grid;
   gap: 1rem;
-}
-
-h1,
-h2,
-p {
-  margin: 0;
 }
 
 .editor-form {
@@ -22,35 +11,8 @@ p {
   background: #fffaf0;
 }
 
-label {
-  color: #3a2d21;
-  font-weight: 800;
-}
-
-input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.7rem;
-  border: 1px solid #8f7650;
-  background: #fff;
-  color: #211914;
-  font: inherit;
-}
-
 button {
   width: fit-content;
-  min-height: 2.75rem;
-  padding: 0.7rem 1rem;
-  border: 0;
-  background: #211914;
-  color: #f8f0df;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-button.danger {
-  background: #7a261d;
 }
 
 .media-grid {
@@ -78,31 +40,4 @@ button.danger {
 .media-grid code,
 .media-grid h2 {
   overflow-wrap: anywhere;
-}
-
-.alert,
-.field-error {
-  color: #651b14;
-  font-weight: 800;
-}
-
-.alert {
-  padding: 0.85rem;
-  border: 2px solid #9f3025;
-  background: #fff0ed;
-}
-
-.status {
-  color: #285d34;
-  font-weight: 800;
-}
-
-.empty-state {
-  color: #5c4632;
-  font-style: italic;
-}
-
-:is(input, button):focus-visible {
-  outline: 3px solid #0f5f8f;
-  outline-offset: 3px;
 }

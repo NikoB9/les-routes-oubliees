@@ -26,6 +26,9 @@ describe('AdminAuditPage', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('h1')?.textContent).toContain("Journal d'audit");
     expect(fixture.nativeElement.querySelector('time')?.getAttribute('datetime')).toBe(LOG.createdAt);
+    expect(fixture.nativeElement.querySelector('time')?.textContent).toContain('septembre 2026');
+    expect(fixture.nativeElement.textContent).toContain('Quête modifiée');
+    expect(fixture.nativeElement.textContent).toContain('Quête quest-1');
     expect(fixture.nativeElement.textContent).toContain('Quête mise à jour');
   });
 

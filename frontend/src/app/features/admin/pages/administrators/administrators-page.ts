@@ -17,7 +17,7 @@ const ADMINISTRATOR_ERROR_REQUIRED_EMAIL = "L'adresse email de l'administrateur 
   selector: 'app-admin-administrators-page',
   imports: [LoadingIndicatorComponent, ReactiveFormsModule, AdminConfirmationDialogComponent],
   templateUrl: './administrators-page.html',
-  styleUrl: './administrators-page.css',
+  styleUrls: ['../../shared/admin-page-base.css', './administrators-page.css'],
 })
 export class AdminAdministratorsPage {
   private readonly adminApi = inject(AdminApiService);
