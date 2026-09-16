@@ -152,6 +152,8 @@ Angular peut etre installe comme PWA en production.
 Principes :
 
 * le service worker cache le shell public et les assets versionnes ;
+* `index.html`, `ngsw.json`, `ngsw-worker.js` et `safety-worker.js` ne sont jamais conserves par le cache HTTP : leur revalidation permet au navigateur de detecter chaque release sans vidage manuel du cache ;
+* un fichier statique absent renvoie `404` et ne recoit jamais le fallback `index.html`, afin qu'un ancien chunk soit identifie comme perime au lieu d'etre interprete comme du JavaScript ;
 * les medias uploades `/media/**` sont caches par le service worker : la condition posee a l'origine est remplie, `MediaService.publicMedia` refusant tout media qui n'est pas reference par un contenu actif et publie. Sans ce cache, l'instantane hors ligne arrivait complet mais toutes les images etaient cassees, y compris l'image de carte revelee ;
 * une URL de media designant toujours le meme octet, le backend renvoie `private, max-age=31536000, immutable`, et le reverse proxy ne doit poser aucun `Cache-Control` sur ce chemin ;
 * les medias references par l'instantane sont rapatries des son ecriture, sans attendre la visite de la page qui les porte : un aventurier parti sur le terrain sans avoir ouvert la Carte doit malgre tout la voir ;

@@ -1,0 +1,23 @@
+<p class="sr-only" role="status" aria-live="polite">
+  @if (update.isAvailable()) {
+    @if (update.isRecoveryRequired()) {
+      Une mise à jour est nécessaire pour continuer à utiliser l’application correctement.
+    } @else {
+      Une nouvelle version des Routes Oubliées est prête.
+    }
+  }
+</p>
+
+@if (update.isAvailable()) {
+  <section class="update-prompt" aria-labelledby="update-prompt-title">
+    <div>
+      <h2 id="update-prompt-title">Mise à jour disponible</h2>
+      @if (update.isRecoveryRequired()) {
+        <p>Cette version ne peut plus fonctionner correctement. Rechargez l’application.</p>
+      } @else {
+        <p>Une nouvelle version des Routes Oubliées est prête.</p>
+      }
+    </div>
+    <button type="button" (click)="update.reload()">Mettre à jour</button>
+  </section>
+}

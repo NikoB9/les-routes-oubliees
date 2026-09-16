@@ -35,6 +35,33 @@ server {
         add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
     }
 
+    # Ces trois fichiers pilotent l'installation et la mise a jour de la PWA. Ils sont
+    # volontairement revalides a chaque acces pour qu'une nouvelle release soit detectee
+    # sans demander a l'utilisateur de vider son cache.
+    location = /ngsw.json {
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+    }
+
+    location = /ngsw-worker.js {
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+    }
+
+    location = /safety-worker.js {
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+        add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+    }
+
     location = /api/radar/events {
         proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
@@ -141,4 +168,12 @@ server {
     location ~ /\. {
         deny all;
     }
+
+    # Les fichiers versionnes n'utilisent jamais le fallback SPA. Un chunk d'une ancienne
+    # release doit repondre 404, et non recevoir index.html avec un type MIME incorrect.
+    # Les emplacements API et media precedents sont evalues avant cette expression.
+    location ~* \.[^/]+$ {
+        try_files $uri =404;
+    }
+
 }

@@ -179,6 +179,8 @@ Pour la PWA :
 
 * HTTPS est obligatoire en production ;
 * les fichiers du service worker Angular doivent être servis depuis la racine du frontend ;
+* `index.html`, `ngsw.json`, `ngsw-worker.js` et `safety-worker.js` doivent imposer une revalidation avec `Cache-Control: no-store` ;
+* une URL de fichier statique absente doit répondre `404`, jamais le fallback HTML de la SPA ;
 * les routes admin, Radar, portail, intégration et écriture ne doivent pas être servies depuis un cache applicatif hors ligne ;
 * après déploiement, vérifier l'installation PWA et la mise à jour du snapshot de contenu après modification d'un contenu publié.
 
@@ -631,6 +633,9 @@ L'archive contient au minimum :
 ```text
 backend/app.jar
 frontend/index.html
+frontend/ngsw.json
+frontend/ngsw-worker.js
+frontend/safety-worker.js
 release-info.txt
 ```
 
@@ -710,18 +715,24 @@ Le script serveur :
 
 * verifie l'archive ;
 * verifie la presence de `backend/app.jar` ;
-* verifie la presence de `frontend/index.html` ;
+* verifie la presence de `frontend/index.html`, `frontend/ngsw.json`, `frontend/ngsw-worker.js` et `frontend/safety-worker.js` ;
 * lit `/etc/les-routes-oubliees/application.env` ;
 * cree un dump PostgreSQL ;
 * extrait la nouvelle release dans un dossier horodate ;
 * arrete l'application ;
 * bascule le lien symbolique `current` ;
 * redemarre l'application ;
-* attend que le health check reponde ;
-* revient a la release precedente si le demarrage echoue ;
+* attend que le health check backend reponde et que le frontend serve le shell, le manifeste PWA et le worker avec leur politique `no-store` ;
+* revient a la release precedente si le demarrage ou ce smoke test echoue ;
 * conserve les cinq dernieres releases ;
 * supprime l'archive temporaire ;
 * ne modifie jamais directement une ancienne release.
+
+Le smoke test frontend utilise par defaut `http://127.0.0.1:8088`. Si le reverse proxy
+local ecoute ailleurs, definir `LRO_FRONTEND_URL` dans l'environnement d'execution du
+script. La configuration Nginx qui impose `no-store` sur les fichiers PWA doit etre
+installee et rechargee avant d'utiliser cette version de `lro-deploy`, sinon le controle
+echoue volontairement et restaure la release precedente.
 ## Addendum 2026-08-05 - Cloudflare Access, Radar et Nginx
 
 Variables de production à renseigner :
@@ -867,7 +878,11 @@ Installer aussi `infra/nginx/lro-rate-limit.conf.example` dans `/etc/nginx/conf.
 
 > **Addendum périmé, conservé pour l'historique.** L'exclusion totale des navigations décrite ci-dessous a été remplacée depuis : le service worker sert le shell Angular pour les navigations, **sauf** `/radar`, `/admin`, `/admin/**`, `/reconnexion` et les URL de fichiers. L'exclusion totale rendait le mode hors ligne annoncé dans `PLAN_FINAL` entièrement inopérant, la coquille applicative ne se chargeant jamais. Voir `docs/ARCHITECTURE.md`, section « Navigations et service worker », et les motifs figés par `frontend/src/app/core/offline/ngsw-config.spec.ts`.
 
-Le service worker ne doit plus intercepter les navigations avec le shell Angular mis en cache. `frontend/ngsw-config.json` conserve les assets PWA, mais exclut toutes les navigations pour que Cloudflare Access voie les accès à `/`, `/radar`, `/admin` et aux routes rechargées. Cette décision réduit le comportement hors ligne d'une nouvelle navigation ; elle est volontaire pour éviter une page affichée depuis le cache après expiration ou déconnexion Access.
+Dans cet ancien arbitrage, le service worker ne devait plus intercepter aucune navigation avec le
+shell Angular mis en cache. `frontend/ngsw-config.json` excluait alors toutes les navigations pour
+que Cloudflare Access voie les accès rechargés. Cette décision a été abandonnée : elle empêchait
+toute consultation publique hors ligne. Seules les exclusions ciblées décrites dans l’encadré
+ci-dessus font foi aujourd’hui.
 
 Un shell statique deja present dans un cache navigateur ou un ancien service worker peut rester affichable localement jusqu'a son eviction. Cloudflare Access ne peut pas intercepter une reponse servie entierement depuis le cache local ; les API Radar, admin, portail et integration restent donc exclues du cache et revalidees par le reseau.
 
